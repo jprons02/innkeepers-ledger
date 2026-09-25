@@ -48,7 +48,7 @@ unverified · ❓ unknown
   the innkeeper's gossip menu.
 - ❓ **Sitting detection.** Whether any API reports that the player is sitting.
 
-## Verification checklist (needs a Forever client: beta or launch)
+## Verification checklist (needs a Forever client: beta until 2026-10-21, or launch 2026-11-04)
 
 - [ ] TOC interface number; AddOn loads
 - [ ] `GOSSIP_SHOW` fires for innkeepers; `UnitGUID("npc")` yields a creature GUID with

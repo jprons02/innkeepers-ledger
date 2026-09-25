@@ -13,6 +13,29 @@
 - Client verification ([platform-forever.md](platform-forever.md) checklist): ⬜ needs
   a Forever client (beta, or launch day 2026-11-04)
 
+## Client access plan
+
+The in-client work needs a WoW: Forever client. As of 2026-09-25 we don't have one yet.
+
+- **Beta window:** 2026-09-17 → **2026-10-21**. Launch: **2026-11-04**.
+- **Free route:** beta opt-in on the official Forever site. Invites go out in waves and
+  aren't guaranteed.
+- **Guaranteed route:** the higher-tier Forever pre-purchase editions include beta
+  access; the cheapest edition does not. (Check the current edition details before
+  buying.)
+- **Retail as a stand-in:** Forever reportedly uses the retail-style API. Generic
+  mechanics (gossip events, `UnitGUID("npc")` parsing, `IsResting()`, AceComm
+  round-trips, instance messaging) can be prototyped on retail. The results are only
+  indicative until confirmed on Forever. Forever-specific data (the innkeeper list, the
+  TOC interface number) can't be substituted.
+
+**Branches:**
+- **Beta access by ~2026-10-03:** follow Phase 2 during the beta and aim to release at
+  launch.
+- **No beta access:** finish Phase 1 plus retail prototyping before launch, then run
+  Phase 2 on launch day and release **~1–2 weeks after launch**. Still early enough to
+  be discovered; the collection and innkeeper IDs are the long pole.
+
 ## Read first, in order
 
 1. `CLAUDE.md`
@@ -39,6 +62,11 @@ Forever client is available.
    eviction. This is the riskiest foundation, so it's tested first and hardest.
 5. `Phrase` + `Data/Phrases` (a first phrase set), then `Collection` + `Cosmetics`, then
    `Export` (finalize [export-format.md](export-format.md) to v1).
+
+**Phase 1.5 — retail prototype (optional, while waiting for Forever access)**
+- Throwaway harness on retail: gossip/NPC-ID detection, `IsResting()`, AceComm
+  PARTY/GUILD/instance round-trips. Record findings in `platform-forever.md` as
+  "retail-observed", not confirmed.
 
 **Phase 2 — in the client (needs Forever)**
 6. Work through the platform verification checklist; update `platform-forever.md`.

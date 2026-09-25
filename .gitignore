@@ -1,0 +1,18 @@
+# Build / packaging output
+/.release/
+*.zip
+
+# Local tooling
+/lua_modules/
+/.luarocks/
+luacov.*.out
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local-only notes (never commit)
+/.local/
+*.local.md

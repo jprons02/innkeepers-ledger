@@ -1,0 +1,27 @@
+name: policy-guard
+
+# Blizzard AddOn policy bars advertising goods or services (Rule 4).
+# Guard: no URLs in shipped in-game code or data. Embedded third-party
+# libraries (Libs/) are excluded; their comments legitimately contain links.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  no-urls-in-game-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check shipped files for URLs
+        run: |
+          set -u
+          hits=$(grep -rnIiE '(https?://|www\.)' \
+            --include='*.lua' --include='*.toc' --include='*.xml' \
+            --exclude-dir=Libs --exclude-dir=.git --exclude-dir=spec . || true)
+          if [ -n "$hits" ]; then
+            echo "::error::URLs found in shipped AddOn files (policy Rule 4: no advertising):"
+            echo "$hits"
+            exit 1
+          fi
+          echo "No URLs in shipped AddOn files."

@@ -10,6 +10,41 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-26 — Security checks: forbidden-API guard on every PR, review before every release
+
+A required CI job (`forbidden-apis`, `scripts/check-apis.sh`) greps shipped code for
+forbidden APIs:
+- dynamic code
+- global lookup by name (`_G`)
+- combat data
+- chat and social sending
+- hooks
+- macros and key bindings
+- selecting gossip options (picking one for the player could reset their hearthstone)
+- account and group actions
+- addon messaging and chat channels outside `Sync.lua`
+
+A name matches after `.` or `:` too, so a cached namespace alias is caught. The check
+fails closed on unreadable or oddly named files.
+
+Widening an allow-list needs a decision entry. Every `dev → main` release PR also gets a
+security review of the release diff against `docs/security-checklist.md`, with the
+results in the PR. Until launch the session fixes findings and merges on its own, and a
+finding that needs a maintainer decision stops the release (the maintainer chose this).
+Workflows pin actions by commit SHA and use read-only, unpersisted tokens.
+
+*Rejected:*
+- **Only reviewing at release time:** problems would already be on `dev`, and a grep
+  costs nothing per PR.
+- **CodeQL or dependency scanners:** no Lua support; no package dependencies.
+- **A third-party secret scanner:** GitHub secret scanning with push protection is
+  already on.
+- **A maintainer sign-off on every release:** not needed before there are players.
+- **Inline exemptions in code:** they'd hide allow-list changes from review.
+
+*Reflected in:* `docs/security-checklist.md`; `CLAUDE.md` → Branch flow; `.github/workflows/`;
+`docs/architecture.md` → Security model (pointer).
+
 ### 2026-09-26 — CI: own toolchain install, and the library manifest pinned to the review doc
 
 `ci.yml` runs `luacheck`, `busted` (Lua 5.1) and `libs-manifest` as separate jobs on

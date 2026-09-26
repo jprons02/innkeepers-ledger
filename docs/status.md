@@ -13,9 +13,11 @@
 - Context map + conventions (`CLAUDE.md`), branch flow (`dev` → `main`), branch
   protection on both branches: ✅
 - Agent team (`.claude/agents/`): ✅ planner, implementer, reviewer
-- CI: ✅ policy guard; ✅ `ci.yml` with `luacheck`, `busted` (Lua 5.1) and
-  `libs-manifest` (#9). All four jobs run on every push and PR and are required checks
-  on `main` and `dev`. [kickoff.md](kickoff.md) step 3: ✅
+- CI: ✅ policy guard; ✅ `ci.yml` with `luacheck`, `busted` (Lua 5.1), `libs-manifest`
+  (#9) and `forbidden-apis` (#22). All five jobs run on every push and PR and are
+  required checks on `main` and `dev`. [kickoff.md](kickoff.md) step 3: ✅
+- Security: ✅ forbidden-API guard in CI; every release PR gets a security review
+  against [security-checklist.md](security-checklist.md) (#22)
 - Kickoff step 1 (orient): ✅ reported. Step 2 (scaffold): ✅ (#8). Steps 3+: ⬜
 - AddOn scaffold: ✅ TOC (placeholder interface number), `Libs/embeds.xml`, every module
   as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger` (prints the
@@ -36,7 +38,7 @@ Work the ticket queue in order (each ticket says what to read):
 
 1. ~~#7 Vendor the reviewed libraries~~ ✅ done (#15)
 2. ~~#8 Scaffold the AddOn~~ ✅ done (#17)
-3. ~~#9 luacheck + busted + manifest checks in CI~~ ✅ done
+3. ~~#9 luacheck + busted + manifest checks in CI~~ ✅ done; ~~#22 security checks~~ ✅ done
 4. #10 Slice 1 parent → #11 write the spec and file the implementation tickets (next)
 
 In-client work is #12 (needs a Forever client and the maintainer).
@@ -92,7 +94,5 @@ proceeds without them. Full list: [platform-forever.md → Verification checklis
   (maintainer call: deletion).
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
   ([export-format.md](export-format.md)), before export v1 is finalized.
-- `policy-guard.yml`: add `permissions: contents: read` and `persist-credentials: false`,
-  as `ci.yml` has (small `chore` PR).
 - CI pins only the top-level rocks (busted, luacheck); their dependencies float. If an
   upstream release breaks CI, pin those as well.

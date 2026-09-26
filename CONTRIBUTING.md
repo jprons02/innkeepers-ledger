@@ -38,8 +38,9 @@ self-contained Lua 5.1 + LuaRocks in one folder:
   found". Run tools as `luarocks.bat`, `busted.bat` and `luacheck.bat`, with
   `<dir>/bin` and MSYS2's `ucrt64/bin` on `PATH`.
 
-Run `busted` and `luacheck .` from the repo root before opening a PR. CI runs the same
-checks.
+Run `busted`, `luacheck .`, `sh scripts/check-apis.sh` and `sh scripts/check-libs.sh`
+from the repo root before opening a PR. CI runs the same checks
+([docs/security-checklist.md](docs/security-checklist.md) explains the last two).
 
 ## Branches and pull requests
 

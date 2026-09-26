@@ -24,6 +24,7 @@ task needs, using the "Read when" column. Don't read everything.
 | [docs/architecture.md](docs/architecture.md) | modules, data model, signing flow, sync protocol, **security model**, testing posture | any code; sync, validation, storage caps, new modules |
 | [docs/platform-forever.md](docs/platform-forever.md) | what's verified vs unverified about the Forever client; verification checklist | anything calling a WoW API; TOC; in-client testing |
 | [docs/addon-policy.md](docs/addon-policy.md) | Blizzard AddOn policy rules that bind us | in-game text, links, anything paid or cosmetic, distribution pages |
+| [docs/security-checklist.md](docs/security-checklist.md) | security checks on every PR (incl. the forbidden-API list) and the release security review | opening a release PR; changing CI, `scripts/check-*.sh` or an allow-list; calling a new WoW API |
 | [docs/libraries.md](docs/libraries.md) | embedded libraries: versions, reviewed file hashes, licenses, security findings, upgrade steps | touching `Libs/`, sync transport or serialization; "is this library safe/allowed" |
 | [docs/export-format.md](docs/export-format.md) | the export string spec (draft v0) | `Export` module; any change to exported data |
 | [docs/prior-art.md](docs/prior-art.md) | existing guestbook AddOns and what we took from them | positioning, sync pattern precedent |
@@ -99,6 +100,10 @@ Details: [docs/architecture.md → Testing posture](docs/architecture.md#testing
   merged with a **merge commit** (not squash) so `dev` and `main` don't diverge. `main`
   then sits a merge commit "ahead" of `dev` with identical content; that's expected, so
   don't sync it back.
+- **Every release PR gets a security review first.** Review the release diff against
+  [docs/security-checklist.md](docs/security-checklist.md) and put the results in the PR's
+  *Security review* section. Fix findings on `dev` before merging; a finding that needs
+  a maintainer decision stops the release.
 - Before the first public release, `dev → main` merges freely. Tags and published
   releases go out only through the packager, and they are a maintainer gate.
 - **Branch protection is on for `main` and `dev`** (admins included): changes land only

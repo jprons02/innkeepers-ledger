@@ -40,6 +40,7 @@ without needing a moderator.
 
 | | |
 |---|---|
+| [docs/status.md](docs/status.md) | Where the project stands and what's next |
 | [docs/vision.md](docs/vision.md) | The idea and the design intent |
 | [docs/decisions.md](docs/decisions.md) | Settled decisions and why |
 | [docs/architecture.md](docs/architecture.md) | How it's built |

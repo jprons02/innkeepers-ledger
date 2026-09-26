@@ -1,5 +1,10 @@
 # Architecture
 
+> **Summary:** how the AddOn is built: modules (pure vs glue), signing flow, data model,
+> sync protocol, the security model for peer data, export, game flavors, testing posture.
+> **Read when:** writing or reviewing any code, especially sync, validation, storage caps
+> or a new module.
+
 How Innkeeper's Ledger is built. Decisions referenced here live in
 [decisions.md](decisions.md). Anything marked **(verify)** depends on client behavior
 that hasn't been confirmed in WoW: Forever yet (see
@@ -124,8 +129,17 @@ Proportional, not ceremonial:
 
 - **Test hard (busted, test-as-you-go):** `SyncProtocol` validation (every rule above
   with malicious-input cases), `Ledger` dedupe/caps/eviction, `Collection` math,
-  `Phrase` validation, `Export` round-trip.
+  `Phrase` validation, `Export` encode/decode round-trip.
+- **Stubbed WoW API.** Pure modules take client values as arguments; any glue exercised
+  in tests goes through a small stub layer of the WoW API, so `busted` runs outside the
+  game.
+- **Peer data is hostile in tests.** For every rule in the security model, cover
+  malformed, oversized, relayed (third-party), replayed and forged-signer input, unknown
+  inn/phrase IDs, out-of-range timestamps, floods over the rate limit, and compression
+  bombs.
+- **Lint:** `luacheck` clean.
 - **Test by hand in the client:** signing flow, gossip integration, UI, real
-  AceComm between two accounts/characters.
-- **CI:** a policy-guard workflow exists from day one. `luacheck` + `busted` get added
-  to CI once the first Lua lands (kickoff step).
+  AceComm between two accounts/characters. These go on the in-client batch in
+  [status.md](status.md) rather than blocking other work.
+- **CI:** the policy guard runs on every push and PR. `luacheck` + `busted` join it
+  once the first Lua lands (kickoff step 3), on the same triggers.

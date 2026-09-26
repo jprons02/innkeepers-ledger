@@ -1,5 +1,8 @@
 # Prior art
 
+> **Summary:** existing guestbook AddOns (retail housing), what we took from them, and why this AddOn isn't a copy.
+> **Read when:** positioning or describing the AddOn, or looking for precedent on the sync pattern.
+
 Researched 2026-09-21.
 
 ## No built-in guestbook exists

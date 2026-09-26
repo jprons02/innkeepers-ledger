@@ -1,5 +1,8 @@
 # AddOn policy constraints
 
+> **Summary:** the Blizzard AddOn policy rules that bind this project (free, no ads, no hidden code, no offensive content), the no-network constraint and the combat restrictions.
+> **Read when:** writing in-game text or tooltips, touching anything paid, cosmetic or outbound, or preparing distribution pages.
+
 Blizzard publishes a
 [UI Add-On Development Policy](https://us.forums.blizzard.com/en/wow/t/ui-add-on-development-policy/24534).
 Breaking it can get an AddOn disabled or pulled from distribution sites. These are the

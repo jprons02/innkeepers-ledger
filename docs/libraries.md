@@ -107,7 +107,12 @@ account-affecting APIs, combat APIs, hooks and URLs; ran hostile inputs on Lua 5
   under `Libs/` isn't in the manifest, and fails unless the manifest's hashes (all but
   `Libs/embeds.xml`) are exactly the ones under *Reviewed files* above. So changing,
   adding or removing a library can't pass by editing the manifest alone; the review
-  record has to change with it. `.gitattributes` marks `Libs/**` as `-text` so
+  record has to change with it. The check reads only this doc's *Reviewed files* section,
+  and only lines of the form `<64 lowercase hex>  <lowercase-label>:<path>`. Manifest
+  lines must be exactly `<sha256>  Libs/<path>`.
+- **`Libs/embeds.xml` changes are covered by PR review, not the check.** Its manifest
+  line keeps it deliberate, but in WoW XML a `<Script>` can load any file or run inline
+  code, so review it like `Core.lua`. (The policy guard skips `Libs/` too.) `.gitattributes` marks `Libs/**` as `-text` so
   Git never changes line endings (and so hashes) on any platform.
 - **`Libs/embeds.xml` is ours**, not upstream: it sets the library load order (see the
   table above). It's listed in the manifest like the vendored files, so any change to

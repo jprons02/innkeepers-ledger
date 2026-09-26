@@ -5,6 +5,9 @@ name: ci
 # branch protection too.
 # Toolchain comes from apt and luarocks.org only, at the versions in CONTRIBUTING.md.
 
+permissions:
+  contents: read
+
 on:
   push:
   pull_request:
@@ -14,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install Lua 5.1 and luacheck
         run: |
           sudo apt-get update -q
@@ -28,6 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install Lua 5.1 and busted
         run: |
           sudo apt-get update -q
@@ -46,5 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Check Libs/ against the manifest and the review doc
         run: sh scripts/check-libs.sh

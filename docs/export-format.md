@@ -19,7 +19,9 @@ links or recommends any consumer of it.**
 
 - `!IL` marks an Innkeeper's Ledger export; `1` is the **format major version**.
 - `<payload>` = the data table → serialized (AceSerializer-3.0) → compressed
-  (LibDeflate `CompressDeflate`) → printable-encoded (LibDeflate `EncodeForPrint`).
+  (LibDeflate `CompressDeflate`, raw DEFLATE per RFC 1951) → printable-encoded with
+  **standard base64** (RFC 4648, `A–Z a–z 0–9 + /`, `=` padding). Both steps are standard,
+  so any language can decode an export with stock libraries (plus an AceSerializer reader).
 - Decoders should reject unknown major versions and ignore unknown fields.
 
 ## Data (draft)

@@ -25,7 +25,8 @@ Forever client is available.
 **Phase 1 — foundation (no client needed)**
 1. **Orient.** Read the docs; report scope, the hard rules and the riskiest part (sync
    validation) to the maintainer in a few lines. A report, not a wait.
-2. Scaffold: TOC (interface number TBD, see platform doc), embedded Ace3 + LibDeflate,
+2. Scaffold: TOC (interface number TBD, see platform doc), the reviewed libraries vendored
+   per [libraries.md](libraries.md),
    `.luacheckrc`, `.busted`, a stubbed WoW API layer for tests, and the folder layout
    from the architecture module table.
 3. Add `luacheck` + `busted` to CI next to the policy guard (extend
@@ -37,7 +38,7 @@ Forever client is available.
    `Export` (finalize [export-format.md](export-format.md) to v1).
 
 **Phase 1.5 — retail prototype (optional, while waiting for Forever access)**
-- Throwaway harness on retail: gossip/NPC-ID detection, `IsResting()`, AceComm
+- Throwaway harness on retail: gossip/NPC-ID detection, `IsResting()`, addon-message
   PARTY/GUILD/instance round-trips. Record findings in `platform-forever.md` as
   "retail-observed", not confirmed.
 

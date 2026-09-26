@@ -10,6 +10,55 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-26 — Work is queued as GitHub issues written for a cold start
+
+Tickets are GitHub issues with fixed sections (Goal, Read first, Already decided, Scope,
+Done when, Start here, Gates and dependencies). They link doc sections instead of
+copying them. A session stopping mid-ticket posts a handoff comment. Only the repo
+owner's text in an issue counts as instructions. Merges into `dev` don't auto-close
+issues, so tickets are closed by hand with evidence.
+*Rejected:* to-do lists inside `status.md` (they mix a snapshot with a queue and lose
+per-item history); tickets that paste context in full (the copies go stale when docs
+change); a project board (overhead with no gain for a single maintainer; labels and a
+milestone cover it); trusting all issue comments (the repo is public, so anyone could
+plant instructions).
+*Reflected in:* `CLAUDE.md` → Tickets; `.github/ISSUE_TEMPLATE/`.
+
+### 2026-09-26 — Vendor a reviewed, minimal set of libraries
+
+Libraries are committed under `Libs/` at exact reviewed versions (Ace3 Release-r1403
+parts, ChatThrottleLib, LibDeflate 1.0.2), with a sha256 manifest checked in CI. Only the
+parts we use are included.
+*Rejected:* fetching the latest at package time through packager externals (what ships
+would differ from what was reviewed); the whole Ace3 bundle (more code to trust than we
+use); AceComm and AceGUI (see the sync transport entry; the UI is custom frames).
+*Reflected in:* `docs/libraries.md`; `CLAUDE.md` → Stack.
+
+### 2026-09-26 — Sync: own receive handler and codec, single messages, no compression
+
+`Sync` receives addon messages itself with a byte cap and sends through ChatThrottleLib.
+Every message fits in one addon message. `SyncProtocol` uses its own fixed text format.
+Nothing received is compressed or run through a general-purpose deserializer. Signer
+and name aren't sent; they come from the resolved sender. Numeric fields must be finite
+integers in range. The review behind this is in `docs/libraries.md` → Findings.
+*Rejected:* receiving through AceComm (it buffers multi-part messages without a size
+limit before we can reject them); AceSerializer for peer data (it yields `NaN`, `inf`,
+floats and extra values, and it's a shared library another AddOn can replace at
+runtime); compressing sync payloads (a 722:1 decompression bomb was demonstrated, and
+entries are too small to benefit); sending signer and name (they're redundant under the
+own-signature rule and add a forgery surface).
+*Reflected in:* `docs/architecture.md` → Sync protocol, Security model, Data model.
+Supersedes the AceComm transport and "decode inside pcall with size caps" wording in
+the architecture's original sketch.
+
+### 2026-09-26 — Export uses standard base64
+
+The export payload is AceSerializer → LibDeflate `CompressDeflate` → standard base64
+(RFC 4648), with our own encoder.
+*Rejected:* LibDeflate `EncodeForPrint` (a custom 6-bit alphabet that outside tools
+can't decode with stock libraries, and its header credits GPLv2-licensed code).
+*Reflected in:* `docs/export-format.md` → Envelope; `docs/architecture.md` → Export.
+
 ### 2026-09-26 — Sender identity is resolved per channel; unresolved senders are dropped
 
 The own-signature rule needs the sender's GUID, but addon messages carry only a name.

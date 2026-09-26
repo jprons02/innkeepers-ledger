@@ -1,0 +1,6 @@
+# Vendored libraries are byte-for-byte what was reviewed (see docs/libraries.md).
+# Never let Git convert their line endings, or the checksums differ per platform.
+Libs/** -text
+
+# The check script must keep LF endings to run on Linux CI.
+*.sh text eol=lf

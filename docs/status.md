@@ -19,7 +19,8 @@
 - AddOn code: ⬜ none yet
 - Client verification ([platform-forever.md](platform-forever.md) checklist): ⬜ no
   Forever client yet
-- Libraries: ✅ reviewed ([libraries.md](libraries.md)); ⬜ vendored into `Libs/` (#7)
+- Libraries: ✅ reviewed and vendored into `Libs/` with a checksum manifest and
+  `scripts/check-libs.sh` ([libraries.md](libraries.md)); ⬜ check runs in CI (#9)
 - Tickets: ✅ issue forms, labels, `v1 launch` milestone; queue below
 - Local toolchain: ✅ Lua 5.1 + busted 2.3.0 + luacheck 1.2.0 (setup in
   [CONTRIBUTING.md](../CONTRIBUTING.md))
@@ -28,8 +29,8 @@
 
 Work the ticket queue in order (each ticket says what to read):
 
-1. #7 Vendor the reviewed libraries into `Libs/` (ready)
-2. #8 Scaffold the AddOn (after #7)
+1. ~~#7 Vendor the reviewed libraries~~ ✅ done (#15)
+2. #8 Scaffold the AddOn (unblocked; next)
 3. #9 luacheck + busted + manifest checks in CI (after #8)
 4. #10 Slice 1 parent → #11 write the spec and file the implementation tickets
    (can run in parallel with #7–#9; it's docs only)

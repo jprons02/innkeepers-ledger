@@ -19,8 +19,13 @@ forbidden APIs:
 - combat data
 - chat and social sending
 - hooks
+- macros and key bindings
+- selecting gossip options (picking one for the player could reset their hearthstone)
 - account and group actions
-- addon messaging outside `Sync.lua`
+- addon messaging and chat channels outside `Sync.lua`
+
+A name matches after `.` or `:` too, so a cached namespace alias is caught. The check
+fails closed on unreadable or oddly named files.
 
 Widening an allow-list needs a decision entry. Every `dev → main` release PR also gets a
 security review of the release diff against `docs/security-checklist.md`, with the

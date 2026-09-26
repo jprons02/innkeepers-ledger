@@ -25,27 +25,48 @@ GitHub secret scanning with push protection is on for the repo.
 
 ### The forbidden-API check
 
-`scripts/check-apis.sh` greps every shipped `.lua`/`.xml` (outside `Libs/`, `spec/` and
-`scripts/`, plus `Libs/embeds.xml`) for these groups of names. The script holds the exact
+`scripts/check-apis.sh` greps every `.lua`/`.xml` that git tracks (or would add), except
+`Libs/`, `spec/` and `scripts/` (the packager drops the last two), plus
+`Libs/embeds.xml`. It looks for these groups of names; the script holds the exact
 lists.
 
-- **Dynamic code:** `loadstring`, `load(`, `setfenv`, `RunScript`, …
+- **Dynamic code:** `loadstring`, `load`, `setfenv`, `RunScript`, `ConsoleExec`, …
 - **Global lookup by name:** `_G`, `getglobal`, `setglobal`. This closes the easy way
   around the grep (`_G["Run" .. "Script"]`).
 - **Combat data:** combat log, health/power/aura/threat and in-combat state
   ([addon-policy.md → Combat restrictions](addon-policy.md#combat-restrictions-midnight-2026-01-28)).
-- **Chat and social sending:** say/whisper/Battle.net/community messages, mail.
-- **Hooks:** `hooksecurefunc`, `HookScript`, …
-- **Account and group actions:** invites, guild membership, CVars, reload/logout, store,
-  items, trade.
-- **Addon messages:** sending, prefix registration, `CHAT_MSG_ADDON` and
-  ChatThrottleLib. Allowed only in `Sync.lua` (and in `Libs/embeds.xml`, which loads
-  ChatThrottleLib).
+- **Chat and social sending:** say/whisper/Battle.net/community messages, mail, friends
+  and ignore lists, `/who`.
+- **Hooks:** `hooksecurefunc`, `HookScript`, chat message filters, …
+- **Macros and bindings:** running or editing macros, secure action buttons, key
+  bindings.
+- **Gossip and innkeeper actions:** selecting gossip options, `ConfirmBinder`. `Sign`
+  adds its own option but never picks one for the player, since that could reset their
+  hearthstone.
+- **Account and group actions:** invites, group and guild membership, CVars,
+  reload/logout, store, items, trade, turning other AddOns on or off.
+- **Addon messages and channels:** sending, prefix registration, `CHAT_MSG_ADDON` and its
+  variants, ChatThrottleLib, AceComm, joining or leaving chat channels. Allowed only in
+  `Sync.lua`, plus `Libs/embeds.xml` so it can load ChatThrottleLib.
 
-Comments are scanned too, so reword a comment rather than naming a forbidden API.
-**Widening an allow-list or dropping a name needs a decision-log entry.** The check is
-a tripwire, not a proof: it can't see a name built through something other than `_G`.
-Release review item 1 covers that.
+A name matches as a whole word, including after `.` or `:`. So a namespace cached in
+a local (`local CI = C_ChatInfo; CI.SendAddonMessage(...)`) is caught too. Comments are
+scanned, so reword a comment rather than naming a forbidden API. The check fails closed:
+it fails if a file can't be read or git has to quote its name.
+**Widening an allow-list or dropping a name needs a decision-log entry.**
+
+The check is a tripwire, not a proof. It can't see an API reached through a chain of
+table lookups that never spells the name, and it can't see Blizzard functions being
+overwritten. Release review item 1 covers those.
+
+**Expected future exceptions (decide when the spec needs them):**
+- **Hooks in `Sign.lua`:** injecting the gossip option will likely need
+  `hooksecurefunc`/`HookScript` on the gossip frame. Add an allow-list entry with a
+  decision entry. The alternative, overwriting the frame's methods, taints it.
+- **Combat state in `Sync.lua`:** holding sends during encounters might need
+  `InCombatLockdown` or the `PLAYER_REGEN_*` events. That reads a combat *state* flag,
+  not combat data, but "never read combat data" is a maintainer rule, so ask before
+  allowing it.
 
 ## Release review (every `dev → main` PR)
 
@@ -58,8 +79,11 @@ item as pass, n/a or a finding.
 launch the session does this on its own. A finding that needs a maintainer decision
 (scope, wording, anything in the gates) stops the release and goes to the maintainer.
 
-1. **Dynamic behavior:** no code runs strings as code, looks up globals by constructed
-   names, or swaps function environments, however it's spelled.
+1. **Dynamic behavior and taint:**
+   - No code runs strings as code, reaches an API through lookups built from strings,
+     or swaps function environments, however it's spelled.
+   - No code overwrites Blizzard globals, frame methods or frame scripts. Hooks go only
+     through `hooksecurefunc`/`HookScript`, and only where an allow-list permits them.
 2. **Allow-lists:** every change since the last release to `scripts/check-apis.sh`,
    `scripts/check-libs.sh`, `.luacheckrc` globals or `Libs/embeds.xml` has a reason (a
    decision entry for allow-list widening).

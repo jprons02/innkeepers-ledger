@@ -103,6 +103,9 @@ account-affecting APIs, combat APIs, hooks and URLs; ran hostile inputs on Lua 5
 - Libraries are committed under `Libs/` (not fetched at package time), so what ships is
   what was reviewed. `Libs/MANIFEST.sha256` lists every vendored file, and CI fails if
   any file differs from it.
+- **Check:** `scripts/check-libs.sh` verifies every manifest hash and fails if any file
+  under `Libs/` isn't in the manifest. `.gitattributes` marks `Libs/**` as `-text` so
+  Git never changes line endings (and so hashes) on any platform.
 - **To upgrade:** fetch the new version from the sources above, diff it against the
   current copy, repeat the review (search + hostile-input run) on changed code paths,
   update the table, hashes and manifest here, and add a decision-log entry. One library

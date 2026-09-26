@@ -53,7 +53,9 @@ A name matches as a whole word, including after `.` or `:`. So a namespace cache
 a local (`local CI = C_ChatInfo; CI.SendAddonMessage(...)`) is caught too. Comments are
 scanned, so reword a comment rather than naming a forbidden API. The check fails closed:
 it fails if a file can't be read or git has to quote its name.
-**Widening an allow-list or dropping a name needs a decision-log entry.**
+**Widening an allow-list or dropping a name needs a decision-log entry.** If one of our
+own methods or locals collides with a listed name (`Book:SelectOption`, say), rename it.
+Don't touch the list.
 
 The check is a tripwire, not a proof. It can't see an API reached through a chain of
 table lookups that never spells the name, and it can't see Blizzard functions being

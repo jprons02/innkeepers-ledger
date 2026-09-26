@@ -35,14 +35,14 @@ files="$files${files:+$nl}Libs/embeds.xml"
 # label | allowed files | names
 # A name matches as a whole word, also after "." or ":" (so aliases like CI.SendChatMessage
 # match). Dots in a name are literal. "re:<ERE>" is used as is.
-rules='dynamic code|-|loadstring loadfile dofile setfenv getfenv RunScript ConsoleExec re:(^|[^A-Za-z0-9_.:])load([[:space:]]*[(,);]|[[:space:]]*$)
+rules='dynamic code|-|loadstring loadfile dofile setfenv getfenv RunScript ConsoleExec re:(^|[^A-Za-z0-9_.:])load([[:space:]]*[(,);}"[-]|[[:space:]]*$)
 global lookup by name|-|_G getglobal setglobal
 combat data|-|CombatLogGetCurrentEventInfo COMBAT_LOG_EVENT COMBAT_LOG_EVENT_UNFILTERED C_CombatLog C_DamageMeter UnitHealth UnitHealthMax UnitPower UnitPowerMax UnitAura C_UnitAuras UnitDetailedThreatSituation UnitThreatSituation UnitAffectingCombat InCombatLockdown PLAYER_REGEN_DISABLED PLAYER_REGEN_ENABLED UNIT_COMBAT
 chat and social sending|-|SendChatMessage ChatEdit_SendText BNSendWhisper BNSendGameData BNSendFriendInvite C_BattleNet C_Club SendMail C_Mail C_FriendList AddFriend AddIgnore SendWho
 hooks|-|hooksecurefunc HookScript securecall issecurevariable ChatFrame_AddMessageEventFilter
 macros and bindings|-|RunMacro RunMacroText CreateMacro EditMacro DeleteMacro C_Macro SecureActionButtonTemplate macrotext SetBinding SetBindingClick SetBindingMacro SetBindingSpell SetBindingItem SetOverrideBinding SetOverrideBindingClick SaveBindings
 gossip and innkeeper actions|-|SelectGossipOption SelectOption SelectOptionByIndex ConfirmBinder
-account and group actions|-|InviteUnit UninviteUnit LeaveParty PromoteToLeader GuildInvite GuildUninvite GuildLeave GuildDisband GuildSetLeader GuildPromote GuildDemote GuildRosterSetPublicNote GuildRosterSetOfficerNote C_GuildInfo.Invite Uninvite RemoveFromGuild SetCVar ReloadUI Logout Quit ForceQuit C_StorePublic C_WowTokenPublic DeleteCursorItem UseContainerItem BuyMerchantItem InitiateTrade AcceptTrade DisableAddOn EnableAddOn DisableAllAddOns EnableAllAddOns
+account and group actions|-|InviteUnit UninviteUnit LeaveParty PromoteToLeader GuildInvite GuildUninvite GuildLeave GuildDisband GuildSetLeader GuildPromote GuildDemote GuildRosterSetPublicNote GuildRosterSetOfficerNote C_GuildInfo.Invite Uninvite RemoveFromGuild SetCVar SetCVarBitfield ReloadUI Logout Quit ForceQuit C_StorePublic C_WowTokenPublic DeleteCursorItem UseContainerItem BuyMerchantItem InitiateTrade AcceptTrade DisableAddOn EnableAddOn DisableAllAddOns EnableAllAddOns
 addon messages and channels|Sync.lua Libs/embeds.xml|SendAddonMessage SendAddonMessageLogged RegisterAddonMessagePrefix CHAT_MSG_ADDON CHAT_MSG_ADDON_LOGGED BN_CHAT_MSG_ADDON ChatThrottleLib AceComm SendCommMessage RegisterComm JoinChannelByName JoinPermanentChannel JoinTemporaryChannel LeaveChannelByName'
 
 while IFS='|' read -r label allow names; do

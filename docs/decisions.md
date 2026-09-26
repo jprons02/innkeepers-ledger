@@ -10,6 +10,30 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-26 — CI: own toolchain install, and the library manifest pinned to the review doc
+
+`ci.yml` runs `luacheck`, `busted` (Lua 5.1) and `libs-manifest` as separate jobs on
+every push and PR. All three are required checks on `main` and `dev`, next to the
+policy guard. The toolchain comes from apt and luarocks.org at the local versions. The
+only action is `actions/checkout`. The token is read-only and isn't persisted, because
+luarocks build scripts run as root. `scripts/check-libs.sh` now also requires the
+manifest's library hashes (all but `Libs/embeds.xml`) to equal `docs/libraries.md` →
+*Reviewed files*. Changing, adding or removing a library therefore means editing the
+review record too.
+*Rejected:*
+- **Third-party Lua setup actions:** more outside code to trust in CI.
+- **One combined job:** the required checks would be less specific.
+- **The manifest alone as the source of truth:** a PR could edit a library and its
+  manifest line together and pass, which the #9 review found.
+- **Pinning each doc line to its `Libs/` path:** the upstream paths differ from the
+  vendored ones, so the doc would need a third column. Comparing hashes already keeps
+  unreviewed bytes out.
+- **Covering `embeds.xml` in the check:** it's our file, so PR review covers it, like
+  `Core.lua`.
+
+*Reflected in:* `.github/workflows/ci.yml`; `docs/libraries.md` → Vendoring and upgrades;
+`CLAUDE.md` → Testing; branch protection.
+
 ### 2026-09-26 — Scaffold conventions: embeds.xml in the manifest, pure modules enforced twice
 
 `Libs/embeds.xml` (ours; sets the library load order) is listed in `Libs/MANIFEST.sha256`

@@ -92,3 +92,7 @@ proceeds without them. Full list: [platform-forever.md → Verification checklis
   (maintainer call: deletion).
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
   ([export-format.md](export-format.md)), before export v1 is finalized.
+- `policy-guard.yml`: add `permissions: contents: read` and `persist-credentials: false`,
+  as `ci.yml` has (small `chore` PR).
+- CI pins only the top-level rocks (busted, luacheck); their dependencies float. If an
+  upstream release breaks CI, pin those as well.

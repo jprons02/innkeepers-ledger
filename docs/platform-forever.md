@@ -61,6 +61,8 @@ unverified · ❓ unknown
 - [ ] AceComm PARTY / RAID / GUILD round-trip between two characters
 - [ ] AceComm inside an instance / during an encounter
 - [ ] Player GUID and name format on the mega-realm
+- [ ] Addon-message sender name resolves to a GUID: `UnitGUID(sender)` for group
+      members; guild roster exposes member GUIDs
 - [ ] Collect innkeeper NPC IDs for every inn (the `Data/Inns` table)
 - [ ] Sitting detection, if any
 

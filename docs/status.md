@@ -13,13 +13,19 @@
 - Context map + conventions (`CLAUDE.md`), branch flow (`dev` → `main`), branch
   protection on both branches: ✅
 - Agent team (`.claude/agents/`): ✅ planner, implementer, reviewer
-- CI: ✅ policy guard (runs on every push and PR, including `dev`); ⬜ luacheck + busted
-  (lands with the first Lua; [kickoff.md](kickoff.md) step 3)
-- Kickoff step 1 (orient): ✅ reported. Steps 2+ (scaffold onward): ⬜
-- AddOn code: ⬜ none yet
+- CI: ✅ policy guard; ✅ `ci.yml` with `luacheck`, `busted` (Lua 5.1) and
+  `libs-manifest` (#9). All four jobs run on every push and PR and are required checks
+  on `main` and `dev`. [kickoff.md](kickoff.md) step 3: ✅
+- Kickoff step 1 (orient): ✅ reported. Step 2 (scaffold): ✅ (#8). Steps 3+: ⬜
+- AddOn scaffold: ✅ TOC (placeholder interface number), `Libs/embeds.xml`, every module
+  as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger` (prints the
+  version), WoW API stub + loader helpers, `.busted`, `.luacheckrc`, `.pkgmeta`. The
+  whole AddOn loads under the stub in `busted`. Module logic: ⬜ none yet
 - Client verification ([platform-forever.md](platform-forever.md) checklist): ⬜ no
   Forever client yet
-- Libraries: ✅ reviewed ([libraries.md](libraries.md)); ⬜ vendored into `Libs/` (#7)
+- Libraries: ✅ reviewed and vendored into `Libs/` with a checksum manifest and
+  `scripts/check-libs.sh` ([libraries.md](libraries.md)); ✅ check runs in CI and also
+  pins the manifest to the review doc's hash list (#9)
 - Tickets: ✅ issue forms, labels, `v1 launch` milestone; queue below
 - Local toolchain: ✅ Lua 5.1 + busted 2.3.0 + luacheck 1.2.0 (setup in
   [CONTRIBUTING.md](../CONTRIBUTING.md))
@@ -28,11 +34,10 @@
 
 Work the ticket queue in order (each ticket says what to read):
 
-1. #7 Vendor the reviewed libraries into `Libs/` (ready)
-2. #8 Scaffold the AddOn (after #7)
-3. #9 luacheck + busted + manifest checks in CI (after #8)
-4. #10 Slice 1 parent → #11 write the spec and file the implementation tickets
-   (can run in parallel with #7–#9; it's docs only)
+1. ~~#7 Vendor the reviewed libraries~~ ✅ done (#15)
+2. ~~#8 Scaffold the AddOn~~ ✅ done (#17)
+3. ~~#9 luacheck + busted + manifest checks in CI~~ ✅ done
+4. #10 Slice 1 parent → #11 write the spec and file the implementation tickets (next)
 
 In-client work is #12 (needs a Forever client and the maintainer).
 
@@ -59,6 +64,9 @@ In-client work is #12 (needs a Forever client and the maintainer).
 - **Beta access:** not opted in as of 2026-09-26. The free opt-in costs nothing and
   invites go out in waves, so opting in soon improves the odds. Decides which plan
   branch applies (by ~2026-10-03); without access, plan for the no-beta branch.
+- **AddOn list blurb (low priority):** the TOC `## Notes` line reuses the README's
+  wording ("Talk to an innkeeper, sign the ledger, and fill a book of every inn you've
+  rested at."). Keep it or give a replacement.
 
 Settled 2026-09-26: sender identity per channel (see
 [decisions.md](decisions.md) and [architecture.md → Security model](architecture.md)).
@@ -68,7 +76,7 @@ Settled 2026-09-26: sender identity per channel (see
 Tracked in #12. These need someone at the keyboard in a Forever client. Everything else
 proceeds without them. Full list: [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
 
-- TOC interface number; AddOn loads
+- TOC interface number (the TOC holds a marked placeholder, `120000`); AddOn loads
 - Innkeeper gossip: `GOSSIP_SHOW` + NPC ID from `UnitGUID("npc")`; option injection works
 - `IsResting()` inside inns; sitting detection, if any
 - Addon messages PARTY / RAID / GUILD between two characters, including inside an
@@ -80,9 +88,11 @@ proceeds without them. Full list: [platform-forever.md → Verification checklis
 ## Follow-ups
 
 - Move [kickoff.md](kickoff.md) to `docs/archive/` once v1 ships.
-- [decisions.md](decisions.md) is past ~200 lines. When it next grows, move the
-  2026-09-25 seed entries to `docs/archive/decisions-2026-09.md` and link them.
 - Delete GitHub's default labels (`bug`, `enhancement`, …), which overlap ours
   (maintainer call: deletion).
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
   ([export-format.md](export-format.md)), before export v1 is finalized.
+- `policy-guard.yml`: add `permissions: contents: read` and `persist-credentials: false`,
+  as `ci.yml` has (small `chore` PR).
+- CI pins only the top-level rocks (busted, luacheck); their dependencies float. If an
+  upstream release breaks CI, pin those as well.

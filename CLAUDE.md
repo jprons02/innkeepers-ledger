@@ -19,6 +19,7 @@ task needs, using the "Read when" column. Don't read everything.
 |---|---|---|
 | [docs/status.md](docs/status.md) | current state, next step, open questions, what's waiting on the maintainer | always |
 | [docs/decisions.md](docs/decisions.md) | the decision log: dated decisions, reasons, rejected options (newest first) | a question may already be settled; before proposing a change in direction |
+| [docs/archive/decisions-2026-09.md](docs/archive/decisions-2026-09.md) | the 2026-09-25 seed product decisions (target, inns only, phrases, sync scope, own signatures, cosmetics, export, license) | `decisions.md`'s index points there; a product question may already be settled |
 | [docs/vision.md](docs/vision.md) | what we're building, the feel it must have, post-v1 directions | product or UX choices, wording, "should we build X" |
 | [docs/architecture.md](docs/architecture.md) | modules, data model, signing flow, sync protocol, **security model**, testing posture | any code; sync, validation, storage caps, new modules |
 | [docs/platform-forever.md](docs/platform-forever.md) | what's verified vs unverified about the Forever client; verification checklist | anything calling a WoW API; TOC; in-client testing |
@@ -84,9 +85,9 @@ Agents drive work to done without checking in between steps:
 
 ## Testing
 
-`busted` specs with a stubbed WoW API layer, `luacheck` clean, both in CI next to the
-policy guard. **Peer data is hostile in tests** (malformed, oversized, relayed, replayed,
-forged). What truly needs the client goes on the in-client batch in `docs/status.md`.
+`busted` specs with a stubbed WoW API layer, `luacheck` clean, both in CI
+(`.github/workflows/ci.yml`, with the `Libs/` manifest check) next to the policy guard.
+**Peer data is hostile in tests** (malformed, oversized, relayed, replayed, forged). What truly needs the client goes on the in-client batch in `docs/status.md`.
 Details: [docs/architecture.md → Testing posture](docs/architecture.md#testing-posture).
 
 ## Branch flow

@@ -1,7 +1,8 @@
 #!/bin/sh
 # Verify that Libs/ holds exactly the reviewed library files (docs/libraries.md):
 #   1. every file in Libs/MANIFEST.sha256 matches its hash, and
-#   2. nothing else exists under Libs/ besides the manifest itself.
+#   2. every name under Libs/ is plain (A-Z a-z 0-9 . _ -), and
+#   3. nothing else exists under Libs/ besides the manifest itself.
 # Exits non-zero with a message on either failure. Runs from any directory.
 set -u
 
@@ -20,7 +21,16 @@ if ! sha256sum --strict -c "$manifest"; then
   status=1
 fi
 
-# 2. Unlisted files. Anything that isn't a directory counts, symlinks included.
+# 2. Unsafe names. The unlisted-file check below compares paths line by line, so a
+# name holding a newline could split into two listed paths. Allow only plain names.
+odd=$(LC_ALL=C find Libs -name '*[!A-Za-z0-9._-]*')
+if [ -n "$odd" ]; then
+  echo "check-libs: FAIL: names under Libs/ may only use A-Z a-z 0-9 . _ - :" >&2
+  printf '%s\n' "$odd" | sed 's/^/  /' >&2
+  status=1
+fi
+
+# 3. Unlisted files. Anything that isn't a directory counts, symlinks included.
 listed=$(sed -e 's/^[0-9a-f]\{64\}  //' "$manifest" | sort)
 present=$(find Libs ! -type d ! -path "$manifest" | sort)
 extra=$(printf '%s\n' "$present" | grep -vxF -e "$listed" || true)
@@ -31,6 +41,6 @@ if [ -n "$extra" ]; then
 fi
 
 if [ "$status" -eq 0 ]; then
-  echo "check-libs: OK: $(printf '%s\n' "$listed" | wc -l | tr -d ' ') files match $manifest, no unlisted files."
+  echo "check-libs: OK: $(grep -c '^[0-9a-f]\{64\}  ' "$manifest") files match $manifest, no unlisted files."
 fi
 exit "$status"

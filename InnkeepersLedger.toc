@@ -1,0 +1,24 @@
+# PLACEHOLDER interface number: WoW: Forever's is unverified (docs/platform-forever.md).
+# Set it from the client (/dump select(4, GetBuildInfo())); tracked in #12.
+## Interface: 120000
+## Title: Innkeeper's Ledger
+## Notes: Talk to an innkeeper, sign the ledger, and fill a book of every inn you've rested at.
+## Version: @project-version@
+## SavedVariables: InnkeepersLedgerDB
+
+Libs\embeds.xml
+
+Data\Inns.lua
+Data\Phrases.lua
+
+Phrase.lua
+Ledger.lua
+Collection.lua
+Cosmetics.lua
+SyncProtocol.lua
+Export.lua
+
+Core.lua
+Sign.lua
+Sync.lua
+UI\Book.lua

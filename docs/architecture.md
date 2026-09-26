@@ -170,6 +170,16 @@ Proportional, not ceremonial:
 - **Stubbed WoW API.** Pure modules take client values as arguments; any glue exercised
   in tests goes through a small stub layer of the WoW API, so `busted` runs outside the
   game.
+- **Module pattern.** Every file starts `local _, ns = ...` and assigns `ns.<Module>`
+  (data goes under `ns.Data`). `spec/helpers/load.lua` runs a file with a fresh `ns`, as
+  the client does; pure modules load in a strict plain-Lua environment that errors on
+  any other global, and `.luacheckrc` gives pure files no WoW globals at all. The helper
+  can also load the whole AddOn in TOC order (libraries included).
+- **The stub** (`spec/helpers/wow_stub.lua`): `install(overrides)` / `uninstall()`
+  (restores `_G`), `fire(event, ...)`, `slash("/cmd")`, plus recorded chat output, sent
+  addon messages, queued timers and errors the libraries catch. It supplies the client's
+  `xpcall`, which passes extra arguments to the function; stock Lua 5.1's drops them,
+  and Ace3 then calls `OnInitialize` without `self` and swallows the error.
 - **Peer data is hostile in tests.** For every rule in the security model, cover
   malformed, oversized and multi-part messages (dropped unread), relayed (third-party),
   replayed and forged-signer input, unknown inn/phrase IDs, `NaN`/`inf`/hex/decimal
@@ -179,4 +189,4 @@ Proportional, not ceremonial:
   addon messages between two accounts/characters. These go on the in-client batch in
   [status.md](status.md) rather than blocking other work.
 - **CI:** the policy guard runs on every push and PR. `luacheck` + `busted` join it
-  once the first Lua lands (kickoff step 3), on the same triggers.
+  once the first Lua lands (kickoff step 3, #9), on the same triggers.

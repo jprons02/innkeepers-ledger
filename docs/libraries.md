@@ -106,6 +106,11 @@ account-affecting APIs, combat APIs, hooks and URLs; ran hostile inputs on Lua 5
 - **Check:** `scripts/check-libs.sh` verifies every manifest hash and fails if any file
   under `Libs/` isn't in the manifest. `.gitattributes` marks `Libs/**` as `-text` so
   Git never changes line endings (and so hashes) on any platform.
+- **`Libs/embeds.xml` is ours**, not upstream: it sets the library load order (see the
+  table above). It's listed in the manifest like the vendored files, so any change to
+  it is deliberate and the unlisted-file check stays strict. After editing it, regenerate
+  its manifest line in the `<hash>  <path>` form (two spaces; `sha256sum` on Windows
+  writes ` *<path>`, which the check rejects).
 - **To upgrade:** fetch the new version from the sources above, diff it against the
   current copy, repeat the review (search + hostile-input run) on changed code paths,
   update the table, hashes and manifest here, and add a decision-log entry. One library

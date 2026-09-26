@@ -1,0 +1,12 @@
+package-as: InnkeepersLedger
+
+ignore:
+  - docs
+  - spec
+  - scripts
+  - .claude
+  - .github
+  - CLAUDE.md
+  - CONTRIBUTING.md
+  - .busted
+  - .luacheckrc

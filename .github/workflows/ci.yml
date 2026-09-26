@@ -1,0 +1,50 @@
+name: ci
+
+# Lint, tests and the vendored-library check. Every job name here is a required status
+# check on main and dev (CLAUDE.md -> Branch flow); renaming a job means updating
+# branch protection too.
+# Toolchain comes from apt and luarocks.org only, at the versions in CONTRIBUTING.md.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  luacheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.1 and luacheck
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q lua5.1 liblua5.1-0-dev luarocks
+          sudo luarocks --lua-version=5.1 install luacheck 1.2.0-1
+      - name: luacheck
+        run: |
+          luacheck --version
+          luacheck .
+
+  busted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.1 and busted
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q lua5.1 liblua5.1-0-dev luarocks
+          sudo luarocks --lua-version=5.1 install busted 2.3.0-1
+      - name: busted
+        run: |
+          # The WoW client runs Lua 5.1; make sure busted does too.
+          lua5.1 -v
+          head -n 1 "$(command -v busted)"
+          grep -q 'lua5\.1' "$(command -v busted)"
+          busted --version
+          busted
+
+  libs-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Libs/ against the manifest and the review doc
+        run: sh scripts/check-libs.sh

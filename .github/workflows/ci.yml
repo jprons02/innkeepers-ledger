@@ -1,8 +1,8 @@
 name: ci
 
-# Lint, tests and the vendored-library check. Every job name here is a required status
-# check on main and dev (CLAUDE.md -> Branch flow); renaming a job means updating
-# branch protection too.
+# Lint, tests, the vendored-library check and the forbidden-API check. Every job name
+# here is a required status check on main and dev (CLAUDE.md -> Branch flow); renaming
+# a job means updating branch protection too. Actions are pinned by commit SHA.
 # Toolchain comes from apt and luarocks.org only, at the versions in CONTRIBUTING.md.
 
 permissions:
@@ -16,7 +16,7 @@ jobs:
   luacheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Install Lua 5.1 and luacheck
@@ -32,7 +32,7 @@ jobs:
   busted:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Install Lua 5.1 and busted
@@ -52,8 +52,17 @@ jobs:
   libs-manifest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Check Libs/ against the manifest and the review doc
         run: sh scripts/check-libs.sh
+
+  forbidden-apis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check shipped code for forbidden APIs
+        run: sh scripts/check-apis.sh

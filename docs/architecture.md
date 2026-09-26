@@ -147,6 +147,9 @@ AddOn. `SyncProtocol` validates everything before anything reaches `Ledger`:
   at runtime by another AddOn's newer copy, so security-relevant parsing lives in our
   own modules only.
 
+How these rules are checked (CI and the release review):
+[security-checklist.md](security-checklist.md).
+
 ## Export
 
 See [export-format.md](export-format.md). `Export` is pure: AceSerializer + LibDeflate

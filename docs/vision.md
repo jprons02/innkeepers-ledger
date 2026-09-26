@@ -1,5 +1,8 @@
 # Vision
 
+> **Summary:** what we're building, why inns, the crossing-paths answer to the no-owner problem, the feel it must have, and post-v1 directions.
+> **Read when:** making product or UX choices, writing in-game wording, or judging whether a feature belongs.
+
 ## The one-liner
 
 Walk into an inn, talk to the innkeeper, sign the ledger. Over time you fill a book of

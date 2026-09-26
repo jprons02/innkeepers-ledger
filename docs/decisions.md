@@ -1,8 +1,69 @@
 # Decisions
 
-Settled decisions with the reason for each. **Don't re-litigate these.** If new
-information changes one, add a new dated entry that supersedes it rather than editing
-history.
+> **Summary:** the decision log. Settled decisions with the reason for each and the
+> options rejected, dated, **newest first**.
+> **Read when:** a question may already be settled; before proposing a change in
+> direction or re-proposing a rejected option.
+
+**Don't re-litigate these.** If new information changes one, add a new dated entry at the
+top that supersedes it (and links it) rather than editing history.
+
+---
+
+### 2026-09-26 — Context docs as a map-driven tree
+
+`CLAUDE.md` carries a Context map (doc / holds / read when) in place of a fixed reading
+list. Running status moved out of `kickoff.md` into a new `docs/status.md` that every
+session reads first and rewrites at the end. Every doc opens with a Summary / Read-when
+header. This file stays the decision log, newest first. Each fact has one home; other
+docs link to it.
+*Rejected:* keeping status inside `kickoff.md` (a bootstrap-only runbook shouldn't hold
+running state, and it gets archived after v1); a separate `decision-log.md` (this file
+already is one, and renaming would break links); reading every doc each session (costly,
+and it doesn't scale as specs accumulate).
+*Reflected in:* `CLAUDE.md` → Context map; `docs/status.md`; `docs/kickoff.md`.
+
+### 2026-09-26 — Autonomous build loop with maintainer gates
+
+Specs are self-approved, and agents test, iterate until green, merge and report with
+evidence. Work stops only for the maintainer gates: product decisions (scope, design,
+naming), spending money, irreversible or public actions (publishing, tagging, posting,
+deleting, force-pushing) and in-client verification. Those questions are batched in
+`status.md` while other work continues. Kickoff step 1 becomes a report, not a wait.
+*Rejected:* a human approval on every spec and a sign-off on every merge (it serializes
+work on the maintainer ahead of a fixed launch window; the gates that matter are kept).
+*Reflected in:* `CLAUDE.md` → Build loop; `docs/kickoff.md` → Sequence.
+
+### 2026-09-26 — Test standard: busted + stubbed WoW API, hostile peer data
+
+Pure logic runs under `busted` outside the game, with client calls behind a stubbed WoW
+API layer. Tests treat all peer data as hostile (malformed, oversized, relayed, replayed,
+forged signer, unknown IDs, compression bombs). `luacheck` must be clean. CI runs both
+next to the policy guard. Anything that truly needs the client is listed for the
+maintainer instead of blocking work.
+*Rejected:* testing only in the client (slow, manual, and it can't cover malicious
+input); browser/e2e tooling (doesn't apply to an in-game AddOn).
+*Reflected in:* `CLAUDE.md` → Testing; `docs/architecture.md` → Testing posture.
+
+### 2026-09-26 — Branch flow: feature branches → dev → main
+
+`dev` is the integration branch. Work happens on `feat/`, `fix/`, `chore/` and `docs/`
+branches from `dev`, squash-merged once green. `main` stays the default branch and
+changes only through `dev → main` release PRs. Tags and published releases go out only
+through the packager and are a maintainer gate. CI runs on `dev` as well as PRs.
+*Rejected:* committing straight to `main` (no integration line ahead of releases);
+branch protection rules (not configured; CI and discipline enforce the flow for now).
+*Reflected in:* `CLAUDE.md` → Branch flow.
+
+### 2026-09-26 — No spending without a named purchase; free beta route by default
+
+Nothing that costs money is bought or enabled on the project's behalf unless the
+maintainer names that purchase. Packaging, distribution and CI stay on free tiers. Beta
+access defaults to the free opt-in; the paid pre-purchase route is the maintainer's call
+alone.
+*Rejected:* buying a higher-tier edition to guarantee beta access (a spending decision
+only the maintainer can make; the no-beta plan still ships ~1–2 weeks after launch).
+*Reflected in:* `CLAUDE.md` → Hard rules; `docs/status.md` → Client access plan.
 
 ---
 

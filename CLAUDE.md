@@ -10,22 +10,28 @@ A free, open-source World of Warcraft AddOn targeting **WoW: Forever** (launches
 collection of inns plus the signatures of travelers they've crossed paths with,
 synced peer-to-peer in-game. See [docs/vision.md](docs/vision.md).
 
-## Status
+## Context map
 
-**Pre-build.** Docs are seeded; no AddOn code exists yet. The first session follows
-[docs/kickoff.md](docs/kickoff.md).
+**Every session:** read [docs/status.md](docs/status.md) first. Then open only the docs the
+task needs, using the "Read when" column. Don't read everything.
 
-## Read before doing anything
+| Doc | Holds | Read when |
+|---|---|---|
+| [docs/status.md](docs/status.md) | current state, next step, open questions, what's waiting on the maintainer | always |
+| [docs/decisions.md](docs/decisions.md) | the decision log: dated decisions, reasons, rejected options (newest first) | a question may already be settled; before proposing a change in direction |
+| [docs/vision.md](docs/vision.md) | what we're building, the feel it must have, post-v1 directions | product or UX choices, wording, "should we build X" |
+| [docs/architecture.md](docs/architecture.md) | modules, data model, signing flow, sync protocol, **security model**, testing posture | any code; sync, validation, storage caps, new modules |
+| [docs/platform-forever.md](docs/platform-forever.md) | what's verified vs unverified about the Forever client; verification checklist | anything calling a WoW API; TOC; in-client testing |
+| [docs/addon-policy.md](docs/addon-policy.md) | Blizzard AddOn policy rules that bind us | in-game text, links, anything paid or cosmetic, distribution pages |
+| [docs/export-format.md](docs/export-format.md) | the export string spec (draft v0) | `Export` module; any change to exported data |
+| [docs/prior-art.md](docs/prior-art.md) | existing guestbook AddOns and what we took from them | positioning, sync pattern precedent |
+| [docs/kickoff.md](docs/kickoff.md) | phased build sequence to v1, cut order, completion criteria | picking the next step; timeline slips |
+| `docs/specs/<feature>.md` | one spec per feature (written by the planner) | working on that feature |
 
-1. [docs/vision.md](docs/vision.md): what we're building and the feel it must have
-2. [docs/decisions.md](docs/decisions.md): settled decisions (**do not re-litigate**;
-   raise a new question instead)
-3. [docs/architecture.md](docs/architecture.md): modules, data model, sync protocol,
-   security model, testing posture
-4. [docs/platform-forever.md](docs/platform-forever.md): what's verified vs unverified
-   about the target client. **Unverified claims must be verified in-client before code
-   depends on them.**
-5. [docs/addon-policy.md](docs/addon-policy.md): the rules that can get an AddOn pulled
+At the end of a session with real work or decisions: rewrite `docs/status.md`, add dated
+entries to `docs/decisions.md` (newest first; supersede, never edit old entries), update
+each fact's one home, and check that every doc under `docs/` has a map row and every
+relative link resolves.
 
 ## Hard rules
 
@@ -45,14 +51,52 @@ synced peer-to-peer in-game. See [docs/vision.md](docs/vision.md).
   third-party entries.
 - **Scope guard:** inns only in v1. Camps and the "Companions" expansion are planned
   later (see decisions). Say no to scope creep before the launch window.
+- **No spending.** Nothing that costs money is bought or enabled on the project's behalf
+  unless the maintainer names that specific purchase; general approval ("go ahead")
+  doesn't count. Packaging, distribution and CI stay on free tiers.
 
 ## Build loop
 
-`planner → docs/specs/<feature>.md → human approves spec → implementer → reviewer → human sign-off → merge`
+`planner → docs/specs/<feature>.md → implementer → reviewer → merge → report`
 
-Agents live in `.claude/agents/`. They hand back to the orchestrating session, not to
-each other. The reviewer gives the sync/validation code the scrutiny a security
-reviewer would.
+Agents drive work to done without checking in between steps:
+
+- **Specs are self-approved** unless they contain a maintainer decision (below). List the
+  assumptions made in the report.
+- **Prove it works.** Write the tests, run them, fix, re-run until green. Report with
+  evidence (test and lint output), never "should work". If the same problem survives
+  ~3 genuinely different attempts, stop and report what was tried.
+- **Merge** once tests, lint and CI are green and the reviewer passes.
+- Agents live in `.claude/agents/`. They hand back to the orchestrating session, not to
+  each other. The reviewer gives sync/validation code the scrutiny a security reviewer
+  would.
+
+**Maintainer gates — stop and ask only for these.** Batch the questions into one message
+(tracked in `docs/status.md`) and keep working on everything they don't block:
+
+1. Product decisions: scope, design, naming and in-game wording direction.
+2. Spending money (see Hard rules).
+3. Irreversible or public actions: publishing to CurseForge or Wago, tagging a release,
+   posting publicly, deleting anything, force-pushing.
+4. In-client verification that needs someone at the keyboard in a Forever client.
+
+## Testing
+
+`busted` specs with a stubbed WoW API layer, `luacheck` clean, both in CI next to the
+policy guard. **Peer data is hostile in tests** (malformed, oversized, relayed, replayed,
+forged). What truly needs the client goes on the in-client batch in `docs/status.md`.
+Details: [docs/architecture.md → Testing posture](docs/architecture.md#testing-posture).
+
+## Branch flow
+
+- `main` is the default branch and the release line. `dev` is the integration branch.
+- Work happens on `feat/<slug>` (or `fix/`, `chore/`, `docs/`) branches cut from `dev`,
+  squash-merged into `dev` once green.
+- `main` changes only through a `dev → main` release PR that summarizes what ships.
+  Never commit to `main` directly.
+- Before the first public release, `dev → main` merges freely. Tags and published
+  releases go out only through the packager, and they are a maintainer gate.
+- There's no branch protection; CI and discipline enforce the flow.
 
 ## Stack
 

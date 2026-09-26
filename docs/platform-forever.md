@@ -1,5 +1,8 @@
 # Platform: WoW: Forever
 
+> **Summary:** what's known about the WoW: Forever client, each fact marked confirmed / unverified / unknown, plus the in-client verification checklist.
+> **Read when:** writing code that calls a WoW API, setting the TOC, planning in-client testing, or updating what's been verified.
+
 What we know about the target client, **with confidence marked**. Researched
 2026-09-25, before launch. Update this file as facts get verified in the client, and
 don't write code that depends on a ⚠️ item until it's ✅.

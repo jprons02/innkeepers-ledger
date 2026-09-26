@@ -1,5 +1,8 @@
 # Export format
 
+> **Summary:** the export string spec (envelope, payload, data fields, privacy and trust rules). Draft v0 until the Export slice finalizes it.
+> **Read when:** working on the Export module or changing any data that ends up in an export.
+
 **Status: DRAFT v0.** The first build session finalizes this and marks it v1. After v1,
 changes are additive or bump the version. Never silently change the meaning of a field.
 

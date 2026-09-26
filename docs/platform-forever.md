@@ -43,7 +43,9 @@ unverified · ❓ unknown
 - ⚠️ Forever reportedly ships built-in tools (damage meter, cooldown manager, swing
   timer). Irrelevant to us, but a sign that Blizzard expects non-combat AddOns to be
   where the AddOn scene is.
-- ❓ **TOC interface number** for Forever.
+- ❓ **TOC interface number** for Forever. `InnkeepersLedger.toc` carries a marked
+  placeholder (`120000`) until it's read in the client with
+  `/dump select(4, GetBuildInfo())`.
 - ❓ **Addon messages in instances.** Whether `SendAddonMessage` is restricted inside
   instances or during encounters (a Midnight-era question). Affects when party sync
   can run.

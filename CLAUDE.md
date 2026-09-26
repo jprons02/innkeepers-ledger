@@ -85,9 +85,9 @@ Agents drive work to done without checking in between steps:
 
 ## Testing
 
-`busted` specs with a stubbed WoW API layer, `luacheck` clean, both in CI next to the
-policy guard. **Peer data is hostile in tests** (malformed, oversized, relayed, replayed,
-forged). What truly needs the client goes on the in-client batch in `docs/status.md`.
+`busted` specs with a stubbed WoW API layer, `luacheck` clean, both in CI
+(`.github/workflows/ci.yml`, with the `Libs/` manifest check) next to the policy guard.
+**Peer data is hostile in tests** (malformed, oversized, relayed, replayed, forged). What truly needs the client goes on the in-client batch in `docs/status.md`.
 Details: [docs/architecture.md → Testing posture](docs/architecture.md#testing-posture).
 
 ## Branch flow

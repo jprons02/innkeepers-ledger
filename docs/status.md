@@ -13,8 +13,9 @@
 - Context map + conventions (`CLAUDE.md`), branch flow (`dev` → `main`), branch
   protection on both branches: ✅
 - Agent team (`.claude/agents/`): ✅ planner, implementer, reviewer
-- CI: ✅ policy guard (runs on every push and PR, including `dev`); ⬜ luacheck + busted
-  (#9, next; [kickoff.md](kickoff.md) step 3)
+- CI: ✅ policy guard; ✅ `ci.yml` with `luacheck`, `busted` (Lua 5.1) and
+  `libs-manifest` (#9). All four jobs run on every push and PR and are required checks
+  on `main` and `dev`. [kickoff.md](kickoff.md) step 3: ✅
 - Kickoff step 1 (orient): ✅ reported. Step 2 (scaffold): ✅ (#8). Steps 3+: ⬜
 - AddOn scaffold: ✅ TOC (placeholder interface number), `Libs/embeds.xml`, every module
   as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger` (prints the
@@ -23,7 +24,8 @@
 - Client verification ([platform-forever.md](platform-forever.md) checklist): ⬜ no
   Forever client yet
 - Libraries: ✅ reviewed and vendored into `Libs/` with a checksum manifest and
-  `scripts/check-libs.sh` ([libraries.md](libraries.md)); ⬜ check runs in CI (#9)
+  `scripts/check-libs.sh` ([libraries.md](libraries.md)); ✅ check runs in CI and also
+  pins the manifest to the review doc's hash list (#9)
 - Tickets: ✅ issue forms, labels, `v1 launch` milestone; queue below
 - Local toolchain: ✅ Lua 5.1 + busted 2.3.0 + luacheck 1.2.0 (setup in
   [CONTRIBUTING.md](../CONTRIBUTING.md))
@@ -34,9 +36,8 @@ Work the ticket queue in order (each ticket says what to read):
 
 1. ~~#7 Vendor the reviewed libraries~~ ✅ done (#15)
 2. ~~#8 Scaffold the AddOn~~ ✅ done (#17)
-3. #9 luacheck + busted + manifest checks in CI (unblocked; next)
-4. #10 Slice 1 parent → #11 write the spec and file the implementation tickets
-   (can run in parallel with #7–#9; it's docs only)
+3. ~~#9 luacheck + busted + manifest checks in CI~~ ✅ done
+4. #10 Slice 1 parent → #11 write the spec and file the implementation tickets (next)
 
 In-client work is #12 (needs a Forever client and the maintainer).
 

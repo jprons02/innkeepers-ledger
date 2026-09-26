@@ -102,9 +102,17 @@ account-affecting APIs, combat APIs, hooks and URLs; ran hostile inputs on Lua 5
 
 - Libraries are committed under `Libs/` (not fetched at package time), so what ships is
   what was reviewed. `Libs/MANIFEST.sha256` lists every vendored file, and CI fails if
-  any file differs from it.
-- **Check:** `scripts/check-libs.sh` verifies every manifest hash and fails if any file
-  under `Libs/` isn't in the manifest. `.gitattributes` marks `Libs/**` as `-text` so
+  any file differs from it (the `libs-manifest` job in `.github/workflows/ci.yml`).
+- **Check:** `scripts/check-libs.sh` verifies every manifest hash, fails if any file
+  under `Libs/` isn't in the manifest, and fails unless the manifest's hashes (all but
+  `Libs/embeds.xml`) are exactly the ones under *Reviewed files* above. So changing,
+  adding or removing a library can't pass by editing the manifest alone; the review
+  record has to change with it. The check reads only this doc's *Reviewed files* section,
+  and only lines of the form `<64 lowercase hex>  <lowercase-label>:<path>`. Manifest
+  lines must be exactly `<sha256>  Libs/<path>`.
+- **`Libs/embeds.xml` changes are covered by PR review, not the check.** Its manifest
+  line keeps it deliberate, but in WoW XML a `<Script>` can load any file or run inline
+  code, so review it like `Core.lua`. (The policy guard skips `Libs/` too.) `.gitattributes` marks `Libs/**` as `-text` so
   Git never changes line endings (and so hashes) on any platform.
 - **`Libs/embeds.xml` is ours**, not upstream: it sets the library load order (see the
   table above). It's listed in the manifest like the vendored files, so any change to

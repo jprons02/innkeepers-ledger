@@ -26,6 +26,7 @@ task needs, using the "Read when" column. Don't read everything.
 | [docs/export-format.md](docs/export-format.md) | the export string spec (draft v0) | `Export` module; any change to exported data |
 | [docs/prior-art.md](docs/prior-art.md) | existing guestbook AddOns and what we took from them | positioning, sync pattern precedent |
 | [docs/kickoff.md](docs/kickoff.md) | phased build sequence to v1, cut order, completion criteria | picking the next step; timeline slips |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | local dev setup (Lua 5.1, busted, luacheck; Windows notes), PR conventions | setting up tooling; tests won't run locally |
 | `docs/specs/<feature>.md` | one spec per feature (written by the planner) | working on that feature |
 
 At the end of a session with real work or decisions: rewrite `docs/status.md`, add dated
@@ -90,13 +91,17 @@ Details: [docs/architecture.md → Testing posture](docs/architecture.md#testing
 ## Branch flow
 
 - `main` is the default branch and the release line. `dev` is the integration branch.
-- Work happens on `feat/<slug>` (or `fix/`, `chore/`, `docs/`) branches cut from `dev`,
-  squash-merged into `dev` once green.
-- `main` changes only through a `dev → main` release PR that summarizes what ships.
-  Never commit to `main` directly.
+- Work happens on `feat/<slug>` (or `fix/`, `chore/`, `docs/`) branches cut from `dev`.
+  Open a PR into `dev` and **squash-merge** it once CI is green.
+- `main` changes only through a `dev → main` release PR that summarizes what ships,
+  merged with a **merge commit** (not squash) so `dev` and `main` don't diverge. `main`
+  then sits a merge commit "ahead" of `dev` with identical content; that's expected, so
+  don't sync it back.
 - Before the first public release, `dev → main` merges freely. Tags and published
   releases go out only through the packager, and they are a maintainer gate.
-- There's no branch protection; CI and discipline enforce the flow.
+- **Branch protection is on for `main` and `dev`** (admins included): changes land only
+  through PRs, the CI check must pass, and force-pushes and deletion are blocked. No approving review is required. When
+  a new CI job lands, add it to both branches' required checks.
 
 ## Stack
 

@@ -95,7 +95,17 @@ AddOn. `SyncProtocol` validates everything before anything reaches `Ledger`:
 
 - **Own-signature rule:** accept an entry only if `entry.signer` equals the
   **sender's GUID** as resolved by the client, never trusting a claim in the payload.
-  Reject everything else. (Decision: [decisions.md](decisions.md).)
+  Reject everything else. (Decision: [decisions.md](decisions.md).) Addon messages
+  carry only the sender's *name*, so `Sync` resolves name → GUID per channel and passes
+  the result to `SyncProtocol` as an argument:
+  - **PARTY / RAID:** `UnitGUID(sender)`. Only resolves for current group members.
+  - **GUILD:** a name → GUID map built from the guild roster and refreshed on roster
+    updates **(verify: the roster exposes member GUIDs in Forever)**.
+  - **Any other channel (whisper, a future global channel):** not accepted in v1.
+  - **Unresolved sender** (left the group, not in the roster yet, lookup returns nil):
+    drop the message. No retry and no fallback to the payload's claim.
+  - `entry.name` must also match the resolved sender's name (compare per the mega-realm
+    name format, **verify**); a mismatch drops the entry.
 - **Schema:** exact types, known version, no extra fields, bounded array lengths.
 - **Known IDs only:** `inn` must exist in `Data/Inns`, and every phrase/word ID must
   exist in `Data/Phrases`. Canned phrases make this a lookup table, not a text filter.

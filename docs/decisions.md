@@ -10,6 +10,36 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-26 — Sender identity is resolved per channel; unresolved senders are dropped
+
+The own-signature rule needs the sender's GUID, but addon messages carry only a name.
+`Sync` resolves it per channel: `UnitGUID(sender)` for PARTY/RAID and a roster-built
+name → GUID map for GUILD. Other channels aren't accepted in v1. If the sender can't be
+resolved, the message is dropped, and `entry.name` must match the resolved sender.
+*Rejected:* trusting the payload's `signer` (forgeable by anyone); matching by name alone
+(names change and can be reused, while GUIDs are stable); digital signatures on entries (no
+way to bind a key to a character in-game, so they prove nothing the client can't already
+tell us); retrying or queuing unresolved senders (complexity for little gain, since the
+next HELLO resyncs).
+*Reflected in:* `docs/architecture.md` → Security model; `docs/platform-forever.md` →
+Verification checklist.
+
+### 2026-09-26 — Branch protection on `main` and `dev` (supersedes part of the branch-flow entry below)
+
+Both branches are protected with admins included: PRs only, the CI check required, no
+force-pushes, no deletion, and no required approving review, since there's a single
+maintainer. `dev` also requires linear history (squash merges). Release PRs into `main`
+use a merge commit. `main` then sits a merge commit ahead of `dev` with identical
+content, which is expected. This replaces the "Rejected: branch protection rules" line
+in the branch-flow entry below.
+*Rejected:* requiring an approving review (a single maintainer can't approve their own
+PRs, so it would block everything); exempting admins (makes the rules optional);
+squash-merging release PRs (`main` and `dev` histories would diverge); requiring
+release branches to be up to date with `main` (`dev` could only catch up through a
+merge commit, which its linear-history rule forbids).
+*Reflected in:* `CLAUDE.md` → Branch flow; `CONTRIBUTING.md` → Branches and pull
+requests.
+
 ### 2026-09-26 — Context docs as a map-driven tree
 
 `CLAUDE.md` carries a Context map (doc / holds / read when) in place of a fixed reading

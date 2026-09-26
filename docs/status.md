@@ -33,7 +33,7 @@
 Work the ticket queue in order (each ticket says what to read):
 
 1. ~~#7 Vendor the reviewed libraries~~ ✅ done (#15)
-2. ~~#8 Scaffold the AddOn~~ ✅ done
+2. ~~#8 Scaffold the AddOn~~ ✅ done (#17)
 3. #9 luacheck + busted + manifest checks in CI (unblocked; next)
 4. #10 Slice 1 parent → #11 write the spec and file the implementation tickets
    (can run in parallel with #7–#9; it's docs only)
@@ -87,8 +87,6 @@ proceeds without them. Full list: [platform-forever.md → Verification checklis
 ## Follow-ups
 
 - Move [kickoff.md](kickoff.md) to `docs/archive/` once v1 ships.
-- [decisions.md](decisions.md) is past ~200 lines. When it next grows, move the
-  2026-09-25 seed entries to `docs/archive/decisions-2026-09.md` and link them.
 - Delete GitHub's default labels (`bug`, `enhancement`, …), which overlap ours
   (maintainer call: deletion).
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers

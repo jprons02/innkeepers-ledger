@@ -1,0 +1,31 @@
+name: Bug report
+description: Something in the AddOn isn't working.
+labels: ["fix"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: game-version
+    attributes:
+      label: Game version
+      description: e.g. WoW Forever 1.x (shown on the login screen).
+    validations:
+      required: true
+  - type: input
+    id: addon-version
+    attributes:
+      label: AddOn version
+      description: Shown in the AddOn list.
+    validations:
+      required: true
+  - type: textarea
+    id: errors
+    attributes:
+      label: Lua error text
+      description: Paste any error (enable with `/console scriptErrors 1`). Remove anything personal first.
+      render: text

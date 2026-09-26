@@ -37,7 +37,7 @@ unverified · ❓ unknown
 - ⚠️ **AddOns are supported, on the modern (retail-style) API with the Midnight-era
   combat restrictions**, rather than the old Classic API. Reported by Icy Veins as
   coming from Blizzard developers (that article couldn't be fetched to confirm the exact
-  wording), and repeated by several lower-trust guide sites. If true, AceComm,
+  wording), and repeated by several lower-trust guide sites. If true, addon messages,
   SavedVariables, `IsResting()`, `UnitGUID("npc")` and gossip events should all behave
   as they do on retail.
 - ⚠️ Forever reportedly ships built-in tools (damage meter, cooldown manager, swing
@@ -58,8 +58,11 @@ unverified · ❓ unknown
       NPC ID
 - [ ] Gossip option injection approach works
 - [ ] `IsResting()` true inside inns
-- [ ] AceComm PARTY / RAID / GUILD round-trip between two characters
-- [ ] AceComm inside an instance / during an encounter
+- [ ] Embedded libraries (see [libraries.md](libraries.md)) load without errors
+- [ ] Addon message PARTY / RAID / GUILD round-trip between two characters
+- [ ] Addon messages inside an instance / during an encounter
+- [ ] Addon message size limit (255 bytes on retail) and send rate limits (what
+      ChatThrottleLib assumes)
 - [ ] Player GUID and name format on the mega-realm
 - [ ] Addon-message sender name resolves to a GUID: `UnitGUID(sender)` for group
       members; guild roster exposes member GUIDs

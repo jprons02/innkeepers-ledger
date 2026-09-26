@@ -9,39 +9,43 @@
 
 ## Current state
 
-- Docs (vision, decisions, architecture, platform, policy, prior art, export draft): ✅
-- Context map + conventions (`CLAUDE.md`), branch flow (`dev` → `main`), branch
-  protection on both branches: ✅
-- Agent team (`.claude/agents/`): ✅ planner, implementer, reviewer
-- CI: ✅ policy guard; ✅ `ci.yml` with `luacheck`, `busted` (Lua 5.1), `libs-manifest`
-  (#9) and `forbidden-apis` (#22). All five jobs run on every push and PR and are
-  required checks on `main` and `dev`. [kickoff.md](kickoff.md) step 3: ✅
-- Security: ✅ forbidden-API guard in CI; every release PR gets a security review
-  against [security-checklist.md](security-checklist.md) (#22)
-- Kickoff step 1 (orient): ✅ reported. Step 2 (scaffold): ✅ (#8). Steps 3+: ⬜
-- AddOn scaffold: ✅ TOC (placeholder interface number), `Libs/embeds.xml`, every module
-  as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger` (prints the
-  version), WoW API stub + loader helpers, `.busted`, `.luacheckrc`, `.pkgmeta`. The
-  whole AddOn loads under the stub in `busted`. Module logic: ⬜ none yet
-- Client verification ([platform-forever.md](platform-forever.md) checklist): ⬜ no
-  Forever client yet
-- Libraries: ✅ reviewed and vendored into `Libs/` with a checksum manifest and
-  `scripts/check-libs.sh` ([libraries.md](libraries.md)); ✅ check runs in CI and also
-  pins the manifest to the review doc's hash list (#9)
-- Tickets: ✅ issue forms, labels, `v1 launch` milestone; queue below
-- Local toolchain: ✅ Lua 5.1 + busted 2.3.0 + luacheck 1.2.0 (setup in
-  [CONTRIBUTING.md](../CONTRIBUTING.md))
+- **Foundation done:**
+  - docs, the context map and branch flow, with protection on `main` and `dev`
+  - the agent team (planner, implementer, reviewer)
+  - ticket forms, labels and the `v1 launch` milestone
+  - kickoff steps 1–3 ([kickoff.md](kickoff.md))
+- **AddOn scaffold (#8):**
+  - TOC (placeholder interface number), `Libs/embeds.xml`
+  - every module as an empty stub on the shared `ns`
+  - `Core` with AceDB + `/ledger`
+  - WoW API stub and loader helpers; the whole AddOn loads under `busted`
+
+  Module logic: ⬜ none yet.
+- **Libraries:** reviewed and vendored in `Libs/`. The manifest is pinned to the review
+  doc's hash list ([libraries.md](libraries.md)).
+- **CI:** five required checks on `main` and `dev`:
+  - `no-urls-in-game-code`
+  - `luacheck`
+  - `busted` (Lua 5.1)
+  - `libs-manifest`
+  - `forbidden-apis`
+
+  Every release PR also gets a security review
+  ([security-checklist.md](security-checklist.md)).
+- **Releases:** `main` = `dev` in content as of #24 (2026-09-26), the first release with
+  a *Security review* section. No tags yet (maintainer gate).
+- **Client verification** ([platform-forever.md](platform-forever.md) checklist): ⬜ no
+  Forever client yet.
+- **Local toolchain:** Lua 5.1 + busted 2.3.0 + luacheck 1.2.0 in a hererocks folder
+  ([CONTRIBUTING.md](../CONTRIBUTING.md)). That folder isn't on the agent shell's
+  `PATH`, so CI is the authority for busted/luacheck. `scripts/check-*.sh` run locally
+  with `sh`.
 
 ## Next step
 
-Work the ticket queue in order (each ticket says what to read):
-
-1. ~~#7 Vendor the reviewed libraries~~ ✅ done (#15)
-2. ~~#8 Scaffold the AddOn~~ ✅ done (#17)
-3. ~~#9 luacheck + busted + manifest checks in CI~~ ✅ done; ~~#22 security checks~~ ✅ done
-4. #10 Slice 1 parent → #11 write the spec and file the implementation tickets (next)
-
-In-client work is #12 (needs a Forever client and the maintainer).
+**#10 Slice 1 parent → #11: write the spec and file the implementation tickets.** Done
+so far: #7, #8, #9, #22. In-client work is #12 (needs a Forever client and the
+maintainer).
 
 ## Client access plan
 
@@ -70,6 +74,11 @@ In-client work is #12 (needs a Forever client and the maintainer).
   wording ("Talk to an innkeeper, sign the ledger, and fill a book of every inn you've
   rested at."). Keep it or give a replacement.
 
+- **Coming with the sync spec (not yet):** may `Sync` check combat *state*
+  (`InCombatLockdown` / `PLAYER_REGEN_*`) to hold sends during encounters? It's a state
+  flag, not combat data, but the "never read combat data" rule is yours. Background:
+  [security-checklist.md → Expected future exceptions](security-checklist.md#the-forbidden-api-check).
+
 Settled 2026-09-26: sender identity per channel (see
 [decisions.md](decisions.md) and [architecture.md → Security model](architecture.md)).
 
@@ -96,3 +105,6 @@ proceeds without them. Full list: [platform-forever.md → Verification checklis
   ([export-format.md](export-format.md)), before export v1 is finalized.
 - CI pins only the top-level rocks (busted, luacheck); their dependencies float. If an
   upstream release breaks CI, pin those as well.
+- `decisions.md` is past the ~200-line split point (236). At the start of October, move
+  the September entries to `docs/archive/decisions-2026-09.md` and leave an index line.
+  `architecture.md` is at 199; split a section out before adding to it.

@@ -31,8 +31,8 @@ vs **client glue** (events, frames, API calls).
 | `Phrase` | pure | Builds, renders and validates phrase IDs → text |
 | `Collection` | pure | Progress math: signed/total by continent and zone, unlock thresholds |
 | `Cosmetics` | pure | Maps collection progress → unlocked quills/inks/seals |
-| `SyncProtocol` | pure | Message encode/decode, digest comparison, **all validation** |
-| `Sync` | glue | AceComm transport, group/guild triggers, throttling |
+| `SyncProtocol` | pure | Own fixed-format message codec, digest comparison, **all validation** |
+| `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers |
 | `Export` | pure | Serialize + compress + encode the ledger per [export-format.md](export-format.md) |
 | `UI/Book` | glue | The parchment book: pages per inn, collection view, cosmetics |
 
@@ -68,6 +68,8 @@ Entry {
 }
 ```
 
+- **Stored vs sent:** this is the stored shape. On the wire, `signer` and `name` are
+  never sent; the receiver fills them in from the resolved sender (see Sync protocol).
 - **Identity/dedupe key:** `(signer, inn, t)`.
 - **Own vs others:** own entries are the ones where `signer == UnitGUID("player")`.
 - **Storage caps:** caps on foreign entries in total, per signer, and per inn. When a cap
@@ -76,9 +78,24 @@ Entry {
 
 ## Sync protocol (SyncProtocol + Sync)
 
-Transport: AceComm (handles chunking and throttling via ChatThrottleLib).
-Prefix: `InnLedger` (≤16 chars). Channels: `PARTY`/`RAID` and `GUILD`; the global
-opt-in channel is designed later.
+Transport: addon messages, prefix `InnLedger` (≤16 chars). Channels: `PARTY`/`RAID` and
+`GUILD`; the global opt-in channel is designed later.
+
+- **Sending:** through ChatThrottleLib, which keeps us under the server's rate limits.
+- **Receiving:** `Sync` registers the prefix itself and handles `CHAT_MSG_ADDON`
+  directly. It does **not** receive through AceComm, which reassembles multi-part
+  messages with no size limit before we could reject them
+  ([libraries.md → Findings](libraries.md#findings-that-shape-our-design)).
+- **One message per payload:** every message fits in a single addon message (255 bytes,
+  **verify** on Forever). Anything longer, or anything multi-part, is dropped unread.
+  Batches are several single messages, never one long one.
+- **Own codec, no compression:** `SyncProtocol` encodes and decodes a small fixed text
+  format of its own, parsed with strict patterns. No AceSerializer and no LibDeflate on
+  anything received, so there is no general-purpose deserializer and no decompression of
+  peer data. Entries are tiny, so compression buys nothing.
+- **Signer and name aren't sent.** Under the own-signature rule they are always the
+  sender, so the receiver fills them in from the resolved sender (below). The wire entry
+  carries only `v`, `inn`, `t`, `phrase` and `seal`.
 
 Sketch (the first spec finalizes it):
 
@@ -86,43 +103,53 @@ Sketch (the first spec finalizes it):
    digest of *your own* entries (count + hash).
 2. **WANT** — a peer whose digest for you differs asks for your entries (optionally
    "since t").
-3. **ENTRIES** — reply with your own entries only, batched.
+3. **ENTRIES** — reply with your own entries only, one or more per message, each message
+   complete on its own.
 
 ### Security model — the riskiest part of the AddOn
 
 Every byte from another player is **untrusted**. They may be running a modified
 AddOn. `SyncProtocol` validates everything before anything reaches `Ledger`:
 
-- **Own-signature rule:** accept an entry only if `entry.signer` equals the
-  **sender's GUID** as resolved by the client, never trusting a claim in the payload.
-  Reject everything else. (Decision: [decisions.md](decisions.md).) Addon messages
-  carry only the sender's *name*, so `Sync` resolves name → GUID per channel and passes
-  the result to `SyncProtocol` as an argument:
+- **Own-signature rule:** an entry's `signer` is always the **sender's GUID** as resolved
+  by the client, never a claim in the payload (the payload doesn't carry one).
+  (Decision: [decisions.md](decisions.md).) Addon messages carry only the sender's
+  *name*, so `Sync` resolves name → GUID per channel and passes the result to
+  `SyncProtocol` as an argument:
   - **PARTY / RAID:** `UnitGUID(sender)`. Only resolves for current group members.
   - **GUILD:** a name → GUID map built from the guild roster and refreshed on roster
     updates **(verify: the roster exposes member GUIDs in Forever)**.
   - **Any other channel (whisper, a future global channel):** not accepted in v1.
   - **Unresolved sender** (left the group, not in the roster yet, lookup returns nil):
-    drop the message. No retry and no fallback to the payload's claim.
-  - `entry.name` must also match the resolved sender's name (compare per the mega-realm
-    name format, **verify**); a mismatch drops the entry.
-- **Schema:** exact types, known version, no extra fields, bounded array lengths.
+    drop the message. No retry and no fallback.
+  - The entry's `name` is the resolved sender's name (normalized per the mega-realm name
+    format, **verify**).
+- **Size first:** drop any message over the byte cap or with a multi-part marker before
+  parsing it.
+- **Schema:** exact field count and order, known version, bounded array lengths,
+  nothing extra.
+- **Numbers:** every numeric field must be a **finite integer within its range** (reject
+  `NaN`, `inf`, hex, decimals, signs where not allowed). `NaN` fails every comparison, so
+  range checks alone don't catch it.
 - **Known IDs only:** `inn` must exist in `Data/Inns`, and every phrase/word ID must
   exist in `Data/Phrases`. Canned phrases make this a lookup table, not a text filter.
-- **Name:** length-capped and matched against the character name pattern; it's rendered
-  only as text, never interpreted.
+- **Name:** length-capped and matched against the character name pattern (no `|`, so no
+  UI escape codes); it's rendered only as text, never interpreted.
 - **Time sanity:** reject timestamps in the future (small tolerance) or before the
   game's launch.
 - **Rate limits:** per-sender messages per minute and entries per batch. Drop anything
   over the limit silently.
 - **Fail closed and quiet:** malformed input is dropped with no error pop-ups and no
-  chat output. Only a debug log, when enabled.
-- **Deserialization:** use AceSerializer/LibDeflate decoding inside `pcall`, with
-  size caps before decompressing (to guard against decompression bombs).
+  chat output. Only a debug log, when enabled. Parsing runs inside `pcall`.
+- **Threat model:** other players are untrusted. The player's own installed AddOns are
+  trusted (they can already do anything in-game), but a shared library may be replaced
+  at runtime by another AddOn's newer copy, so security-relevant parsing lives in our
+  own modules only.
 
 ## Export
 
-See [export-format.md](export-format.md). `Export` is pure. The UI shows the string in
+See [export-format.md](export-format.md). `Export` is pure: AceSerializer + LibDeflate
+`CompressDeflate` + our own standard base64, all on our own outgoing data. The UI shows the string in
 a copyable edit box. Exporting other travelers' entries is **opt-in** (they're other
 people's names), and the default exports only your own signatures and collection.
 
@@ -144,12 +171,12 @@ Proportional, not ceremonial:
   in tests goes through a small stub layer of the WoW API, so `busted` runs outside the
   game.
 - **Peer data is hostile in tests.** For every rule in the security model, cover
-  malformed, oversized, relayed (third-party), replayed and forged-signer input, unknown
-  inn/phrase IDs, out-of-range timestamps, floods over the rate limit, and compression
-  bombs.
+  malformed, oversized and multi-part messages (dropped unread), relayed (third-party),
+  replayed and forged-signer input, unknown inn/phrase IDs, `NaN`/`inf`/hex/decimal
+  numbers, out-of-range timestamps, and floods over the rate limit.
 - **Lint:** `luacheck` clean.
 - **Test by hand in the client:** signing flow, gossip integration, UI, real
-  AceComm between two accounts/characters. These go on the in-client batch in
+  addon messages between two accounts/characters. These go on the in-client batch in
   [status.md](status.md) rather than blocking other work.
 - **CI:** the policy guard runs on every push and PR. `luacheck` + `busted` join it
   once the first Lua lands (kickoff step 3), on the same triggers.

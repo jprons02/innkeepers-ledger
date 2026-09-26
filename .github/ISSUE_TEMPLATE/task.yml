@@ -1,0 +1,65 @@
+name: Task
+description: Maintainer work item, written so a fresh session can finish it cold. For bugs, use Bug report.
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One line on what this delivers, one line on why it matters now.
+    validations:
+      required: true
+  - type: textarea
+    id: read-first
+    attributes:
+      label: Read first
+      description: In order. Link doc sections (e.g. docs/architecture.md → Security model); don't paste them.
+      value: |
+        1. `CLAUDE.md`
+        2.
+    validations:
+      required: true
+  - type: textarea
+    id: decided
+    attributes:
+      label: Already decided
+      description: Decision-log entries that settle questions this work might raise. "none" if none.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      value: |
+        **In:**
+        -
+
+        **Out:**
+        -
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: Checkable criteria, each with the evidence that proves it.
+      value: |
+        - [ ]  (evidence: )
+        - [ ] Tests and lint green locally and in CI
+        - [ ] Docs that hold affected facts are updated
+    validations:
+      required: true
+  - type: textarea
+    id: start
+    attributes:
+      label: Start here
+      value: |
+        - Branch:
+        - First file to open:
+        - Gotchas:
+  - type: textarea
+    id: gates
+    attributes:
+      label: Gates and dependencies
+      value: |
+        - Needs the maintainer: no
+        - Blocked by: none

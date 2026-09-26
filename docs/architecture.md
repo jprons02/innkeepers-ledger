@@ -37,7 +37,8 @@ vs **client glue** (events, frames, API calls).
 | `UI/Book` | glue | The parchment book: pages per inn, collection view, cosmetics |
 
 Pure modules receive anything they'd get from the client (time, GUIDs, inn data) as
-arguments, so tests don't need a WoW stub.
+arguments, so tests don't need a WoW stub. That includes libraries: `Export` can't call
+`LibStub`, so its caller (glue) passes in the serializer and compressor.
 
 ## Signing flow
 
@@ -172,9 +173,12 @@ Proportional, not ceremonial:
   game.
 - **Module pattern.** Every file starts `local _, ns = ...` and assigns `ns.<Module>`
   (data goes under `ns.Data`). `spec/helpers/load.lua` runs a file with a fresh `ns`, as
-  the client does; pure modules load in a strict plain-Lua environment that errors on
-  any other global, and `.luacheckrc` gives pure files no WoW globals at all. The helper
-  can also load the whole AddOn in TOC order (libraries included).
+  the client does. Pure modules load in a strict plain-Lua environment that errors on
+  any other global, which catches access at load time; `.luacheckrc` gives pure and
+  data files only those same plain-Lua names, which catches it inside functions too
+  (`_G`, `os`, `io` and every WoW global included). The helper also holds the module
+  lists (`PURE`, `DATA`, `GLUE`; specs check them against the TOC and `.luacheckrc`)
+  and can load the whole AddOn in TOC order (libraries included).
 - **The stub** (`spec/helpers/wow_stub.lua`): `install(overrides)` / `uninstall()`
   (restores `_G`), `fire(event, ...)`, `slash("/cmd")`, plus recorded chat output, sent
   addon messages, queued timers and errors the libraries catch. It supplies the client's

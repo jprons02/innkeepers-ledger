@@ -5,6 +5,27 @@ local M = {}
 M.ADDON_NAME = "InnkeepersLedger"
 M.TOC = "InnkeepersLedger.toc"
 
+-- Every file of ours in the TOC, by kind (docs/architecture.md -> Modules). A spec
+-- checks the TOC against these lists; GLUE must match the list in .luacheckrc.
+M.PURE = {
+  { path = "Phrase.lua", name = "Phrase" },
+  { path = "Ledger.lua", name = "Ledger" },
+  { path = "Collection.lua", name = "Collection" },
+  { path = "Cosmetics.lua", name = "Cosmetics" },
+  { path = "SyncProtocol.lua", name = "SyncProtocol" },
+  { path = "Export.lua", name = "Export" },
+}
+M.DATA = {
+  { path = "Data/Inns.lua", name = "Inns" },
+  { path = "Data/Phrases.lua", name = "Phrases" },
+}
+M.GLUE = {
+  { path = "Core.lua", name = "Core" },
+  { path = "Sign.lua", name = "Sign" },
+  { path = "Sync.lua", name = "Sync" },
+  { path = "UI/Book.lua", name = "Book" },
+}
+
 -- The Lua 5.1 names a pure module may use. No io/os/debug, no code loading.
 local PURE_NAMES = {
   "assert", "error", "getmetatable", "ipairs", "next", "pairs", "pcall", "rawequal",

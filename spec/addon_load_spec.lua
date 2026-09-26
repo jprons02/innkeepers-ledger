@@ -43,6 +43,41 @@ describe("InnkeepersLedger.toc", function()
     end
   end)
 
+  it("lists each of our files in exactly one of load.PURE, load.DATA and load.GLUE", function()
+    local kinds = {}
+    for _, list in ipairs({ load.PURE, load.DATA, load.GLUE }) do
+      for _, module in ipairs(list) do
+        assert.is_nil(kinds[module.path], module.path .. " is in two lists")
+        kinds[module.path] = true
+      end
+    end
+    for _, path in ipairs(load.toc_files()) do
+      if not path:match("^Libs/") then
+        assert.is_true(kinds[path] == true, path .. " is in no list")
+        kinds[path] = nil
+      end
+    end
+    assert.same({}, kinds)
+  end)
+
+  it("gives WoW globals in .luacheckrc to exactly the load.GLUE files", function()
+    local env = { stds = {}, files = {}, ipairs = ipairs }
+    local config = assert(loadfile(".luacheckrc"))
+    setfenv(config, env)()
+    local with_wow = {}
+    for path, settings in pairs(env.files) do
+      if settings.read_globals then
+        with_wow[path] = true
+      end
+    end
+    local glue = {}
+    for _, module in ipairs(load.GLUE) do
+      glue[module.path] = true
+    end
+    assert.same(glue, with_wow)
+    assert.equal("pure", env.std)
+  end)
+
   it("loads LibStub first and every vendored library before our code", function()
     local files = load.toc_files()
     assert.equal("Libs/LibStub/LibStub.lua", files[1])
@@ -89,12 +124,14 @@ describe("the whole AddOn under the WoW stub", function()
   end)
 
   it("registers every module on the shared ns", function()
-    for _, name in ipairs({ "Core", "Ledger", "Phrase", "Collection", "Cosmetics",
-      "SyncProtocol", "Export", "Sign", "Sync", "Book" }) do
-      assert.is_table(ns[name], name)
+    for _, list in ipairs({ load.PURE, load.GLUE }) do
+      for _, module in ipairs(list) do
+        assert.is_table(ns[module.name], module.name)
+      end
     end
-    assert.is_table(ns.Data.Inns)
-    assert.is_table(ns.Data.Phrases)
+    for _, data in ipairs(load.DATA) do
+      assert.is_table(ns.Data[data.name], data.name)
+    end
   end)
 
   it("creates the SavedVariables through AceDB", function()

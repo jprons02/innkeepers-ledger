@@ -10,3 +10,4 @@ ignore:
   - CONTRIBUTING.md
   - .busted
   - .luacheckrc
+  - Libs/MANIFEST.sha256

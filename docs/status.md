@@ -14,7 +14,7 @@
   protection on both branches: ✅
 - Agent team (`.claude/agents/`): ✅ planner, implementer, reviewer
 - CI: ✅ policy guard (runs on every push and PR, including `dev`); ⬜ luacheck + busted
-  (lands with the first Lua; [kickoff.md](kickoff.md) step 3)
+  (#9, next; [kickoff.md](kickoff.md) step 3)
 - Kickoff step 1 (orient): ✅ reported. Step 2 (scaffold): ✅ (#8). Steps 3+: ⬜
 - AddOn scaffold: ✅ TOC (placeholder interface number), `Libs/embeds.xml`, every module
   as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger` (prints the
@@ -75,8 +75,7 @@ Settled 2026-09-26: sender identity per channel (see
 Tracked in #12. These need someone at the keyboard in a Forever client. Everything else
 proceeds without them. Full list: [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
 
-- TOC interface number (the TOC holds a marked placeholder, `120000`); AddOn loads,
-  including `Libs/embeds.xml` (a bare `<Ui>` with no namespace)
+- TOC interface number (the TOC holds a marked placeholder, `120000`); AddOn loads
 - Innkeeper gossip: `GOSSIP_SHOW` + NPC ID from `UnitGUID("npc")`; option injection works
 - `IsResting()` inside inns; sitting detection, if any
 - Addon messages PARTY / RAID / GUILD between two characters, including inside an

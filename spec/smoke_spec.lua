@@ -1,19 +1,7 @@
 local load = require("helpers.load")
 local wow = require("helpers.wow_stub")
 
-local PURE = {
-  { path = "Phrase.lua", name = "Phrase" },
-  { path = "Ledger.lua", name = "Ledger" },
-  { path = "Collection.lua", name = "Collection" },
-  { path = "Cosmetics.lua", name = "Cosmetics" },
-  { path = "SyncProtocol.lua", name = "SyncProtocol" },
-  { path = "Export.lua", name = "Export" },
-}
-
-local DATA = {
-  { path = "Data/Inns.lua", name = "Inns" },
-  { path = "Data/Phrases.lua", name = "Phrases" },
-}
+local PURE, DATA = load.PURE, load.DATA
 
 describe("pure modules", function()
   it("run with no WoW API defined", function()

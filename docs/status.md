@@ -10,7 +10,8 @@
 ## Current state
 
 - Docs (vision, decisions, architecture, platform, policy, prior art, export draft): ✅
-- Context map + conventions (`CLAUDE.md`), branch flow (`dev` → `main`): ✅
+- Context map + conventions (`CLAUDE.md`), branch flow (`dev` → `main`), branch
+  protection on both branches: ✅
 - Agent team (`.claude/agents/`): ✅ planner, implementer, reviewer
 - CI: ✅ policy guard (runs on every push and PR, including `dev`); ⬜ luacheck + busted
   (lands with the first Lua; [kickoff.md](kickoff.md) step 3)
@@ -18,15 +19,15 @@
 - AddOn code: ⬜ none yet
 - Client verification ([platform-forever.md](platform-forever.md) checklist): ⬜ no
   Forever client yet
-- Local toolchain (Lua 5.1, luarocks, busted, luacheck): ⬜ not installed on the dev
-  machine
+- Local toolchain: ✅ Lua 5.1 + busted 2.3.0 + luacheck 1.2.0 (setup in
+  [CONTRIBUTING.md](../CONTRIBUTING.md))
 
 ## Next step
 
 Kickoff step 2: scaffold (TOC, embedded Ace3 + LibDeflate, `.luacheckrc`, `.busted`,
-folder layout, a stubbed WoW API layer for tests), install the local toolchain, then
-step 3 (luacheck + busted in CI). After that, slice #1 (`SyncProtocol` + `Ledger`)
-through the build loop.
+folder layout, a stubbed WoW API layer for tests), then step 3 (luacheck + busted in
+CI, added to both branches' required checks). After that, slice #1 (`SyncProtocol` +
+`Ledger`) through the build loop.
 
 ## Client access plan
 
@@ -48,12 +49,12 @@ through the build loop.
 
 ## Open questions (maintainer to decide)
 
-- **Beta access:** opted in? Invited? Decides which plan branch applies (by ~2026-10-03).
-- **Sender identity per channel.** Addon messages carry the sender's *name*, not GUID.
-  Group members can be resolved name → GUID; guild members likely via the guild roster
-  (verify); strangers on a future global channel can't. The slice-1 spec proposes how the
-  own-signature rule binds on each channel; confirm the proposal. Ties into how names
-  look on the mega-realm (platform checklist).
+- **Beta access:** not opted in as of 2026-09-26. The free opt-in costs nothing and
+  invites go out in waves, so opting in soon improves the odds. Decides which plan
+  branch applies (by ~2026-10-03); without access, plan for the no-beta branch.
+
+Settled 2026-09-26: sender identity per channel (see
+[decisions.md](decisions.md) and [architecture.md → Security model](architecture.md)).
 
 ## Waiting on the maintainer in the client (batch)
 
@@ -64,7 +65,8 @@ them. Full list: [platform-forever.md → Verification checklist](platform-forev
 - Innkeeper gossip: `GOSSIP_SHOW` + NPC ID from `UnitGUID("npc")`; option injection works
 - `IsResting()` inside inns; sitting detection, if any
 - AceComm PARTY / RAID / GUILD between two characters, including inside an instance
-- Player GUID and name format on the mega-realm
+- Player GUID and name format on the mega-realm; sender name → GUID resolution (group
+  via `UnitGUID`, guild roster exposes GUIDs)
 - Walk every inn to collect innkeeper NPC IDs (`Data/Inns`)
 
 ## Follow-ups

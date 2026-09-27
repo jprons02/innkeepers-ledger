@@ -10,6 +10,28 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Re-signing an inn: once per week, resetting Friday 10:00 UTC
+
+A character may sign each inn once per signing week. Weeks start every **Friday at
+10:00 UTC** (the maintainer chose weekly; the session picked the reset time within that).
+The ledger enforces the rule for incoming signatures too: a traveler's second signature
+at the same inn in the same week is rejected. Signing a different inn in the same week
+is fine. Details: `docs/specs/sync-ledger.md` §3.1 (`weekAnchor`), §4.4.
+
+*Rejected:*
+- **Once per day** (the first proposal): repeat visits would fill a traveler's 40-entry
+  share window with one inn, and own entries (never evicted) would grow fast.
+- **WoW's own weekly reset:** it differs by region (Tuesday 15:00 UTC in the US,
+  Wednesday 07:00 UTC in Europe), so two players could disagree about which week a
+  signature is in. A fixed UTC time is the same for everyone and is plain arithmetic on
+  server time.
+- **A rolling 7 days since the last signature:** harder to explain in the UI than "the
+  ledger turns a page every Friday".
+- **Limiting only our own signing:** a modified client could still fill all 40 of its
+  slots at one inn; checking incoming signatures too costs one lookup.
+
+*Reflected in:* `docs/specs/sync-ledger.md`; tickets #30, #31.
+
 ### 2026-09-27 — Peer-data rate limits and time window
 
 Received, per resolved sender GUID in fixed 60-second windows: 40 messages and 80

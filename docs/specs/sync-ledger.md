@@ -70,6 +70,8 @@ by `SyncProtocol`:
 | `futureTolerance` | 300 s | both sides use `GetServerTime()`; 5 min covers skew |
 | `nameMaxBytes` | 96 | display only; covers two-part names, UTF-8 and a realm suffix |
 | `cosmeticIdMax` | 9 999 | for earned times |
+| `weekAnchor` | 1 789 120 800 (Friday 2026-09-11 10:00 UTC) | a signing week starts every Friday 10:00 UTC; the anchor sits before `tMin`, so week numbers are never negative |
+| `weekLength` | 604 800 s | 7 days; UTC has no daylight saving, so every week is exactly this long |
 
 `Ledger.CAPS` and `SyncProtocol` rate limits are in [§4](#4-data-model) and
 [§5.3](#53-rate-limits).
@@ -290,6 +292,9 @@ and `Sync` sends nothing from one.
 - a `me.name` that fails `validName` becomes `owner.name` if that passes, else is
   removed;
 - remove duplicate keys (first kept), sort, rebuild the indexes;
+- for foreign entries, apply the weekly rule (4.4): per signer, keep the earliest entry
+  of each `(inn, week)` and drop the rest. Own entries are never dropped for it (they're
+  the player's own history);
 - re-apply the caps (in case a later version lowers them): remove the oldest
   repeatedly until under every cap, in the order perSigner, perInn, foreignTotal.
 
@@ -308,9 +313,21 @@ foreign count per inn, total foreign count.
 | `perInn` | 150 | a busy inn's page shows the newest 150 travelers' signatures |
 | `foreignTotal` | 3 000 | ≈ 400 KB of SavedVariables at ~130 bytes per stored entry |
 
-Own entries are never evicted and have no cap in this slice. (How often a player may
-re-sign the same inn belongs to the `Sign` spec; see [status.md](../status.md) → Open
-questions.)
+Own entries are never evicted and have no cap.
+
+**One signature per inn per week** (decisions.md → 2026-09-27 — Re-signing an inn: once
+per week). `Ledger.weekOf(t) = math.floor((t − weekAnchor) / weekLength)`; a week runs
+from Friday 10:00:00 UTC up to the next Friday 09:59:59. A signer may hold at most one
+entry per `(inn, weekOf(t))`, and the ledger enforces it for both sides:
+- **Own:** `addOwn` returns `"too_soon"` when an own entry at that inn already falls in
+  the same week. `ledger:canSign(inn, now)` answers the same question for the `Sign` UI,
+  and `Ledger.nextWeekStart(now)` gives the time the next week opens (for "sign again
+  after …" text).
+- **Foreign:** `addForeign` returns `"too_soon"` when that signer already has a stored
+  entry at that inn in the same week; the first stored one wins. An honest client never
+  sends two, so this only bites modified clients: one signer can claim at most one
+  signature per inn per week, instead of filling all 40 of its slots at one inn.
+- Own entries and foreign entries don't limit each other (the rule is per signer).
 
 `addForeign` on a new, valid, non-duplicate entry:
 1. Insert it (creating the traveler record with `met = now` if needed; update the
@@ -339,8 +356,10 @@ or its indexes.
 | `Ledger.validGUID(s)` | boolean: a string of ≤ 40 bytes matching `^Player%-%d+%-%x+$` |
 | `Ledger.validName(s)` | boolean: the name rule (5.2) |
 | `Ledger.innFromNpcGUID(guid, inns)` | NPC ID if `guid` is a creature GUID whose NPC ID is a key of `inns`, else `nil`; never throws (5.2) |
-| `ledger:addOwn(e)` | `"added"`, `"dup"`, `"invalid"`, `"readonly"` |
-| `ledger:addForeign(signer, name, e, now)` | `"added"`, `"dup"`, `"dropped"`, `"invalid"`, `"self"` (signer is the owner), `"readonly"` |
+| `Ledger.weekOf(t)` / `Ledger.nextWeekStart(now)` | the week number of `t` / the start time of the week after `now`'s (4.4) |
+| `ledger:canSign(inn, now)` | `false` if an own entry at `inn` falls in `weekOf(now)` (or the ledger is read-only), else `true` |
+| `ledger:addOwn(e)` | `"added"`, `"dup"`, `"too_soon"`, `"invalid"`, `"readonly"` |
+| `ledger:addForeign(signer, name, e, now)` | `"added"`, `"dup"`, `"too_soon"`, `"dropped"`, `"invalid"`, `"self"` (signer is the owner), `"readonly"` |
 | `ledger:ownerGUID()` | the owner's GUID |
 | `ledger:has(signer, inn, t)` | boolean |
 | `ledger:own()` | own entries, `(t, inn)` ascending |
@@ -386,7 +405,7 @@ written to the ledger until every whole-message check has passed. Result is
 | 15 | Time window (per entry) | `tMin <= t <= now + futureTolerance` | entry skipped (`rejected`) | `skips an entry from before tMin`; `skips an entry 301 s in the future, keeps one 300 s ahead` |
 | 16 | Known IDs (per entry) | `ctx.inns[inn] ~= nil`; **every** phrase ID has `ctx.phrases[id] ~= nil`, **and** `ctx.phraseOk(ids)` is true when that hook is given (additive: the hook can only reject more); seal `nil` or `ctx.seals[seal] ~= nil` | entry skipped (`rejected`) | `skips an unknown inn but keeps its valid siblings`; `… unknown phrase ID`; `… unknown seal`; `a permissive phraseOk can't admit an unknown ID` |
 | 17 | Own-signature | signer and name come only from `sender`; the entry is stored with `ledger:addForeign(sender.guid, sender.name, e, now)` | n/a (no other path exists) | `stores a relayed copy of B's entry under the relayer A, never under B`; `a GUID inside an entry is dropped and nothing is stored` (assert `nil` and no storage, not a specific reason) |
-| 18 | Dedupe / replay | ledger dedupe on `(signer, inn, t)`; the first stored copy wins (a later copy with a different phrase is a dup) | counted as `dup` | `replaying an ENTRIES 1 000 times leaves storage unchanged`; `a conflicting re-send doesn't overwrite` |
+| 18 | Dedupe / replay / weekly | ledger dedupe on `(signer, inn, t)`; the first stored copy wins (a later copy with a different phrase is a dup); a second entry from the same signer at the same inn in the same week is `"too_soon"` (4.4) | counted as `dup`; `too_soon` counted as `rejected` | `replaying an ENTRIES 1 000 times leaves storage unchanged`; `a conflicting re-send doesn't overwrite`; `a second signature at one inn in one week is rejected, siblings kept` |
 | 19 | Caps | ledger caps and eviction (4.4) | counted as `dropped` | see `spec/ledger_spec.lua` |
 
 Successful results:
@@ -397,9 +416,9 @@ Successful results:
   recording it in `ctx.wantMemo.seen[channel .. ":" .. target]` (keeping the smaller `since` if one was
   seen in the last 30 s).
 - ENTRIES → `{ kind = "entries", added = n, dup = n, dropped = n, rejected = n }`, where
-  `rejected` counts the rule 15–16 skips plus any `addForeign` result of `"invalid"`,
-  `"self"` or `"readonly"` (none should occur after validation; they're counted, not
-  raised).
+  `rejected` counts the rule 15–16 skips, `"too_soon"`, and any `addForeign` result of
+  `"invalid"`, `"self"` or `"readonly"` (the last three shouldn't occur after
+  validation; they're counted, not raised).
 
 ### 5.1a SyncProtocol API
 
@@ -520,12 +539,20 @@ clock.
   `Player-1-`, `Player-1-AB-CD`, `Player-1-0x1F`, a 41-byte GUID, an embedded NUL, a
   pipe, a control byte, two spaces, three words, a trailing `-`, 1 and 97 bytes,
   non-strings.
-- **addOwn:** added; dup on the same `(inn, t)`; invalid; kept sorted by `(t, inn)`
-  whatever the insert order; own entries survive any number of foreign adds (never
-  evicted); changing the caller's table after `addOwn` changes nothing stored.
+- **Weeks:** `weekOf` of `weekAnchor` is 0, of `weekAnchor − 1` is −1, of Friday
+  09:59:59 and 10:00:00 UTC differ by one; `nextWeekStart` at, just before and just after
+  a boundary; `weekOf(tMin) >= 0`.
+- **addOwn:** added; dup on the same `(inn, t)`; `"too_soon"` for the same inn later in
+  the same week, `"added"` at the next Friday 10:00:00 UTC; a different inn in the same
+  week is fine; `canSign` agrees with `addOwn` on each case; invalid; kept sorted by
+  `(t, inn)` whatever the insert order; own entries survive any number of foreign adds
+  (never evicted); changing the caller's table after `addOwn` changes nothing stored.
 - **addForeign:** added with traveler record (`name`, `met = now`); dup; conflicting
-  re-send doesn't overwrite; `"self"` for the owner's GUID; invalid signer, name or entry;
-  name updates on a later accepted entry; `met` doesn't change.
+  re-send doesn't overwrite; `"too_soon"` for a second entry from one signer at one inn
+  in one week (the first is kept), while another signer at the same inn in that week is
+  added; `"self"` for the owner's GUID; invalid signer, name or entry; name updates on a
+  later accepted entry; `met` doesn't change. Cap and flood fixtures give each signer
+  distinct `(inn, week)` pairs so the weekly rule doesn't mask the caps.
 - **Caps, one test per cap:** the 41st entry of a signer evicts that signer's oldest; an
   older 41st entry is itself `"dropped"`; the 151st foreign entry at an inn evicts the
   inn's oldest foreign; the 3 001st foreign entry evicts the global oldest; ties broken
@@ -548,6 +575,8 @@ clock.
   name, the owner's own GUID, or no valid entries dropped; a bad `met` becomes the oldest
   entry's `t` (and `travelers()` doesn't throw on it); bad `earned` pairs dropped; invalid
   own entries quarantined (capped at 100); a bad `me.name` reset; duplicates removed;
+  a signer's second foreign entry at one inn in one week dropped (the earliest kept),
+  while two own entries in one week are both kept;
   unsorted input sorted; caps re-applied when they're lowered (a fixture with 60 entries
   from one signer, 200 at one inn and 3 500 in total ends at 40 / 150 / 3 000, oldest
   removed); `loadReport` counts.

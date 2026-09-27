@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27
+**Updated:** 2026-09-27 (after #11)
 
 ## Current state
 
@@ -14,7 +14,8 @@
   ([kickoff.md](kickoff.md)).
 - **AddOn scaffold (#8):** TOC (placeholder interface number), `Libs/embeds.xml`, every
   module as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger`, and a WoW
-  API stub so the whole AddOn loads under `busted`. Module logic: ⬜ none yet.
+  API stub so the whole AddOn loads under `busted`. Module logic: ⬜ none yet; the slice-1
+  spec ([specs/sync-ledger.md](specs/sync-ledger.md)) is written (#11).
 - **Libraries:** reviewed and vendored in `Libs/`, manifest pinned to
   [libraries.md](libraries.md).
 - **CI:** five required checks on `main` and `dev`: `no-urls-in-game-code`, `luacheck`,
@@ -34,18 +35,12 @@
 
 ## Next step
 
-**#11: write the slice-1 spec (`docs/specs/sync-ledger.md`) and file the implementation
-tickets under #10.** Nothing blocks it. Beyond the ticket's scope, the spec must also
-cover these 2026-09-27 outcomes (also posted as a comment on #11; #12 has a matching
-comment for the new client checks):
-- `Sync` holds sends during combat using `InCombatLockdown` / `PLAYER_REGEN_*` (approved).
-  Widen the `forbidden-apis` allow-list only when that code lands.
-- Fail safe if Forever hides values from addons: an unreadable innkeeper NPC ID or
-  message sender means "don't sign" / "drop the message", never a crash or a guess
-  ([platform-forever.md](platform-forever.md) → AddOns and the API).
-- The Ledger keeps the earned time of every cosmetic, and keeps received entries with
-  signer GUID, inn and time, because the export and later "witnessed" stamps need them
-  ([export-format.md](export-format.md)).
+**#30: build `Ledger`**, then **#31: build `SyncProtocol`** (blocked by #30). Both are
+sub-issues of slice 1 (#10) and implement
+[specs/sync-ledger.md](specs/sync-ledger.md), which settles the wire format, digest,
+validation table, caps, rate limits and SavedVariables shape (#11). The spec's §8 is the
+contract for the later `Sync` glue ticket (combat hold, hidden values, reply
+coalescing); file that ticket when #31 is done.
 
 In-client work is #12 (needs a Forever client and the maintainer).
 
@@ -69,6 +64,9 @@ In-client work is #12 (needs a Forever client and the maintainer).
 
 - **Beta access (#1, #2):** not opted in as of 2026-09-27. The free opt-in costs nothing;
   opting in soon improves the odds. Decides the plan branch by ~2026-10-03.
+- **Re-signing an inn (not blocking; needed by the `Sign` slice):** how often may a
+  player sign the same inn again? Proposed: once per inn per day. It bounds how fast own
+  entries grow (they're never evicted) and keeps the 40-entry share window varied.
 
 ## Waiting on the maintainer in the client (batch)
 
@@ -77,7 +75,8 @@ Tracked in #12; full list in [platform-forever.md → Verification checklist](pl
 - TOC interface number (placeholder `120000`); AddOn and libraries load
 - Innkeeper gossip: `GOSSIP_SHOW` + NPC ID from `UnitGUID("npc")`; option injection
 - `IsResting()` inside inns; sitting detection, if any
-- Addon messages PARTY / RAID / GUILD, including inside an instance; size and rate limits
+- Addon messages PARTY / RAID / GUILD, including inside an instance (and whether
+  instance groups use `INSTANCE_CHAT`); size and rate limits
 - Hidden values outside combat (innkeeper NPC ID, addon-message sender); addon messages
   to a custom channel allowed or blocked
 - Player GUID and name format (two-part names?); sender name → GUID resolution
@@ -91,6 +90,6 @@ Tracked in #12; full list in [platform-forever.md → Verification checklist](pl
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
   before export v1 is finalized ([export-format.md](export-format.md)).
 - CI pins only the top-level rocks; if an upstream release breaks CI, pin dependencies too.
-- `decisions.md` is at 344 lines. At the start of October, move the September entries to
+- `decisions.md` is at 423 lines. At the start of October, move the September entries to
   `docs/archive/decisions-2026-09.md` and leave an index line. `architecture.md` is at
-  199; split a section out before adding to it.
+  197; split a section out before adding to it.

@@ -86,8 +86,11 @@ Agents drive work to done without checking in between steps:
 
 ## Testing
 
-`busted` specs with a stubbed WoW API layer, `luacheck` clean, both in CI
-(`.github/workflows/ci.yml`, with the `Libs/` manifest check) next to the policy guard.
+`busted` specs with a stubbed WoW API layer, `luacheck` clean, and coverage floors on
+pure modules (95% `Ledger`/`SyncProtocol`, 90% the rest), all in CI
+(`.github/workflows/ci.yml`) next to the policy guard. **Run every check locally before
+pushing** rather than waiting on CI; the commands are in
+[CONTRIBUTING.md → Development setup](CONTRIBUTING.md#development-setup).
 **Peer data is hostile in tests** (malformed, oversized, relayed, replayed, forged). What truly needs the client goes on the in-client batch in `docs/status.md`.
 Details: [docs/architecture.md → Testing posture](docs/architecture.md#testing-posture).
 

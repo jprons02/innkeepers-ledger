@@ -10,6 +10,34 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Coverage floors on pure modules, a doc-link check, and local test runs
+
+Two required CI jobs join the others. `coverage` runs `busted --coverage` and luacov
+0.17.0, then `scripts/check-coverage.sh` enforces line-coverage floors: **95%** for
+`Ledger` and `SyncProtocol` (the peer-data boundary) and **90%** for the other pure
+modules. It fails closed: a missing report, a module missing from it, or a `luacov:`
+opt-out comment fails the job. `docs-links` runs `scripts/check-links.sh`: every relative
+link in the docs resolves, and every doc under `docs/` has a context-map row. The local
+toolchain turned out to work once it's on `PATH`, so sessions run every check locally
+before pushing, with CI as confirmation rather than the only test run. The maintainer
+asked for this.
+
+*Rejected:*
+- **100% floors:** defensive branches that can't happen after validation would have to be
+  deleted or contrived into tests; 95% leaves room without hiding whole paths.
+- **Coverage of glue modules:** glue calls the client; it's checked in the client, and
+  its stubbed parts would inflate the numbers.
+- **Folding coverage into the `busted` job:** the required checks would be less specific
+  (same reason as the separate CI jobs in the 2026-09-26 CI entry).
+- **Allowing `luacov: disable` with review:** an opt-out in the security modules is
+  exactly what the floor exists to stop.
+- **Checking `#anchor` fragments in doc links:** GitHub's heading slugs are hard to
+  reproduce exactly in `sh`; broken files are the common failure.
+
+*Reflected in:* `.github/workflows/ci.yml`; `.luacov`; `scripts/check-coverage.sh`;
+`scripts/check-links.sh`; `CONTRIBUTING.md` → Development setup;
+`docs/security-checklist.md`; `CLAUDE.md` → Testing; branch protection.
+
 ### 2026-09-27 — Re-signing follows the game's weekly reset (supersedes the Friday 10:00 UTC entry below)
 
 A character may still sign each inn once per week, but the signing week now turns over

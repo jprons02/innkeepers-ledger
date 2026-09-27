@@ -10,6 +10,32 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — SyncSchedule: failed sends keep their gates; forward clock jumps wait for #12
+
+Settled while building `SyncSchedule` (#45, PR #52), where the `Sync` glue spec was
+silent. The security-level review checked each rule against the spec and found none a
+deviation.
+- **A failed send keeps its gate stamps** (`lastHello`, `lastReply`, `lastLarge`). Its
+  budget record and in-flight entry are removed and the item is dropped, as the spec
+  says, but the gate stays closed, so a transport that keeps refusing can't be retried
+  in a loop. A failed GUILD HELLO still schedules the next periodic one. Only `io.send`
+  returning exactly `false` is a failure; anything else counts as handed over (errs
+  toward the rate limits).
+- **Leaving a channel keeps its gate stamps** (`setChannel(ch, nil)` drops only the
+  pending items), so leaving and rejoining a group can't bypass a gate.
+- **Server time jumping forward is not clamped in v1.** Backward jumps are (spec
+  §3.5.2). A forward jump ages budget records early; fuzzing with forward jumps saw up
+  to 48 messages in one real minute. Realm time jumping forward is unlikely, so this
+  waits for #12 to show whether it happens.
+
+*Rejected:*
+- **Rolling back the gate stamps on a failed send:** a transport that fails every time
+  would then be retried on every pump.
+- **Capping how far a forward jump can age records now:** it adds state and tests for a
+  case no one has seen in the client.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.5.6 step 3; `docs/status.md` → Follow-ups.
+
 ### 2026-09-27 — Debug toggle wording: keep it as written
 
 The maintainer kept the debug-log wording from the `Sync` glue spec: the command

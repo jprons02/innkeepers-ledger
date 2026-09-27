@@ -9,74 +9,51 @@
 
 ## Current state
 
-- **Foundation done:** docs and context map, branch flow with protection on `main` and
-  `dev`, the agent team, ticket forms and labels, kickoff steps 1–3
-  ([kickoff.md](kickoff.md)).
-- **AddOn scaffold (#8):** TOC (placeholder interface number), `Libs/embeds.xml`, every
-  module as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger`, and a WoW
-  API stub so the whole AddOn loads under `busted`.
-- **Slice 1 done (#10 closed):**
-  - **`Ledger`** (#30, PR #38): the entry store, weekly rule, caps and eviction,
-    queries, earned times, and load, migration and read-only behavior.
-  - **`SyncProtocol`** (#31, PR #40): encoders, strict decoder (rules 1–19), digest,
-    limiter, WANT memo and `decideWant`.
-  - Both have 100% line coverage. The security-level review of `SyncProtocol` passed:
-    2.2 M differential-fuzz messages with 0 mismatches, and every security mutant is
-    killed. Other module logic: ⬜ none yet.
-- **Slice-1 spec done (#11, #32):** [specs/sync-ledger.md](specs/sync-ledger.md) settles
-  the wire format, digest, validation table, storage caps, rate limits (with a traffic
-  model) and SavedVariables shape. It passed two security-level reviewer passes; the
-  first caught a WANT fan-out that would have broken the rate limits in raids.
-  Re-signing an inn: once per week, turning over at the game's weekly reset (maintainer,
-  2026-09-27), enforced for own and incoming signatures.
-- **Libraries:** reviewed and vendored in `Libs/`, manifest pinned to
-  [libraries.md](libraries.md).
+- **Foundation:** docs and context map, branch flow with protection on `main` and `dev`,
+  the agent team, ticket forms and labels, kickoff steps 1–3 ([kickoff.md](kickoff.md)).
+  Libraries reviewed and vendored in `Libs/` ([libraries.md](libraries.md)). The
+  scaffold (#8) loads the whole AddOn under `busted` through a WoW API stub.
 - **CI:** seven required checks on `main` and `dev`: `no-urls-in-game-code`, `luacheck`,
   `busted` (Lua 5.1), `coverage` (floors on pure modules), `docs-links`,
   `libs-manifest`, `forbidden-apis`. Release PRs also get a security review
-  ([security-checklist.md](security-checklist.md)).
+  ([security-checklist.md](security-checklist.md)). Every check also runs locally
+  ([CONTRIBUTING.md](../CONTRIBUTING.md#development-setup)); run them before pushing.
+- **Slice 1 done (#10):** spec [specs/sync-ledger.md](specs/sync-ledger.md) (wire format,
+  digest, validation, caps, rate limits, SavedVariables). `Ledger` (#30) and
+  `SyncProtocol` (#31) built, both at 100% line coverage; `SyncProtocol` passed a
+  security-level review (2.2 M differential-fuzz messages, every security mutant
+  killed). Re-signing an inn: once per week, at the game's weekly reset.
+- **Slice 2 in progress (#41),** spec [specs/sync-glue.md](specs/sync-glue.md):
+  - **#44 `Core` done:** opens the character's ledger at login as `ns.ledger` (GUID
+    retry, weekly anchor with region fallback, damaged-data handling, `/ledger debug`).
+    `Sync:Start()` is still a no-op until #46.
+  - **#45 `SyncSchedule` done** (PR #52): the pure send schedule, 100% coverage under a
+    95% floor. Its security-level review fuzzed hours of simulated time; every bound
+    held, and one late-wake bug was found and fixed. Failed sends keep their gates
+    (decisions.md → *SyncSchedule: failed sends keep their gates*).
+  - Other module logic (`Phrase`, `Collection`, `Cosmetics`, `Export`, UI): ⬜ none yet.
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs and CI
-  changes (#25–#39; #36 added the `coverage` and `docs-links` checks) and the first
-  module logic (`Ledger` #38, `SyncProtocol` #40). No tags yet (maintainer gate).
+  changes (#25–#39) and module logic (`Ledger` #38, `SyncProtocol` #40, `Core` #50,
+  `SyncSchedule` #52). No tags yet (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
   per inn, seal per zone). A public profile website is a post-v1, separate project the
   AddOn never names ([vision.md](vision.md) → Where it can grow).
 - **Client verification** ([platform-forever.md](platform-forever.md)): ⬜ no Forever
   client yet.
-- **Local toolchain works:** Lua 5.1, busted, luacheck and luacov run locally once
-  their folder and MSYS2's `ucrt64/bin` are put on `PATH` for the session (PowerShell
-  line in [CONTRIBUTING.md](../CONTRIBUTING.md#development-setup)). Run every check
-  locally before pushing; CI confirms.
-- **Slice 2 started (#41):** `Core` opens the character's ledger at login as `ns.ledger`
-  (#44): GUID retry, weekly anchor with the region fallback, damaged-data handling, the
-  `/ledger debug` log. `Sync:Start()` is still a no-op until #46. The WoW stub now has a
-  clock (`wow.advance`) and `IsLoggedIn` turns true at `PLAYER_LOGIN`, so `OnEnable`
-  runs under test.
-- **`SyncSchedule` done (#45):** the pure send schedule (budget, HELLO / WANT / reply
-  gates, pending queues, combat hold state, the pump), 100% line coverage under a 95%
-  floor. The security-level review fuzzed it for hours of simulated time (floods, clock
-  jumps, hostile values, failing and late sends); every bound held. It caught one bug,
-  fixed: the returned wake time waited on the budget before a reply could start, so
-  replies started up to a few seconds late.
 
 ## Next step
 
-**Slice 2 (#41, the `Sync` glue) is specced** in [specs/sync-glue.md](specs/sync-glue.md)
-(#42). The spec passed a security-level review; the first pass caught a timer pile-up
-and a send stall on late callbacks, both fixed. Build it in order:
-1. **#46** `Sync` receive path and sender resolution (next; #44 and #45 are done). It
-   exposes its counters at `ns.Sync.stats` for the debug report (spec §3.8).
+1. **#46** `Sync` receive path and sender resolution (`ready`, unblocked). It exposes its
+   counters at `ns.Sync.stats` for the debug report (spec §3.8).
 2. **#47** `Sync` send path, combat hold and the `combat state` guard rule (blocked by
-   #46). Its 40-player-raid simulation checks the traffic model. The glue passes
-   `ledger:shareWindow(SHARE_MAX)` as `io.window` and to `onWant`; the schedule counts
-   its own failed sends in `snapshot().sendFailed`. The schedule's gates never reach the
+   #46). Its 40-player-raid simulation checks the traffic model. Notes from #45: the glue
+   passes `ledger:shareWindow(SHARE_MAX)` as `io.window` and to `onWant`; the schedule
+   counts its own failed sends in `snapshot().sendFailed`; its gates never reach the
    30-message cap on their own (at most 29 at once), so the cap is a backstop.
 
-Also unfiled from [kickoff.md](kickoff.md) Phase 1 step 5: `Phrase` + `Data/Phrases`,
-then `Collection` + `Cosmetics`, then `Export`. Until `Data/Phrases` has entries, every
-received entry is rejected as an unknown phrase.
-
-In-client work is #12 (needs a Forever client and the maintainer).
+Then, unfiled, from [kickoff.md](kickoff.md) Phase 1 step 5: `Phrase` + `Data/Phrases`,
+`Collection` + `Cosmetics`, `Export`. Until `Data/Phrases` has entries, every received
+entry is rejected as an unknown phrase. In-client work is #12.
 
 ## Client access plan
 
@@ -99,25 +76,21 @@ In-client work is #12 (needs a Forever client and the maintainer).
 
 Batched in #12. The list lives in
 [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04);
-the slice-1 spec leans on its GUID-format, message-size, `INSTANCE_CHAT` and weekly-reset
+the sync specs lean on its GUID-format, message-size, `INSTANCE_CHAT` and weekly-reset
 items.
 
 ## Follow-ups
 
 - Move [kickoff.md](kickoff.md) to `docs/archive/` once v1 ships.
-- `SyncSchedule` clamps server time going *backwards* (spec §3.5.2) but not a big jump
-  *forwards*, which ages budget records early (fuzzing with forward jumps saw 48
-  messages in one real minute). Realm time jumping forward is unlikely; if #12 shows it
-  happens, cap how far a jump can age the records.
+- Server time jumping *forward* isn't clamped in `SyncSchedule` (decisions.md →
+  *SyncSchedule: failed sends keep their gates*); revisit if #12 shows it happens.
 - Delete GitHub's default labels (`bug`, `enhancement`, …), which overlap ours
   (maintainer call: deletion).
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
   before export v1 is finalized ([export-format.md](export-format.md)).
 - CI pins only the top-level rocks; if an upstream release breaks CI, pin dependencies too.
 - `Ledger`'s cap pass at load time is quadratic: a tampered SavedVariables file far over
-  the caps (40 000 entries) loads in about 4 s. Peers can't reach this, so it's not
-  needed for v1; batch the evictions if it ever matters (decisions.md → 2026-09-27 —
-  Ledger orders by bytes).
-- `decisions.md` is at 604 lines. At the start of October, move the September entries to
-  `docs/archive/decisions-2026-09.md` and leave an index line. `architecture.md` is at
-  198; split a section out before adding to it.
+  the caps (40 000 entries) loads in about 4 s. Peers can't reach this; batch the
+  evictions if it ever matters (decisions.md → 2026-09-27 — Ledger orders by bytes).
+- `decisions.md` is at 642 lines. At the start of October, move the September entries to
+  `docs/archive/decisions-2026-09.md` and leave an index line.

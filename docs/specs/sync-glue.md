@@ -159,8 +159,9 @@ recomputed at every login (slice 1 §8).
 `issecretvalue` (may be `nil`), `After` (`C_Timer.After`), `RegisterPrefix`
 (`C_ChatInfo.RegisterAddonMessagePrefix`), `send` (`function(text, chattype, callback)`
 → `ChatThrottleLib:SendAddonMessage("BULK", "InnLedger", text, chattype, nil,
-"InnLedger", callback)`), `random` (`math.random`). A missing optional client function
-(`C_GuildInfo`, `issecretvalue`) is `nil`, and the code that needs it treats it as
+"InnLedger", callback)`), `random` (`math.random`), `Enum` (optional; the `Enum` global,
+read for the prefix-result enum of §3.3.2). A missing optional client function or table
+(`C_GuildInfo`, `issecretvalue`, `Enum`) is `nil`, and the code that needs it treats it as
 "unavailable", never as an error.
 
 The client holds: its `SyncSchedule`, one `SyncProtocol.newLimiter()`, one
@@ -236,6 +237,9 @@ authentic. Resolution maps it to a GUID and fails closed.
 3. **PARTY / RAID:** `guid = UnitGUID(sender)` in `pcall`, with the sender string
    exactly as the server gave it (`full` is only the stored name). It resolves only for
    current group members, so a sender who left the group is unresolved.
+   **To be replaced by #54:** a peer string must never reach a unit-token parser, so
+   group senders will resolve through a name → GUID map from our own unit scan
+   (decisions.md → *Group senders resolve through our own unit scan*).
 4. **GUILD:** `guid = guildMap[full]`. If there's no entry: unresolved, and request a
    roster refresh (`api.GuildRoster()`, at most once per 60 s). The message is not kept
    or retried: the sender's next HELLO resyncs (decisions.md → *Sender identity is

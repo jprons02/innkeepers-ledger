@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #45)
+**Updated:** 2026-09-27 (after #46)
 
 ## Current state
 
@@ -26,15 +26,21 @@
 - **Slice 2 in progress (#41),** spec [specs/sync-glue.md](specs/sync-glue.md):
   - **#44 `Core` done:** opens the character's ledger at login as `ns.ledger` (GUID
     retry, weekly anchor with region fallback, damaged-data handling, `/ledger debug`).
-    `Sync:Start()` is still a no-op until #46.
   - **#45 `SyncSchedule` done** (PR #52): the pure send schedule, 100% coverage under a
     95% floor. Its security-level review fuzzed hours of simulated time; every bound
     held, and one late-wake bug was found and fixed. Failed sends keep their gates
     (decisions.md → *SyncSchedule: failed sends keep their gates*).
+  - **#46 `Sync` receive path done:** prefix, hidden-value checks, sender resolution
+    (group via `UnitGUID`, guild via the roster map), `SyncProtocol.receive`, dispatch
+    into `SyncSchedule`, `stats` at `ns.Sync.stats` (the `/ledger debug` report shows
+    them). A two-client harness (`spec/helpers/sync_harness.lua`) runs N clients in one
+    Lua state. Nothing is sent yet, and `onHello` / `onWant` are ignored until #47
+    makes the channels available. Its security review found one design hole, filed as
+    #54 (below).
   - Other module logic (`Phrase`, `Collection`, `Cosmetics`, `Export`, UI): ⬜ none yet.
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs and CI
   changes (#25–#39) and module logic (`Ledger` #38, `SyncProtocol` #40, `Core` #50,
-  `SyncSchedule` #52). No tags yet (maintainer gate).
+  `SyncSchedule` #52, `Sync` receive). No tags yet (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
   per inn, seal per zone). A public profile website is a post-v1, separate project the
   AddOn never names ([vision.md](vision.md) → Where it can grow).
@@ -43,10 +49,17 @@
 
 ## Next step
 
-1. **#46** `Sync` receive path and sender resolution (`ready`, unblocked). It exposes its
-   counters at `ns.Sync.stats` for the debug report (spec §3.8).
-2. **#47** `Sync` send path, combat hold and the `combat state` guard rule (blocked by
-   #46). Its 40-player-raid simulation checks the traffic model. Notes from #45: the glue
+1. **#47** `Sync` send path, combat hold and the `combat state` guard rule (unblocked).
+   Its 40-player-raid simulation checks the traffic model. Harness notes from #46:
+   `c.sendMode` (`"sync"` / `"defer"` / `"fail"`) and `c.sendDelay` switch the send
+   callback; `w:setGroup(members, raid)` drives the unit scan; `requestPump` is a no-op
+   placeholder to fill; combat (a per-client flag, `InCombatLockdown` in the harness's
+   `API_NAMES`, the `PLAYER_REGEN_*` events) and `LE_PARTY_CATEGORY_HOME` aren't in the
+   harness yet.
+2. **#54** Group senders resolve through our own unit scan, never `UnitGUID(sender)`
+   (blocked by #47; must land before the first release). A character named like a unit
+   token (`Target`, `Focus`) could otherwise get entries stored under another player's
+   GUID (decisions.md → *Group senders resolve through our own unit scan*). Notes from #45: the glue
    passes `ledger:shareWindow(SHARE_MAX)` as `io.window` and to `onWant`; the schedule
    counts its own failed sends in `snapshot().sendFailed`; its gates never reach the
    30-message cap on their own (at most 29 at once), so the cap is a backstop.

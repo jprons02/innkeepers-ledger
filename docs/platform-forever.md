@@ -97,6 +97,10 @@ unverified · ❓ unknown
       `PLAYER_REGEN_*` events behave as on retail; ChatThrottleLib's send callback
       reports `didSend`; `LE_PARTY_CATEGORY_HOME` exists and separates home groups from
       instance-only ones
+- [ ] Group sender names (#54): does `CHAT_MSG_ADDON` ever give a bare name without
+      `-Realm`? Can a character be named like a unit token (`Target`, `Focus`,
+      `Mouseover`)? Which of `UnitName` / `UnitFullName` on `partyN` gives the realm in
+      the same form as the sender string?
 - [ ] Collect innkeeper NPC IDs for every inn (the `Data/Inns` table)
 - [ ] Sitting detection, if any
 

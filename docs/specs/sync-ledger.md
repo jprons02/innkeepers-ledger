@@ -341,8 +341,8 @@ enforces it for both sides:
 - Own entries and foreign entries don't limit each other (the rule is per signer).
 
 `addForeign` on a new, valid, non-duplicate entry:
-1. Insert it (creating the traveler record with `met = now` if needed; update the
-   traveler's `name` to the given one).
+1. Insert it (creating the traveler record with `met = now` if needed). If the entry
+   is kept (the result is `"added"`), update the traveler's `name` to the given one.
 2. If the signer now holds more than `perSigner`: remove the signer's oldest.
 3. If the inn now holds more than `perInn` foreign entries: remove the inn's oldest.
 4. If the total exceeds `foreignTotal`: remove the oldest foreign entry anywhere.
@@ -384,8 +384,8 @@ or its indexes.
 | `ledger:earnedAt(id)` / `ledger:earned()` | time or nil / a copy of the map |
 
 `addForeign` checks its own inputs as a second line of defense (`validGUID(signer)`,
-`validName(name)`, `validEntry(e)`, `now` an integer), but known-ID and time-window
-checks live in `SyncProtocol`.
+`validName(name)`, `validEntry(e)`, `now` an integer in `tMin`..`tMax`), but known-ID
+and time-window checks live in `SyncProtocol`.
 
 ## 5. Security notes
 

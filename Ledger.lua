@@ -202,12 +202,24 @@ local function entryLess(a, b)
   return a.inn < b.inn
 end
 
+-- Byte order. String `<` follows the C locale's collation, which may differ between
+-- clients or even rank two distinct strings equal; the store's order must not.
+local function strLess(a, b)
+  for i = 1, math.min(#a, #b) do
+    local x, y = a:byte(i), b:byte(i)
+    if x ~= y then
+      return x < y
+    end
+  end
+  return #a < #b
+end
+
 local function refLess(a, b)
   if a.e.t ~= b.e.t then
     return a.e.t < b.e.t
   end
   if a.signer ~= b.signer then
-    return a.signer < b.signer
+    return strLess(a.signer, b.signer)
   end
   return a.e.inn < b.e.inn
 end
@@ -612,7 +624,7 @@ function LedgerObject:addForeign(signer, name, e, now)
     return "readonly"
   end
   if not Ledger.validGUID(signer) or not Ledger.validName(name) or not Ledger.validEntry(e)
-    or not isInt(now, 0, LIMITS.tMax) then
+    or not isInt(now, LIMITS.tMin, LIMITS.tMax) then
     return "invalid"
   end
   if signer == self._guid then
@@ -635,7 +647,6 @@ function LedgerObject:addForeign(signer, name, e, now)
     travelers[signer] = rec
     self._travelerCount = self._travelerCount + 1
   end
-  rec.name = name
   local entry = copyEntry(e)
   insertSorted(rec.entries, entry, entryLess)
   local ref = { signer = signer, e = entry }
@@ -666,7 +677,11 @@ function LedgerObject:addForeign(signer, name, e, now)
   if not dropped and #self._all > CAPS.foreignTotal then
     evict(self._all[1])
   end
-  return dropped and "dropped" or "added"
+  if dropped then
+    return "dropped"
+  end
+  rec.name = name -- only an accepted entry renames the traveler
+  return "added"
 end
 
 function LedgerObject:setOwnerName(name)
@@ -761,7 +776,7 @@ function LedgerObject:travelers()
     if a.met ~= b.met then
       return a.met > b.met
     end
-    return a.guid < b.guid
+    return strLess(a.guid, b.guid)
   end)
   return out
 end

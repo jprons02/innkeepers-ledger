@@ -421,6 +421,8 @@ describe("Ledger:addForeign", function()
       { MIRA, NAME, good, NOW + 0.5 },
       { MIRA, NAME, good, nil },
       { MIRA, NAME, good, 0 / 0 },
+      { MIRA, NAME, good, LIMITS.tMin - 1 },
+      { MIRA, NAME, good, LIMITS.tMax + 1 },
     }
     for i, c in ipairs(cases) do
       assert.equal("invalid", ledger:addForeign(c[1], c[2], c[3], c[4]), "case " .. i)
@@ -475,8 +477,9 @@ describe("Ledger caps", function()
     for i = 1, 40 do
       ledger:addForeign(MIRA, NAME, entry(i, T0 + i), NOW)
     end
-    assert.equal("dropped", ledger:addForeign(MIRA, NAME, entry(41, T0), NOW))
+    assert.equal("dropped", ledger:addForeign(MIRA, "Mira Renamed", entry(41, T0), NOW))
     assert.is_false(ledger:has(MIRA, 41, T0))
+    assert.equal(NAME, ledger:travelers()[1].name) -- a dropped entry doesn't rename
     assert.equal(40, #ledger:signerEntries(MIRA))
     assert.equal(1, ledger:signerEntries(MIRA)[1].inn)
     assertConsistent(ledger)
@@ -501,16 +504,13 @@ describe("Ledger caps", function()
   end)
 
   -- 3000 entries: 100 signers x 30, each at its own inn, t = T0 + k (k = 1..3000).
-  local function fillTotal(l, oldest)
+  local function fillTotal(l)
     local k = 0
     for s = 1, 100 do
       for j = 1, 30 do
         k = k + 1
         assert.equal("added", l:addForeign(guid(s), NAME, entry(s * 100 + j, T0 + 10 + k), NOW))
       end
-    end
-    for _, o in ipairs(oldest or {}) do
-      assert.equal("added", l:addForeign(o[1], NAME, entry(o[2], T0), NOW))
     end
   end
 
@@ -564,6 +564,18 @@ describe("Ledger caps", function()
     inn:addForeign(MIRA, NAME, entry(9, T0 + 500), NOW)
     assert.is_false(inn:has(a, 9, T0))
     assert.is_true(inn:has(b, 9, T0))
+
+    -- Byte order, whatever the locale: a GUID sorts before any longer GUID it prefixes.
+    local p = newLedger()
+    for i = 1, 148 do
+      p:addForeign(guid(i), NAME, entry(9, T0 + i), NOW)
+    end
+    p:addForeign("Player-1-AB", NAME, entry(9, T0), NOW)
+    p:addForeign("Player-1-A", NAME, entry(9, T0), NOW)
+    assert.equal("Player-1-A", p:innEntries(9).foreign[1].signer)
+    p:addForeign(MIRA, NAME, entry(9, T0 + 500), NOW)
+    assert.is_false(p:has("Player-1-A", 9, T0))
+    assert.is_true(p:has("Player-1-AB", 9, T0))
   end)
 
   it("a flood of 10 000 entries from 500 signers ends at the caps", function()

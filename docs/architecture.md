@@ -181,8 +181,9 @@ Proportional, not ceremonial:
   lists (`PURE`, `DATA`, `GLUE`; specs check them against the TOC and `.luacheckrc`)
   and can load the whole AddOn in TOC order (libraries included).
 - **The stub** (`spec/helpers/wow_stub.lua`): `install(overrides)` / `uninstall()`
-  (restores `_G`), `fire(event, ...)`, `slash("/cmd")`, plus recorded chat output, sent
-  addon messages, queued timers and errors the libraries catch. It supplies the client's
+  (restores `_G`), `fire(event, ...)`, `slash("/cmd")`, a settable clock (`wow.now`,
+  `wow.advance(s)` runs timers as they fall due), plus recorded chat output, sent addon
+  messages, queued timers and errors the libraries catch. It supplies the client's
   `xpcall`, which passes extra arguments to the function; stock Lua 5.1's drops them,
   and Ace3 then calls `OnInitialize` without `self` and swallows the error.
 - **Peer data is hostile in tests.** For every rule in the security model, cover

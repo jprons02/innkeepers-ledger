@@ -30,10 +30,16 @@ end
 local function defaults()
   local api = {}
 
-  api.GetServerTime = function() return 1800000000 end
-  api.GetTime = function() return 0 end
+  -- The clocks: set wow.now (server time, integer seconds) and wow.time (GetTime) per case,
+  -- or move both with wow.advance. Libraries may cache the functions, so set the values.
+  M.now = 1800000000
+  M.time = 0
+  api.GetServerTime = function() return M.now end
+  api.GetTime = function() return M.time end
   api.GetFramerate = function() return 60 end
-  api.IsLoggedIn = function() return false end
+  -- As in the client, true from PLAYER_LOGIN on (AceAddon enables addons only then).
+  M.loggedIn = false
+  api.IsLoggedIn = function() return M.loggedIn end
   api.IsResting = function() return false end
   api.GetLocale = function() return "enUS" end
   api.GetRealmName = function() return "Stubrealm" end
@@ -48,11 +54,29 @@ local function defaults()
   api.UnitClass = function() return "Warrior", "WARRIOR", 1 end
   api.UnitRace = function() return "Human", "Human", 1 end
   api.UnitFactionGroup = function() return "Alliance", "Alliance" end
+  api.GetNormalizedRealmName = function() return "Stubrealm" end
+  -- Three days to the weekly reset.
+  api.C_DateAndTime = {
+    GetSecondsUntilWeeklyReset = function() return 259200 end,
+  }
 
-  -- Timers queue until a test runs them with wow.run_timers().
+  -- Solo, no guild, not in combat.
+  api.IsInGroup = function() return false end
+  api.IsInRaid = function() return false end
+  api.GetNumGroupMembers = function() return 0 end
+  api.IsInGuild = function() return false end
+  api.GetNumGuildMembers = function() return 0, 0, 0 end
+  api.GetGuildRosterInfo = function() return nil end
+  api.C_GuildInfo = { GuildRoster = function() end }
+  api.InCombatLockdown = function() return false end
+
+  -- Timers queue with their due time. wow.advance runs them as the clock reaches them;
+  -- wow.run_timers() runs everything queued, whatever its delay.
   M.timers = {}
   api.C_Timer = {
-    After = function(_, fn) M.timers[#M.timers + 1] = fn end,
+    After = function(delay, fn)
+      M.timers[#M.timers + 1] = { delay = delay, due = M.now + delay, fn = fn }
+    end,
   }
 
   -- Addon metadata comes from this table; the TOC's version is a packager token.
@@ -158,6 +182,9 @@ end
 
 -- Delivers an event to every frame registered for it, as the client does.
 function M.fire(event, ...)
+  if event == "PLAYER_LOGIN" then
+    M.loggedIn = true
+  end
   for _, frame in ipairs(frames) do
     local handler = frame.scripts.OnEvent
     if frame.events[event] and handler then
@@ -166,12 +193,35 @@ function M.fire(event, ...)
   end
 end
 
--- Runs and clears queued C_Timer callbacks.
+-- Runs and clears queued C_Timer callbacks, whatever their delay. Timers they schedule
+-- stay queued.
 function M.run_timers()
   local pending = M.timers
   M.timers = {}
-  for _, fn in ipairs(pending) do
-    fn()
+  for _, timer in ipairs(pending) do
+    timer.fn()
+  end
+end
+
+-- Runs the first due timer, in the order they were scheduled. Returns false if none is due.
+local function run_due()
+  for i, timer in ipairs(M.timers) do
+    if timer.due <= M.now then
+      table.remove(M.timers, i)
+      timer.fn()
+      return true
+    end
+  end
+  return false
+end
+
+-- Moves both clocks forward one second at a time, running each timer once the clock
+-- reaches it, including timers those schedule.
+function M.advance(seconds)
+  for _ = 1, seconds do
+    M.now = M.now + 1
+    M.time = M.time + 1
+    while run_due() do end
   end
 end
 

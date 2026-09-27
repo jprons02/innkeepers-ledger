@@ -9,6 +9,7 @@ return {
     "Collection$",
     "Cosmetics$",
     "SyncProtocol$",
+    "SyncSchedule$",
     "Export$",
   },
 }

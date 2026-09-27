@@ -16,6 +16,7 @@ Ledger.lua
 Collection.lua
 Cosmetics.lua
 SyncProtocol.lua
+SyncSchedule.lua
 Export.lua
 
 Core.lua

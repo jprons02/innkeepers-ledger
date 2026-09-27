@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #44)
+**Updated:** 2026-09-27 (after #45)
 
 ## Current state
 
@@ -52,17 +52,25 @@
   `/ledger debug` log. `Sync:Start()` is still a no-op until #46. The WoW stub now has a
   clock (`wow.advance`) and `IsLoggedIn` turns true at `PLAYER_LOGIN`, so `OnEnable`
   runs under test.
+- **`SyncSchedule` done (#45):** the pure send schedule (budget, HELLO / WANT / reply
+  gates, pending queues, combat hold state, the pump), 100% line coverage under a 95%
+  floor. The security-level review fuzzed it for hours of simulated time (floods, clock
+  jumps, hostile values, failing and late sends); every bound held. It caught one bug,
+  fixed: the returned wake time waited on the budget before a reply could start, so
+  replies started up to a few seconds late.
 
 ## Next step
 
 **Slice 2 (#41, the `Sync` glue) is specced** in [specs/sync-glue.md](specs/sync-glue.md)
 (#42). The spec passed a security-level review; the first pass caught a timer pile-up
 and a send stall on late callbacks, both fixed. Build it in order:
-1. **#45** `SyncSchedule`, the pure send schedule (`ready`). #44 (`Core`) is done.
-2. **#46** `Sync` receive path and sender resolution (blocked by #45). It exposes its
-   counters at `ns.Sync.stats` for the debug report (spec §3.8).
-3. **#47** `Sync` send path, combat hold and the `combat state` guard rule (blocked by
-   #46). Its 40-player-raid simulation checks the traffic model.
+1. **#46** `Sync` receive path and sender resolution (next; #44 and #45 are done). It
+   exposes its counters at `ns.Sync.stats` for the debug report (spec §3.8).
+2. **#47** `Sync` send path, combat hold and the `combat state` guard rule (blocked by
+   #46). Its 40-player-raid simulation checks the traffic model. The glue passes
+   `ledger:shareWindow(SHARE_MAX)` as `io.window` and to `onWant`; the schedule counts
+   its own failed sends in `snapshot().sendFailed`. The schedule's gates never reach the
+   30-message cap on their own (at most 29 at once), so the cap is a backstop.
 
 Also unfiled from [kickoff.md](kickoff.md) Phase 1 step 5: `Phrase` + `Data/Phrases`,
 then `Collection` + `Cosmetics`, then `Export`. Until `Data/Phrases` has entries, every
@@ -97,6 +105,10 @@ items.
 ## Follow-ups
 
 - Move [kickoff.md](kickoff.md) to `docs/archive/` once v1 ships.
+- `SyncSchedule` clamps server time going *backwards* (spec §3.5.2) but not a big jump
+  *forwards*, which ages budget records early (fuzzing with forward jumps saw 48
+  messages in one real minute). Realm time jumping forward is unlikely; if #12 shows it
+  happens, cap how far a jump can age the records.
 - Delete GitHub's default labels (`bug`, `enhancement`, …), which overlap ours
   (maintainer call: deletion).
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers

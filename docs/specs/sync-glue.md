@@ -422,7 +422,10 @@ It returns the next time it wants to run, or `nil` when nothing is pending.
    before `io.send` is called. `io.send` returning false means nothing reached the
    transport: the record and the in-flight entry are removed, and the item is dropped
    (a failed HELLO clears its pending, a failed WANT is gone, a failed reply message drops
-   the rest of that reply). `stats.sendFailed` counts it.
+   the rest of that reply). `stats.sendFailed` counts it. The item's gate stamps
+   (`lastHello`, `lastReply`, `lastLarge`) stay, so a failing transport can't be retried
+   in a loop, and a failed GUILD HELLO still sets the next periodic one (#45). Only
+   `false` is a failure; any other return counts as handed over.
 4. Return the earliest of: each pending HELLO's `max(due, lastHello + helloGap)`; each
    channel's reply time (`max(replyDue, lastReply + replyGap)`, or the large gate's
    opening when only a gated large ask waits); the earliest pending WANT `due`; when

@@ -87,7 +87,7 @@ Agents drive work to done without checking in between steps:
 ## Testing
 
 `busted` specs with a stubbed WoW API layer, `luacheck` clean, and coverage floors on
-pure modules (95% `Ledger`/`SyncProtocol`, 90% the rest), all in CI
+pure modules (95% `Ledger`/`SyncProtocol`/`SyncSchedule`, 90% the rest), all in CI
 (`.github/workflows/ci.yml`) next to the policy guard. **Run every check locally before
 pushing** rather than waiting on CI; the commands are in
 [CONTRIBUTING.md → Development setup](CONTRIBUTING.md#development-setup).

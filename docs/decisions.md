@@ -10,6 +10,18 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Debug toggle wording: keep it as written
+
+The maintainer kept the debug-log wording from the `Sync` glue spec: the command
+`/ledger debug`, the lines `Debug log on.` / `Debug log off.`, and plain `sync: …` lines.
+It's developer-facing and off by default, and changing it later is a one-line edit.
+Closes the open question in the *Debug log* entry below.
+
+*Rejected:* writing in-character ledger phrasing for it now (it's a troubleshooting
+tool, not something players are meant to find).
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.8; ticket #44.
+
 ### 2026-09-27 — Sync glue: a pure send schedule, logical channels and a gated large reply
 
 Settled in the `Sync` glue spec (#42). The send side's timing rules (send budget,

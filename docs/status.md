@@ -81,10 +81,6 @@ In-client work is #12 (needs a Forever client and the maintainer).
 
 - **Beta access (#1, #2):** not opted in as of 2026-09-27. The free opt-in costs nothing;
   opting in soon improves the odds. Decides the plan branch by ~2026-10-03.
-- **Debug toggle wording (non-blocking):** `/ledger debug` and its `Debug log on.` /
-  `Debug log off.` lines are developer-facing placeholders
-  ([specs/sync-glue.md §3.8](specs/sync-glue.md#38-debug-log-and-stats)). Keep them, or
-  give a direction. #44 builds with the placeholders.
 
 ## Waiting on the maintainer in the client
 

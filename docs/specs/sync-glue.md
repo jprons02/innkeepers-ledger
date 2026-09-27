@@ -8,8 +8,8 @@
 > **Read when:** implementing or reviewing `Core`'s ledger wiring, `Sync.lua` or
 > `SyncSchedule.lua`; changing any send trigger, timer, budget or the combat hold.
 
-**Status:** approved (self-approved 2026-09-27, ticket #42; the only maintainer item is
-wording, listed in [Open questions](#open-questions-maintainer), and it doesn't block the build).
+**Status:** approved (self-approved 2026-09-27, ticket #42). The one maintainer item, the
+debug toggle wording, is settled: keep it as written (maintainer, 2026-09-27).
 **Security-sensitive:** yes. Sender resolution, hidden values and everything that reaches
 `SyncProtocol.receive` are attack surface; the reviewer applies security-level scrutiny
 to [§5](#5-security-notes) and must try hostile input of its own.
@@ -62,7 +62,7 @@ rate limits of slice 1), and without sending during fights.
   added; this spec only defines that call.
 - `Phrase`, `Collection`, `Cosmetics`, `Export`, UI. Until `Data/Phrases` has entries,
   every received entry is rejected as an unknown phrase; that is correct.
-- Any player-facing text beyond the placeholder debug toggle lines (wording is a
+- Any player-facing text beyond the debug toggle lines (wording is a
   maintainer gate).
 - `INSTANCE_CHAT`, whispers, custom channels: neither received nor sent in v1 (§8 of
   slice 1; #12 decides `INSTANCE_CHAT`).
@@ -528,8 +528,9 @@ budget records) for tests and the debug report.
   is written `other`) and, for a resolved sender, the GUID **after** it passed
   `validGUID`. Never a name, never message text, never an error message. No link, site or
   service is named.
-- The placeholder wording (`Debug log on.` / `Debug log off.`, `sync: …` lines) is
-  developer-facing. Its direction is a maintainer question ([Open questions](#open-questions-maintainer)).
+- **Wording:** `/ledger debug`, `Debug log on.` / `Debug log off.` and plain `sync: …`
+  lines. It's developer-facing and kept as written (maintainer, 2026-09-27; decisions.md →
+  *Debug toggle wording: keep it as written*).
 
 ### 3.9 Rejected alternatives
 
@@ -872,5 +873,4 @@ Filed under #41, in order:
 
 ## Open questions (maintainer)
 
-- **Debug toggle wording** (non-blocking): `/ledger debug` and the `Debug log on.` /
-  `Debug log off.` lines are developer-facing placeholders. Keep, or give a direction?
+- None. The debug toggle wording was settled on 2026-09-27 (§3.8).

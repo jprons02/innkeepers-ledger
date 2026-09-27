@@ -78,4 +78,6 @@ it. Each stamp is an entry, and a zone's seal appears in `cosmetics`.
 
 An export is produced by open-source code on the player's machine, so **it can be
 edited or forged.** Consumers must treat it as user-supplied input: validate it, cap
-sizes before decompressing, and never assume it proves anything.
+sizes before decompressing, and never assume it proves anything. The format carries no
+key or signature on purpose; see [decisions.md](decisions.md) (2026-09-27, profile site
+trust).

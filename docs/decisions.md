@@ -10,6 +10,33 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Profile site trust: showcase only, no profile key in the v1 export
+
+Exports can't be proven genuine: the code is public, there's no network, and the player
+controls both the string and SavedVariables. So the site **shows collections off and
+never ranks them**, which removes the reward for faking. Trust work lives on the site,
+after launch:
+- **Sanity checks:** only real inns; no times before launch or in the future;
+  cosmetics earned after the entries behind them; no impossible travel; a re-upload
+  keeps earlier stamps.
+- **Ownership:** a login at first Publish, and "Log in with Battle.net" if Blizzard's
+  API covers Forever characters (unchecked).
+- **A report button.**
+- **Later, "witnessed" stamps:** a future export carries fingerprints of entries
+  received through sync (no names), so the site can mark a stamp that another
+  uploader's ledger also holds.
+
+The v1 export stays as specified. New fields can be added later without breaking old
+strings.
+
+*Rejected:*
+- **Leaderboards:** they reward forging, and nothing can stop it.
+- **A profile key in the v1 export:** the Share window would need a "keep this private"
+  warning, anyone shown the string could take over the profile, and a site login gives
+  the same protection with no AddOn change.
+
+*Reflected in:* `docs/export-format.md` → Trust.
+
 ### 2026-09-27 — Profile website: after v1, a separate project, reached by one paste
 
 A website with public player profiles (passport stamps, zone seals, earned badges) is a

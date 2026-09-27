@@ -74,14 +74,11 @@ maintainer).
   wording ("Talk to an innkeeper, sign the ledger, and fill a book of every inn you've
   rested at."). Keep it or give a replacement.
 
-- **Trusting uploads to the profile site (post-v1, in discussion):** exports can be
-  edited, so the site can't treat stamps as proof. How much checking the site does, and
-  whether the export should carry anything extra for it, is still being worked out.
-
 Settled: sender identity per channel (2026-09-26); `Sync` may read combat *state*,
 explained to players in the README; keep the inn ledger after a pivot review; the
-profile website is post-v1 and never named by the AddOn or its download pages (all
-2026-09-27). See [decisions.md](decisions.md).
+profile website is post-v1 and never named by the AddOn or its download pages; the
+site is showcase-only and the v1 export carries no profile key (all 2026-09-27). See
+[decisions.md](decisions.md). The website session has this context.
 
 ## Waiting on the maintainer in the client (batch)
 
@@ -108,6 +105,6 @@ proceeds without them. Full list: [platform-forever.md → Verification checklis
   ([export-format.md](export-format.md)), before export v1 is finalized.
 - CI pins only the top-level rocks (busted, luacheck); their dependencies float. If an
   upstream release breaks CI, pin those as well.
-- `decisions.md` is past the ~200-line split point (304). At the start of October, move
+- `decisions.md` is past the ~200-line split point (331). At the start of October, move
   the September entries to `docs/archive/decisions-2026-09.md` and leave an index line.
   `architecture.md` is at 199; split a section out before adding to it.

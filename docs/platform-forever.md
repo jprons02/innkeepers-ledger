@@ -87,6 +87,16 @@ unverified · ❓ unknown
       day and time per region (for the fallback table)
 - [ ] Addon-message sender name resolves to a GUID: `UnitGUID(sender)` for group
       members; guild roster exposes member GUIDs
+- [ ] Sync glue ([specs/sync-glue.md §8](specs/sync-glue.md#8-unverified-client-facts-this-spec-relies-on)):
+      the `CHAT_MSG_ADDON` sender string's form (realm suffix? a space in two-part
+      names?) and whether `UnitGUID` accepts it; `GetNormalizedRealmName()` on a
+      mega-realm; `GetGuildRosterInfo`'s GUID is its 17th return; `GUILD_ROSTER_UPDATE`
+      and `C_GuildInfo.GuildRoster()` behave as on retail; `UnitGUID("player")` and the
+      weekly-reset API are readable at `PLAYER_LOGIN`; what
+      `RegisterAddonMessagePrefix` returns; `InCombatLockdown` and the
+      `PLAYER_REGEN_*` events behave as on retail; ChatThrottleLib's send callback
+      reports `didSend`; `LE_PARTY_CATEGORY_HOME` exists and separates home groups from
+      instance-only ones
 - [ ] Collect innkeeper NPC IDs for every inn (the `Data/Inns` table)
 - [ ] Sitting detection, if any
 

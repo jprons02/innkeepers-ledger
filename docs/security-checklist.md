@@ -71,7 +71,9 @@ overwritten. Release review item 1 covers those.
   `InCombatLockdown` or the `PLAYER_REGEN_*` events. That reads a combat *state* flag,
   not combat data. **Approved by the maintainer** ([decisions.md](decisions.md),
   2026-09-27): add the allow-list entry when the sync implementation lands, citing that
-  decision.
+  decision. It goes in as a separate `combat state` rule allowed only in `Sync.lua`; the
+  `combat data` rule stays closed everywhere
+  ([specs/sync-glue.md §5.2](specs/sync-glue.md#52-the-forbidden-apis-change)).
 
 ## Release review (every `dev → main` PR)
 

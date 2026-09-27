@@ -10,6 +10,86 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Sync glue: a pure send schedule, logical channels and a gated large reply
+
+Settled in the `Sync` glue spec (#42). The send side's timing rules (send budget,
+HELLO / WANT / reply gates, pending queues, the combat hold) live in a new **pure**
+module, `SyncSchedule`, with a **95% coverage floor** like the rest of the sync boundary.
+`Sync.lua` is the thin glue around it, built as an instance with injected client
+functions so tests can run two or forty clients in one Lua state. Also:
+- **Logical channels:** gates and pending items are per `GROUP` (PARTY or RAID on the
+  wire) and `GUILD`, so a party that becomes a raid keeps its pending reply.
+- **The send budget counts at hand-off to ChatThrottleLib, with at most 2 messages in
+  flight** (released by the send callback, or after 30 s). On the wire that bounds any
+  60 s to 32 messages and 70 entries, under the receiver's 40 and 80.
+- **Any reply of more than one message (over 5 entries) is gated** to one per channel per
+  5 minutes unless our window changed. This is stricter than slice 1 §8, which gated only
+  `since = 0`: a hostile peer could have asked with `since = tMin` for a full reply every
+  30 s. A gated ask is deferred, not dropped.
+- **`decideWant` runs only when a WANT can actually go out**, so a peer's two asks per 10
+  minutes are spent on real sends and suppression sees the latest state.
+- **No HELLO from an empty share window.** A new own signature (`Sync:WindowChanged()`,
+  called by `Sign`) sends a HELLO on each channel after 5–15 s.
+- **`Core` opens the ledger at `PLAYER_LOGIN`**, retrying an unreadable GUID 5 times over
+  10 s, and never uses a hidden GUID as a table key; the ledger lives at `ns.ledger`.
+- **One live pump timer:** a generation-checked timer at most 5 s ahead, and send
+  callbacks request a pump (never run one), so timers can't pile up and a queued send
+  doesn't stall the in-flight cap. Found in the spec review.
+- **The combat names get their own `forbidden-apis` rule** (`combat state`, allowed in
+  `Sync.lua`) instead of widening the `combat data` rule, which stays closed everywhere.
+
+*Rejected:*
+- **The send logic inside `Sync.lua`:** no coverage floor, no strict environment, and the
+  traffic model depends on exactly this logic.
+- **Scheduling inside `SyncProtocol`:** it's the validation boundary; state machines
+  there grow what the security review has to re-read.
+- **One timer per pending item:** hundreds in a big guild, and ordering across timers is
+  hard to test. One pump with a computed wake time instead.
+- **Budget counted on send callbacks only:** a lost callback would freeze sending.
+- **Deciding a WANT when its jitter timer fires:** the decision goes stale behind the
+  budget or a fight, and spends an ask on a WANT that may never go out.
+- **Widening the `combat data` allow-list for `Sync.lua`:** it would admit the combat log,
+  health and auras too.
+
+*Reflected in:* `docs/specs/sync-glue.md`; tickets under #41.
+
+### 2026-09-27 — Guild HELLO interval
+
+The first guild HELLO goes 60–120 s after login (or after joining a guild), then one every
+**20–25 minutes** (1 200 s plus a random 0–300 s, so guildmates don't line up), on top of
+the HELLO after each new own signature. Each is still subject to the 1-per-60-s gate and
+the send budget, and nothing is sent from an empty window.
+
+A guild's news travels through the signature-triggered HELLO within seconds; the periodic
+one only serves guildmates who logged in since. At 1 000 online members that's about 45
+HELLOs a minute at each receiver, far under the 1 200 global limit.
+
+*Rejected:*
+- **Every 5 minutes:** about 200 HELLOs a minute in a 1 000-member guild, for news that
+  isn't urgent.
+- **Only at login:** a guildmate who logs in later wouldn't hear from anyone until the
+  next login or signature.
+- **A HELLO whenever a guildmate comes online:** roster events fire constantly and would
+  make every online member answer every login.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.5.
+
+### 2026-09-27 — Debug log: off by default, session only, no peer strings
+
+`/ledger debug` turns a debug log on or off for the session; the setting is never saved.
+Turning it on prints one report line (the ledger state and sync counters). While it's on,
+lines go to the chat frame, at most 5 per 10 s, with a count of the lines skipped. A line
+holds only our own words and reason codes, numbers, a channel name from our own set, and a
+sender GUID after it passed validation: never a name, message text or error text. The
+toggle wording is a placeholder until the maintainer gives a direction.
+
+*Rejected:*
+- **A saved setting:** it gets forgotten on, and prints for weeks.
+- **An in-memory log buffer:** it would hold peer-derived data that nobody reads.
+- **Printing every drop:** a raid would flood the chat frame.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.8; `docs/status.md` → Open questions.
+
 ### 2026-09-27 — Ledger orders by bytes, keeps sorted indexes, and tightens two inputs
 
 Built in #30 (PR #38). Three choices the spec left open or that came out of review:

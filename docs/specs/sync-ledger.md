@@ -526,7 +526,9 @@ see 8):
   WANTs about 1–3 per member raid-wide after the 1–5 s jitter and suppression (≤ 120);
   one coalesced full reply per member (8 messages × 40 = 320). About 480 messages, under
   the 1 200 ceiling; the hard upper bound (39 × 30 = 1 170) is under it too. Members that
-  hit the 12-WANT budget finish in the next minute.
+  hit the 12-WANT budget finish in the next minute. The `Sync` glue's model of its actual
+  rules puts WANTs higher (about 8 per member) and still under every limit
+  ([sync-glue.md §3.5.2](sync-glue.md#352-the-send-budget) → Traffic check).
 - **A hostile peer churning its digest** gets at most 2 WANTs per honest peer per
   10 minutes, fewer after suppression. **A hostile peer spamming `W…:0`** gets at most
   one full reply per channel per 5 minutes. **A hostile flood** is cut at 40 messages

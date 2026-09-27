@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #31)
+**Updated:** 2026-09-27 (after #42)
 
 ## Current state
 
@@ -50,12 +50,14 @@
 
 ## Next step
 
-**#42: write the `Sync` glue spec** (`ready`, no blockers). It's the first sub-issue of
-slice 2 (#41, the `Sync` glue). It expands [specs/sync-ledger.md](specs/sync-ledger.md)
-§8 into `docs/specs/sync-glue.md`: `Core` ledger wiring, receive path and sender
-resolution, send budget and timers, the guild HELLO interval, the combat hold and its
-`forbidden-apis` allow-list change, and the debug log. Then it files the implementation
-sub-issues under #41.
+**Slice 2 (#41, the `Sync` glue) is specced** in [specs/sync-glue.md](specs/sync-glue.md)
+(#42). The spec passed a security-level review; the first pass caught a timer pile-up
+and a send stall on late callbacks, both fixed. Build it in order:
+1. **#44** `Core` opens the character's ledger at login (`ready`) and **#45**
+   `SyncSchedule`, the pure send schedule (`ready`). These two can run in parallel.
+2. **#46** `Sync` receive path and sender resolution (blocked by #44, #45).
+3. **#47** `Sync` send path, combat hold and the `combat state` guard rule (blocked by
+   #46). Its 40-player-raid simulation checks the traffic model.
 
 Also unfiled from [kickoff.md](kickoff.md) Phase 1 step 5: `Phrase` + `Data/Phrases`,
 then `Collection` + `Cosmetics`, then `Export`. Until `Data/Phrases` has entries, every
@@ -79,6 +81,10 @@ In-client work is #12 (needs a Forever client and the maintainer).
 
 - **Beta access (#1, #2):** not opted in as of 2026-09-27. The free opt-in costs nothing;
   opting in soon improves the odds. Decides the plan branch by ~2026-10-03.
+- **Debug toggle wording (non-blocking):** `/ledger debug` and its `Debug log on.` /
+  `Debug log off.` lines are developer-facing placeholders
+  ([specs/sync-glue.md §3.8](specs/sync-glue.md#38-debug-log-and-stats)). Keep them, or
+  give a direction. #44 builds with the placeholders.
 
 ## Waiting on the maintainer in the client
 
@@ -99,6 +105,6 @@ items.
   the caps (40 000 entries) loads in about 4 s. Peers can't reach this, so it's not
   needed for v1; batch the evictions if it ever matters (decisions.md → 2026-09-27 —
   Ledger orders by bytes).
-- `decisions.md` is at 524 lines. At the start of October, move the September entries to
+- `decisions.md` is at 604 lines. At the start of October, move the September entries to
   `docs/archive/decisions-2026-09.md` and leave an index line. `architecture.md` is at
   198; split a section out before adding to it.

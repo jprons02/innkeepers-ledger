@@ -75,7 +75,8 @@ unverified · ❓ unknown
 - [ ] `IsResting()` true inside inns
 - [ ] Embedded libraries (see [libraries.md](libraries.md)) load without errors
 - [ ] Addon message PARTY / RAID / GUILD round-trip between two characters
-- [ ] Addon messages inside an instance / during an encounter
+- [ ] Addon messages inside an instance / during an encounter, and which chat type
+      instance groups use (`PARTY`/`RAID` or `INSTANCE_CHAT`)
 - [ ] Addon message size limit (255 bytes on retail) and send rate limits (what
       ChatThrottleLib assumes)
 - [ ] Hidden values outside combat: does `UnitGUID("npc")` at an innkeeper, and the

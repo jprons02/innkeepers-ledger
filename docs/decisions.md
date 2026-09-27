@@ -10,6 +10,85 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Peer-data rate limits and time window
+
+Received, per resolved sender GUID in fixed 60-second windows: 40 messages and 80
+entries. Across all senders: 1 200 admitted messages. At most 1 000 senders are tracked;
+when the table is full after pruning, new senders are dropped. Sent, by our own `Sync`:
+at most 30 messages and 60 entries in any 60 s, 1 HELLO per channel per minute, 12
+WANTs per minute, and one full reply per channel per 5 minutes (a later one is deferred,
+not dropped). Timestamps must fall
+between 2026-09-17 00:00 UTC (the Forever beta start) and now + 300 s. The numbers are
+checked against a written traffic model (a 40-player raid syncing from scratch stays
+under every limit). Details: `docs/specs/sync-ledger.md` §3.1, §5.3, §8.
+
+*Rejected:*
+- **The launch date (2026-11-04) as the earliest time:** entries signed during the beta
+  would fail, so the AddOn couldn't be tested there. Backdating by seven weeks gains a
+  forger nothing.
+- **A token bucket:** smoother, but a fixed window is simpler to test exactly, and the
+  double burst at a window edge is still small.
+- **No global ceiling:** a crowd of modified clients could each stay under the
+  per-sender limit.
+- **The first draft's 30 / 600 limits:** they left WANT traffic out, so honest raid
+  traffic would have been dropped (found in the spec review).
+
+*Reflected in:* `docs/specs/sync-ledger.md`; `docs/architecture.md` → Security model.
+
+### 2026-09-27 — Ledger storage: caps, eviction and SavedVariables shape
+
+Foreign entries are capped at **40 per signer** (equal to the share window), **150 per
+inn** and **3 000 in total** (about 400 KB of SavedVariables). Over a cap, the oldest
+entry by `(t, signer, inn)` goes, so the store always holds the newest. Own entries are
+never evicted. Ledgers live in `InnkeepersLedgerDB.global.ledgers[<character GUID>]`
+with a ledger-level `schema` field (the per-entry `v` is gone), entries grouped per
+traveler, and the time each cosmetic was earned. A ledger whose schema is newer than the
+AddOn, or unreadable, opens read-only and is never rewritten. Details:
+`docs/specs/sync-ledger.md` §4.
+
+*Rejected:*
+- **AceDB's per-character namespace:** it's keyed by name, and names can change; the
+  GUID is the identity.
+- **Evicting by receive time:** replaying old entries would keep them alive; signing
+  time is what the book shows.
+- **A flat list with signer and name on every entry:** repeats the GUID and name up to
+  40 times per traveler.
+- **Larger caps (10 000+):** multi-megabyte SavedVariables for a guild-heavy player,
+  with little gain on the book's pages.
+- **Wiping or rewriting unreadable saved data:** it would destroy a player's ledger after
+  a downgrade.
+- **Migrating in place:** a migration that fails halfway would leave half-migrated
+  data; migrations run on a copy that is written back only on success.
+
+*Reflected in:* `docs/specs/sync-ledger.md` §4; `docs/architecture.md` → Data model.
+
+### 2026-09-27 — Sync wire format v1 and digest
+
+Three ASCII messages, `H1:<count>:<digest>`, `W1:<target GUID>:<since>` and
+`E1:<entry>;…` with up to 5 entries of `inn,t,p.p.p,seal`, in decimal with exactly one
+spelling per number; every message fits in 255 bytes (worst case 242). ENTRIES are
+broadcast so one reply serves every asker. The digest is a polynomial hash
+`h = (h * 257 + byte) % 2147483647` over the canonical text of the sender's newest 40
+own entries, which is exact in Lua 5.1 without a `bit` library. A peer is asked at most
+twice per 10 minutes whatever its digest does, and a WANT seen on the same channel for the
+same peer suppresses ours (the broadcast reply covers us). A syntax error drops the
+whole message, while an unknown inn, phrase or seal skips only that entry. Messages
+echoed back from ourselves are dropped. Details: `docs/specs/sync-ledger.md` §3, §5.1.
+
+*Rejected:*
+- **CRC32 / FNV:** need bitwise operations that busted's Lua 5.1 lacks, so the tests
+  wouldn't run the shipped code.
+- **Count + newest time as the digest:** misses a lost message in the middle.
+- **Base36 or binary numbers:** one more entry per message, but a harder parser to audit.
+- **A version on every entry:** the header already carries it.
+- **Replying by whisper:** whispers aren't an accepted channel in v1.
+- **Dropping a whole message for one unknown ID:** a peer with newer inn data would lose
+  its valid entries too.
+- **Capping WANTs per (peer, digest):** a peer churning its digest could make a whole
+  raid broadcast WANTs nonstop (found in the spec review).
+
+*Reflected in:* `docs/specs/sync-ledger.md`; `docs/architecture.md` → Sync protocol.
+
 ### 2026-09-27 — AddOn list blurb names both halves of the AddOn
 
 The TOC `## Notes` line (the tooltip in the in-game AddOns list) reads "Sign the ledger

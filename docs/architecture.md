@@ -59,23 +59,21 @@ arguments, so tests don't need a WoW stub. That includes libraries: `Export` can
 
 ```
 Entry {
-  v        : schema version (int)
   inn      : innkeeper NPC ID (int)         -- identifies the inn
-  signer   : player GUID (string)           -- "Player-<realm>-<id>"
-  name     : character name at signing (string, validated)
   t        : server time of signing, GetServerTime() (int)
   phrase   : array of phrase/word IDs (ints)
   seal     : cosmetic ID used when signing (int, optional)
 }
+-- held per signer: signer = player GUID (identity), name = display only
 ```
 
-- **Stored vs sent:** this is the stored shape. On the wire, `signer` and `name` are
-  never sent; the receiver fills them in from the resolved sender (see Sync protocol).
-- **Identity/dedupe key:** `(signer, inn, t)`.
-- **Own vs others:** own entries are the ones where `signer == UnitGUID("player")`.
-- **Storage caps:** caps on foreign entries in total, per signer, and per inn. When a cap
-  is hit, evict the oldest entries first. Own entries are never evicted. Numbers are
-  set in the first spec; SavedVariables bloat is a real risk.
+- **Stored vs sent:** entries are stored per signer GUID (the traveler record holds the
+  name), and the schema version lives on the ledger, not on each entry. On the wire,
+  `signer` and `name` are never sent; the receiver fills them in from the resolved sender.
+- **Identity/dedupe key:** `(signer, inn, t)`. Own entries are the ledger owner's.
+- **Storage caps:** foreign entries capped in total, per signer and per inn, oldest
+  evicted first; own entries never evicted. Numbers, SavedVariables shape and migration:
+  [specs/sync-ledger.md](specs/sync-ledger.md) §4.
 
 ## Sync protocol (SyncProtocol + Sync)
 
@@ -96,16 +94,16 @@ Transport: addon messages, prefix `InnLedger` (≤16 chars). Channels: `PARTY`/`
   peer data. Entries are tiny, so compression buys nothing.
 - **Signer and name aren't sent.** Under the own-signature rule they are always the
   sender, so the receiver fills them in from the resolved sender (below). The wire entry
-  carries only `v`, `inn`, `t`, `phrase` and `seal`.
+  carries only `inn`, `t`, `phrase` and `seal`; the message header carries the version.
 
-Sketch (the first spec finalizes it):
+Three messages (grammar, digest, byte counts and rate limits:
+[specs/sync-ledger.md](specs/sync-ledger.md) §3 and §5):
 
-1. **HELLO** — on group join/roster change, or periodically for guild: send a compact
-   digest of *your own* entries (count + hash).
-2. **WANT** — a peer whose digest for you differs asks for your entries (optionally
-   "since t").
-3. **ENTRIES** — reply with your own entries only, one or more per message, each message
-   complete on its own.
+1. **HELLO** — on group join/roster change, or periodically for guild: count + digest
+   of *your own* newest entries.
+2. **WANT** — a peer whose digest for you differs asks for your entries since a time.
+3. **ENTRIES** — broadcast reply with your own entries only, up to 5 per message, each
+   message complete on its own.
 
 ### Security model — the riskiest part of the AddOn
 
@@ -137,9 +135,9 @@ AddOn. `SyncProtocol` validates everything before anything reaches `Ledger`:
 - **Name:** length-capped and matched against the character name pattern (no `|`, so no
   UI escape codes); it's rendered only as text, never interpreted.
 - **Time sanity:** reject timestamps in the future (small tolerance) or before the
-  game's launch.
-- **Rate limits:** per-sender messages per minute and entries per batch. Drop anything
-  over the limit silently.
+  Forever beta began.
+- **Rate limits:** per-sender messages and entries per minute, plus a global ceiling.
+  Drop anything over the limit silently. (All numbers: the slice-1 spec.)
 - **Fail closed and quiet:** malformed input is dropped with no error pop-ups and no
   chat output. Only a debug log, when enabled. Parsing runs inside `pcall`.
 - **Threat model:** other players are untrusted. The player's own installed AddOns are

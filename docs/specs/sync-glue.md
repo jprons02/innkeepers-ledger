@@ -519,7 +519,10 @@ budget records) for tests and the debug report.
 - **Off by default, session only.** `/ledger debug` toggles it. The state isn't saved,
   so it can't be left on by accident across logins.
 - **Turning it on** prints one report line: the ledger state (`read-only (<reason>)` or
-  `open`, with the non-zero `loadReport` counts, or `no GUID`) and the `stats` totals.
+  `open`, with the non-zero `loadReport` counts, or `no GUID`, `open failed`, `not open
+  yet` while the GUID retry runs) and the `stats` totals. `Core` reads the real client's
+  counters at `ns.Sync.stats` (the `Sync` receive ticket exposes them there) and sums each
+  table of counters; with no `stats` it prints `sync: no stats`.
 - **While on:** `Core:Debug(line)` prints through `Core:Print`. At most 5 lines per 10 s;
   lines over that are counted, and the next printed line starts with `(<n> skipped)`.
   Nothing is buffered.

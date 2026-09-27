@@ -24,13 +24,17 @@ std = "pure"
 local wow = {
   "C_AddOns",
   "C_ChatInfo",
+  "C_DateAndTime",
   "C_Timer",
   "CreateFrame",
   "GetAddOnMetadata",
+  "GetCurrentRegion",
   "GetServerTime",
   "IsResting",
   "LibStub",
   "UnitGUID",
+  "UnitName",
+  "issecretvalue",
 }
 
 -- Keep in sync with GLUE in spec/helpers/load.lua (a spec checks it against the TOC).

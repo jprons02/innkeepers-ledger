@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #42)
+**Updated:** 2026-09-27 (after #44)
 
 ## Current state
 
@@ -47,15 +47,20 @@
   their folder and MSYS2's `ucrt64/bin` are put on `PATH` for the session (PowerShell
   line in [CONTRIBUTING.md](../CONTRIBUTING.md#development-setup)). Run every check
   locally before pushing; CI confirms.
+- **Slice 2 started (#41):** `Core` opens the character's ledger at login as `ns.ledger`
+  (#44): GUID retry, weekly anchor with the region fallback, damaged-data handling, the
+  `/ledger debug` log. `Sync:Start()` is still a no-op until #46. The WoW stub now has a
+  clock (`wow.advance`) and `IsLoggedIn` turns true at `PLAYER_LOGIN`, so `OnEnable`
+  runs under test.
 
 ## Next step
 
 **Slice 2 (#41, the `Sync` glue) is specced** in [specs/sync-glue.md](specs/sync-glue.md)
 (#42). The spec passed a security-level review; the first pass caught a timer pile-up
 and a send stall on late callbacks, both fixed. Build it in order:
-1. **#44** `Core` opens the character's ledger at login (`ready`) and **#45**
-   `SyncSchedule`, the pure send schedule (`ready`). These two can run in parallel.
-2. **#46** `Sync` receive path and sender resolution (blocked by #44, #45).
+1. **#45** `SyncSchedule`, the pure send schedule (`ready`). #44 (`Core`) is done.
+2. **#46** `Sync` receive path and sender resolution (blocked by #45). It exposes its
+   counters at `ns.Sync.stats` for the debug report (spec §3.8).
 3. **#47** `Sync` send path, combat hold and the `combat state` guard rule (blocked by
    #46). Its 40-player-raid simulation checks the traffic model.
 

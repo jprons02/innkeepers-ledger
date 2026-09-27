@@ -27,7 +27,7 @@ task needs, using the "Read when" column. Don't read everything.
 | [docs/security-checklist.md](docs/security-checklist.md) | security checks on every PR (incl. the forbidden-API list) and the release security review | opening a release PR; changing CI, `scripts/check-*.sh` or an allow-list; calling a new WoW API |
 | [docs/libraries.md](docs/libraries.md) | embedded libraries: versions, reviewed file hashes, licenses, security findings, upgrade steps | touching `Libs/`, sync transport or serialization; "is this library safe/allowed" |
 | [docs/export-format.md](docs/export-format.md) | the export string spec (draft v0) | `Export` module; any change to exported data |
-| [docs/prior-art.md](docs/prior-art.md) | existing guestbook AddOns and what we took from them | positioning, sync pattern precedent |
+| [docs/prior-art.md](docs/prior-art.md) | existing guestbook AddOns and what we took from them; the Forever AddOn landscape near launch | positioning, sync pattern precedent, "does this already exist?" for a new feature |
 | [docs/kickoff.md](docs/kickoff.md) | phased build sequence to v1, cut order, completion criteria | picking the next step; timeline slips |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | local dev setup (Lua 5.1, busted, luacheck; Windows notes), PR conventions | setting up tooling; tests won't run locally |
 | `docs/specs/<feature>.md` | one spec per feature (written by the planner) | working on that feature |

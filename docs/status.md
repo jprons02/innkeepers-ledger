@@ -9,56 +9,56 @@
 
 ## Current state
 
-- **Foundation done:**
-  - docs, the context map and branch flow, with protection on `main` and `dev`
-  - the agent team (planner, implementer, reviewer)
-  - ticket forms, labels and the `v1 launch` milestone
-  - kickoff steps 1–3 ([kickoff.md](kickoff.md))
-- **AddOn scaffold (#8):**
-  - TOC (placeholder interface number), `Libs/embeds.xml`
-  - every module as an empty stub on the shared `ns`
-  - `Core` with AceDB + `/ledger`
-  - WoW API stub and loader helpers; the whole AddOn loads under `busted`
-
-  Module logic: ⬜ none yet.
-- **Libraries:** reviewed and vendored in `Libs/`. The manifest is pinned to the review
-  doc's hash list ([libraries.md](libraries.md)).
-- **CI:** five required checks on `main` and `dev`:
-  - `no-urls-in-game-code`
-  - `luacheck`
-  - `busted` (Lua 5.1)
-  - `libs-manifest`
-  - `forbidden-apis`
-
-  Every release PR also gets a security review
-  ([security-checklist.md](security-checklist.md)).
-- **Releases:** `main` = `dev` in content as of #24 (2026-09-26), the first release with
-  a *Security review* section. No tags yet (maintainer gate).
-- **Client verification** ([platform-forever.md](platform-forever.md) checklist): ⬜ no
-  Forever client yet.
-- **Local toolchain:** Lua 5.1 + busted 2.3.0 + luacheck 1.2.0 in a hererocks folder
-  ([CONTRIBUTING.md](../CONTRIBUTING.md)). That folder isn't on the agent shell's
-  `PATH`, so CI is the authority for busted/luacheck. `scripts/check-*.sh` run locally
-  with `sh`.
+- **Foundation done:** docs and context map, branch flow with protection on `main` and
+  `dev`, the agent team, ticket forms and labels, kickoff steps 1–3
+  ([kickoff.md](kickoff.md)).
+- **AddOn scaffold (#8):** TOC (placeholder interface number), `Libs/embeds.xml`, every
+  module as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger`, and a WoW
+  API stub so the whole AddOn loads under `busted`. Module logic: ⬜ none yet.
+- **Libraries:** reviewed and vendored in `Libs/`, manifest pinned to
+  [libraries.md](libraries.md).
+- **CI:** five required checks on `main` and `dev`: `no-urls-in-game-code`, `luacheck`,
+  `busted` (Lua 5.1), `libs-manifest`, `forbidden-apis`. Release PRs also get a security
+  review ([security-checklist.md](security-checklist.md)).
+- **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs-only
+  changes (#25–#27). No tags yet (maintainer gate).
+- **Direction re-confirmed (2026-09-27):** after a pivot review the inn ledger stays,
+  with the collection leaning into a passport feel (stamp per inn, seal per zone). A
+  public profile website is a post-v1, separate project that the AddOn never names
+  ([vision.md](vision.md) → Where it can grow; [decisions.md](decisions.md)).
+- **Client verification** ([platform-forever.md](platform-forever.md)): ⬜ no Forever
+  client yet.
+- **Local toolchain:** Lua 5.1 + busted + luacheck in a hererocks folder that isn't on
+  the agent shell's `PATH` ([CONTRIBUTING.md](../CONTRIBUTING.md)), so CI is the
+  authority for busted/luacheck. `scripts/check-*.sh` run locally with `sh`.
 
 ## Next step
 
-**#10 Slice 1 parent → #11: write the spec and file the implementation tickets.** Done
-so far: #7, #8, #9, #22. In-client work is #12 (needs a Forever client and the
-maintainer).
+**#11: write the slice-1 spec (`docs/specs/sync-ledger.md`) and file the implementation
+tickets under #10.** Nothing blocks it. Beyond the ticket's scope, the spec must also
+cover these 2026-09-27 outcomes (also posted as a comment on #11; #12 has a matching
+comment for the new client checks):
+- `Sync` holds sends during combat using `InCombatLockdown` / `PLAYER_REGEN_*` (approved).
+  Widen the `forbidden-apis` allow-list only when that code lands.
+- Fail safe if Forever hides values from addons: an unreadable innkeeper NPC ID or
+  message sender means "don't sign" / "drop the message", never a crash or a guess
+  ([platform-forever.md](platform-forever.md) → AddOns and the API).
+- The Ledger keeps the earned time of every cosmetic, and keeps received entries with
+  signer GUID, inn and time, because the export and later "witnessed" stamps need them
+  ([export-format.md](export-format.md)).
+
+In-client work is #12 (needs a Forever client and the maintainer).
 
 ## Client access plan
 
 - **Beta window:** 2026-09-17 → **2026-10-21**. Launch: **2026-11-04**.
 - **Default route: the free beta opt-in** on the official Forever site. Invites go out in
   waves and aren't guaranteed.
-- **Paid route (maintainer's call only):** the higher-tier pre-purchase editions include
-  beta access. Buying one is never done on the project's behalf; it happens only if the
-  maintainer names that purchase.
-- **Retail as a stand-in:** Forever reportedly uses the retail-style API, so generic
-  mechanics (gossip events, `UnitGUID("npc")` parsing, `IsResting()`, addon-message round-trips,
-  instance messaging) can be prototyped on retail. Results are only indicative until
-  confirmed on Forever. The innkeeper list and TOC interface number can't be substituted.
+- **Paid route (maintainer's call only):** higher-tier pre-purchase editions include
+  beta access. Never bought on the project's behalf.
+- **Retail as a stand-in:** generic mechanics (gossip events, `UnitGUID("npc")`,
+  `IsResting()`, addon-message round-trips) can be prototyped on retail. Results are only
+  indicative; the innkeeper list and TOC interface number can't be substituted.
 
 **Branches of the plan:**
 - **Beta access by ~2026-10-03:** run Phase 2 during the beta and aim to release at launch.
@@ -67,34 +67,27 @@ maintainer).
 
 ## Open questions (maintainer to decide)
 
-- **Beta access:** not opted in as of 2026-09-27. The free opt-in costs nothing and
-  invites go out in waves, so opting in soon improves the odds. Decides which plan
-  branch applies (by ~2026-10-03); without access, plan for the no-beta branch.
-- **AddOn list blurb (low priority):** the TOC `## Notes` line reuses the README's
-  wording ("Talk to an innkeeper, sign the ledger, and fill a book of every inn you've
-  rested at."). Keep it or give a replacement.
-
-Settled: sender identity per channel (2026-09-26); `Sync` may read combat *state*,
-explained to players in the README; keep the inn ledger after a pivot review; the
-profile website is post-v1 and never named by the AddOn or its download pages; the
-site is showcase-only and the v1 export carries no profile key (all 2026-09-27). See
-[decisions.md](decisions.md). The website session has this context.
+- **Beta access (#1, #2):** not opted in as of 2026-09-27. The free opt-in costs nothing;
+  opting in soon improves the odds. Decides the plan branch by ~2026-10-03.
+- **AddOn list blurb (low priority):** keep the TOC `## Notes` line ("Talk to an
+  innkeeper, sign the ledger, and fill a book of every inn you've rested at.") or replace
+  it. Suggested alternative: "Sign the ledger at every inn you rest in, and collect the
+  signatures of travelers you meet along the way."
+- **#3:** an old seed ticket duplicated by #10/#11. Proposed: close it as a duplicate of
+  #10 (awaiting the maintainer's OK).
 
 ## Waiting on the maintainer in the client (batch)
 
-Tracked in #12. These need someone at the keyboard in a Forever client. Everything else
-proceeds without them. Full list: [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
+Tracked in #12; full list in [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
 
-- TOC interface number (the TOC holds a marked placeholder, `120000`); AddOn loads
-- Innkeeper gossip: `GOSSIP_SHOW` + NPC ID from `UnitGUID("npc")`; option injection works
+- TOC interface number (placeholder `120000`); AddOn and libraries load
+- Innkeeper gossip: `GOSSIP_SHOW` + NPC ID from `UnitGUID("npc")`; option injection
 - `IsResting()` inside inns; sitting detection, if any
-- Addon messages PARTY / RAID / GUILD between two characters, including inside an
-  instance; message size and rate limits; embedded libraries load
-- Player GUID and name format on the mega-realm; sender name → GUID resolution (group
-  via `UnitGUID`, guild roster exposes GUIDs)
+- Addon messages PARTY / RAID / GUILD, including inside an instance; size and rate limits
+- Hidden values outside combat (innkeeper NPC ID, addon-message sender); addon messages
+  to a custom channel allowed or blocked
+- Player GUID and name format (two-part names?); sender name → GUID resolution
 - Walk every inn to collect innkeeper NPC IDs (`Data/Inns`)
-- Hidden ("secret") values outside combat: innkeeper NPC ID and addon-message sender
-  arrive readable; addon messages to a custom channel allowed or blocked
 
 ## Follow-ups
 
@@ -102,9 +95,8 @@ proceeds without them. Full list: [platform-forever.md → Verification checklis
 - Delete GitHub's default labels (`bug`, `enhancement`, …), which overlap ours
   (maintainer call: deletion).
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
-  ([export-format.md](export-format.md)), before export v1 is finalized.
-- CI pins only the top-level rocks (busted, luacheck); their dependencies float. If an
-  upstream release breaks CI, pin those as well.
-- `decisions.md` is past the ~200-line split point (331). At the start of October, move
-  the September entries to `docs/archive/decisions-2026-09.md` and leave an index line.
-  `architecture.md` is at 199; split a section out before adding to it.
+  before export v1 is finalized ([export-format.md](export-format.md)).
+- CI pins only the top-level rocks; if an upstream release breaks CI, pin dependencies too.
+- `decisions.md` is at 331 lines. At the start of October, move the September entries to
+  `docs/archive/decisions-2026-09.md` and leave an index line. `architecture.md` is at
+  199; split a section out before adding to it.

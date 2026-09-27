@@ -23,9 +23,10 @@
   2026-09-27), enforced for own and incoming signatures.
 - **Libraries:** reviewed and vendored in `Libs/`, manifest pinned to
   [libraries.md](libraries.md).
-- **CI:** five required checks on `main` and `dev`: `no-urls-in-game-code`, `luacheck`,
-  `busted` (Lua 5.1), `libs-manifest`, `forbidden-apis`. Release PRs also get a security
-  review ([security-checklist.md](security-checklist.md)).
+- **CI:** seven required checks on `main` and `dev`: `no-urls-in-game-code`, `luacheck`,
+  `busted` (Lua 5.1), `coverage` (floors on pure modules), `docs-links`,
+  `libs-manifest`, `forbidden-apis`. Release PRs also get a security review
+  ([security-checklist.md](security-checklist.md)).
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs-only
   changes (#25–#32). No tags yet (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
@@ -33,11 +34,10 @@
   AddOn never names ([vision.md](vision.md) → Where it can grow).
 - **Client verification** ([platform-forever.md](platform-forever.md)): ⬜ no Forever
   client yet.
-- **Local toolchain:** Lua 5.1 + busted + luacheck live in a hererocks folder that isn't
-  on the agent shell's `PATH` ([CONTRIBUTING.md](../CONTRIBUTING.md)), so CI is the
-  authority for busted/luacheck. The folder's `bin/lua.exe` runs by full path for quick
-  Lua 5.1 checks (the spec's digest vectors were computed that way).
-  `scripts/check-*.sh` run locally with `sh`.
+- **Local toolchain works:** Lua 5.1, busted, luacheck and luacov run locally once
+  their folder and MSYS2's `ucrt64/bin` are put on `PATH` for the session (PowerShell
+  line in [CONTRIBUTING.md](../CONTRIBUTING.md#development-setup)). Run every check
+  locally before pushing; CI confirms.
 
 ## Next step
 

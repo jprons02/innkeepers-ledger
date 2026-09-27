@@ -20,6 +20,8 @@ All are required checks on `main` and `dev` (`CLAUDE.md` → Branch flow).
 | `forbidden-apis` | forbidden APIs in shipped code (below) |
 | `luacheck` | stray globals, including any global in pure modules |
 | `busted` | regressions, including the hostile-peer-data specs |
+| `coverage` | untested lines in pure modules: 95% floor for `Ledger` and `SyncProtocol`, 90% for the rest, no `luacov:` opt-outs (`scripts/check-coverage.sh`) |
+| `docs-links` | broken relative links in the docs and docs missing from the context map (`scripts/check-links.sh`) |
 
 GitHub secret scanning with push protection is on for the repo.
 

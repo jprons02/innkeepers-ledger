@@ -10,4 +10,5 @@ ignore:
   - CONTRIBUTING.md
   - .busted
   - .luacheckrc
+  - .luacov
   - Libs/MANIFEST.sha256

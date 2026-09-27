@@ -193,5 +193,6 @@ Proportional, not ceremonial:
 - **Test by hand in the client:** signing flow, gossip integration, UI, real
   addon messages between two accounts/characters. These go on the in-client batch in
   [status.md](status.md) rather than blocking other work.
-- **CI:** the policy guard runs on every push and PR. `luacheck` + `busted` join it
-  once the first Lua lands (kickoff step 3, #9), on the same triggers.
+- **CI:** every check runs on every push and PR, and each has a local command
+  ([CONTRIBUTING.md → Development setup](../CONTRIBUTING.md#development-setup)). Pure
+  modules have coverage floors (95% for `Ledger` and `SyncProtocol`, 90% for the rest).

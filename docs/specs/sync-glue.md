@@ -130,6 +130,8 @@ at `PLAYER_LOGIN`) calls `Core:OpenLedger()`:
    `validName`, call `ledger:setOwnerName(name)` (a renamed character updates its
    display name at each login).
 6. **Start sync:** `ns.Sync:Start()`. `Sync` decides for itself whether to run (§3.3.2).
+   It is called after `open failed` too (Sync then turns itself off), never after
+   `no GUID` (step 1).
 
 `ns.ledger` is the only home of the ledger object. `Sign`, `Sync` and the UI read it at
 use, never cache it at file load (it doesn't exist until `PLAYER_LOGIN`). The anchor is
@@ -642,7 +644,13 @@ comments ("the combat flag", "the transport"). The README principle about checki
   `C_DateAndTime.GetSecondsUntilWeeklyReset`, `IsInGroup`, `IsInRaid`,
   `GetNumGroupMembers`, `IsInGuild`, `GetNumGuildMembers`, `GetGuildRosterInfo`,
   `C_GuildInfo.GuildRoster`, `InCombatLockdown`, all with harmless defaults (solo, no
-  guild, not in combat).
+  guild, not in combat). *Built in #44.* Traps: AceDB calls `UnitName("player")` and
+  `GetCurrentRegion()` itself when it initializes, so a test that makes either hidden,
+  raising or odd sets it after `ADDON_LOADED` and before `PLAYER_LOGIN` (`login{atLogin}`
+  in `spec/core_spec.lua`). AceDB creates `db.global` lazily, so read it with `rawget`.
+  A hidden stand-in that isn't a string (like `newproxy`) is rejected by type checks
+  anyway; to prove a hidden check runs *first*, flag a valid-looking string with
+  `issecretvalue`.
 - **`spec/helpers/sync_harness.lua`** (new): builds N `Sync` clients in one Lua state,
   each with its own `Ledger` (a fresh table), GUID, name and fake `api`, sharing:
   - a clock and a timer queue (`h:advance(seconds)`, one-second steps);

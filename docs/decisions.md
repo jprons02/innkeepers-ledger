@@ -10,6 +10,29 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Group senders resolve through our own unit scan, never `UnitGUID(sender)`
+
+Found in #46's security review. The `Sync` glue spec resolved PARTY / RAID senders with
+`UnitGUID(sender)`, passing a peer-chosen name to a function that also takes unit
+tokens. If the client ever gives a bare sender name and a character can be named like a
+token (`Target`, `Focus`, `Mouseover`, `Softfriend`, …), `UnitGUID` returns whoever *we*
+are targeting, and that member's entries would be stored under another player's GUID
+(shown in the harness with modelled tokens). Both facts are unverified, but the rule is
+that a peer string never decides which GUID it gets. So group senders will resolve the
+way guild senders already do: a name → GUID map built from our own `partyN` / `raidN`
+scan (§3.5.1's scan), with hidden, invalid, own and ambiguous names left out. #54 updates
+the spec and builds it; it must land before the first release. #46 shipped the spec as
+written, since nothing is released and #47 builds the scan the fix needs.
+
+*Rejected:*
+- **A deny-list of unit-token names:** the token list grows with the client and has
+  compound forms (`targettarget`, `focustarget`, …); missing one is a forgery.
+- **Passing the `Name-Realm` form to `UnitGUID`:** it still hands a peer string to a
+  token parser, and whether the full form resolves is itself unverified.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.4 step 3 (a note until #54);
+`docs/platform-forever.md` → Verification checklist; ticket #54.
+
 ### 2026-09-27 — SyncSchedule: failed sends keep their gates; forward clock jumps wait for #12
 
 Settled while building `SyncSchedule` (#45, PR #52), where the `Sync` glue spec was

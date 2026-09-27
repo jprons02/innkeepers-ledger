@@ -539,7 +539,8 @@ describe("the debug log", function()
     wow.slash("/ledger debug")
     assert.equal(2, #wow.chat)
     assert.truthy(wow.chat[1]:find("Debug log on.", 1, true))
-    assert.truthy(wow.chat[2]:find("ledger: open; sync: no stats", 1, true))
+    assert.truthy(wow.chat[2]:find("ledger: open; sync: received 0, dropped 0, added 0, dup 0, "
+      .. "rejected 0, evicted 0, sent 0, sendFailed 0, errors 0", 1, true), wow.chat[2])
     ns.Core:Debug("sync: test")
     assert.equal(3, #wow.chat)
     assert.truthy(wow.chat[3]:find("sync: test", 1, true))
@@ -571,6 +572,12 @@ describe("the debug log", function()
     assert.truthy(wow.chat[2]:find(
       "ledger: open, earnedDropped 1, quarantined 2; sync: received 7, dropped 3, added 3, "
         .. "dup 0, sent 1, errors 0", 1, true), wow.chat[2])
+  end)
+
+  it("says so when Sync has no stats", function()
+    ns.Sync.stats = nil
+    wow.slash("/ledger debug")
+    assert.truthy(wow.chat[2]:find("ledger: open; sync: no stats", 1, true), wow.chat[2])
   end)
 
   it("reports a read-only ledger with its reason", function()

@@ -35,6 +35,12 @@ Proportional, not ceremonial:
   messages, queued timers and errors the libraries catch. It supplies the client's
   `xpcall`, which passes extra arguments to the function; stock Lua 5.1's drops them,
   and Ace3 then calls `OnInitialize` without `self` and swallows the error.
+- **The sync harness** (`spec/helpers/sync_harness.lua`): N `Sync` clients in one Lua
+  state, each with its own `ns`, ledger, GUID and fake `api` (no stub, no `_G`), sharing
+  a clock, a timer queue, an addon-message bus that echoes to the sender, and the group
+  and guild lists behind `UnitGUID`, the group calls and the roster. `c.impl.X` replaces
+  one client function, `c.calls.X` counts its calls, `c.secret(v)` is the client's
+  `issecretvalue`. Fixture inns, phrases and seals stand in for the empty `Data` tables.
 - **Peer data is hostile in tests.** For every rule in the security model, cover
   malformed, oversized and multi-part messages (dropped unread), relayed (third-party),
   replayed and forged-signer input, unknown inn/phrase IDs, `NaN`/`inf`/hex/decimal

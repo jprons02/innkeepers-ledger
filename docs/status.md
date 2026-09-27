@@ -19,8 +19,8 @@
   the wire format, digest, validation table, storage caps, rate limits (with a traffic
   model) and SavedVariables shape. It passed two security-level reviewer passes; the
   first caught a WANT fan-out that would have broken the rate limits in raids.
-  Re-signing an inn: once per week, resetting Friday 10:00 UTC (maintainer, 2026-09-27),
-  enforced for own and incoming signatures.
+  Re-signing an inn: once per week, turning over at the game's weekly reset (maintainer,
+  2026-09-27), enforced for own and incoming signatures.
 - **Libraries:** reviewed and vendored in `Libs/`, manifest pinned to
   [libraries.md](libraries.md).
 - **CI:** five required checks on `main` and `dev`: `no-urls-in-game-code`, `luacheck`,
@@ -69,7 +69,8 @@ In-client work is #12 (needs a Forever client and the maintainer).
 
 Batched in #12. The list lives in
 [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04);
-the slice-1 spec leans on its GUID-format, message-size and `INSTANCE_CHAT` items.
+the slice-1 spec leans on its GUID-format, message-size, `INSTANCE_CHAT` and weekly-reset
+items.
 
 ## Follow-ups
 
@@ -79,6 +80,6 @@ the slice-1 spec leans on its GUID-format, message-size and `INSTANCE_CHAT` item
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
   before export v1 is finalized ([export-format.md](export-format.md)).
 - CI pins only the top-level rocks; if an upstream release breaks CI, pin dependencies too.
-- `decisions.md` is at 445 lines. At the start of October, move the September entries to
+- `decisions.md` is at 467 lines. At the start of October, move the September entries to
   `docs/archive/decisions-2026-09.md` and leave an index line. `architecture.md` is at
   197; split a section out before adding to it.

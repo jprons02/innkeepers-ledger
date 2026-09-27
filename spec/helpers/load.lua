@@ -13,6 +13,7 @@ M.PURE = {
   { path = "Collection.lua", name = "Collection" },
   { path = "Cosmetics.lua", name = "Cosmetics" },
   { path = "SyncProtocol.lua", name = "SyncProtocol" },
+  { path = "SyncSchedule.lua", name = "SyncSchedule" },
   { path = "Export.lua", name = "Export" },
 }
 M.DATA = {

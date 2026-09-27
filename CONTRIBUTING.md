@@ -58,7 +58,7 @@ them are required:
 checks.
 
 **Coverage floors.** Every pure module must keep line coverage at or above its floor:
-95% for `Ledger` and `SyncProtocol` (the peer-data boundary), 90% for the other pure
+95% for `Ledger`, `SyncProtocol` and `SyncSchedule` (the sync boundary), 90% for the other pure
 modules. Glue isn't measured; it's checked in the client. Code can't opt out with a
 `luacov:` comment, and changing a floor needs a decision-log entry. Coverage says which
 lines ran, not that they're right: the hostile-input tests in the specs still decide

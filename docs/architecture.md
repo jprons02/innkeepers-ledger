@@ -32,6 +32,7 @@ vs **client glue** (events, frames, API calls).
 | `Collection` | pure | Progress math: signed/total by continent and zone, unlock thresholds |
 | `Cosmetics` | pure | Maps collection progress → unlocked quills/inks/seals |
 | `SyncProtocol` | pure | Own fixed-format message codec, digest comparison, **all validation** |
+| `SyncSchedule` | pure | What `Sync` sends and when: send budget, HELLO / WANT / reply gates, pending queues, combat hold state, the pump ([spec](specs/sync-glue.md#35-send-path-syncschedule)) |
 | `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers |
 | `Export` | pure | Serialize + compress + encode the ledger per [export-format.md](export-format.md) |
 | `UI/Book` | glue | The parchment book: pages per inn, collection view, cosmetics |
@@ -196,4 +197,4 @@ Proportional, not ceremonial:
   [status.md](status.md) rather than blocking other work.
 - **CI:** every check runs on every push and PR, and each has a local command
   ([CONTRIBUTING.md → Development setup](../CONTRIBUTING.md#development-setup)). Pure
-  modules have coverage floors (95% for `Ledger` and `SyncProtocol`, 90% for the rest).
+  modules have coverage floors (95% for `Ledger`, `SyncProtocol`, `SyncSchedule`; 90% the rest).

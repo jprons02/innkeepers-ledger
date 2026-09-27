@@ -13,6 +13,7 @@ status=0
 # file floor(%). The security boundary gets the higher floor.
 floors='Ledger.lua 95
 SyncProtocol.lua 95
+SyncSchedule.lua 95
 Phrase.lua 90
 Collection.lua 90
 Cosmetics.lua 90

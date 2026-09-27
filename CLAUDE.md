@@ -21,7 +21,8 @@ task needs, using the "Read when" column. Don't read everything.
 | [docs/decisions.md](docs/decisions.md) | the decision log: dated decisions, reasons, rejected options (newest first) | a question may already be settled; before proposing a change in direction |
 | [docs/archive/decisions-2026-09.md](docs/archive/decisions-2026-09.md) | the 2026-09-25 seed product decisions (target, inns only, phrases, sync scope, own signatures, cosmetics, export, license) | `decisions.md`'s index points there; a product question may already be settled |
 | [docs/vision.md](docs/vision.md) | what we're building, the feel it must have, post-v1 directions | product or UX choices, wording, "should we build X" |
-| [docs/architecture.md](docs/architecture.md) | modules, data model, signing flow, sync protocol, **security model**, testing posture | any code; sync, validation, storage caps, new modules |
+| [docs/architecture.md](docs/architecture.md) | modules, data model, signing flow, sync protocol, **security model** | any code; sync, validation, storage caps, new modules |
+| [docs/testing.md](docs/testing.md) | testing posture: what gets tested hard, module pattern and strict env, the WoW stub, hostile-input tests, fuzzing, coverage floors | writing or reviewing tests; `spec/helpers/`, `.luacheckrc`, CI or a coverage floor |
 | [docs/platform-forever.md](docs/platform-forever.md) | what's verified vs unverified about the Forever client; verification checklist | anything calling a WoW API; TOC; in-client testing |
 | [docs/addon-policy.md](docs/addon-policy.md) | Blizzard AddOn policy rules that bind us | in-game text, links, anything paid or cosmetic, distribution pages |
 | [docs/security-checklist.md](docs/security-checklist.md) | security checks on every PR (incl. the forbidden-API list) and the release security review | opening a release PR; changing CI, `scripts/check-*.sh` or an allow-list; calling a new WoW API |
@@ -92,7 +93,7 @@ pure modules (95% `Ledger`/`SyncProtocol`/`SyncSchedule`, 90% the rest), all in 
 pushing** rather than waiting on CI; the commands are in
 [CONTRIBUTING.md → Development setup](CONTRIBUTING.md#development-setup).
 **Peer data is hostile in tests** (malformed, oversized, relayed, replayed, forged). What truly needs the client goes on the in-client batch in `docs/status.md`.
-Details: [docs/architecture.md → Testing posture](docs/architecture.md#testing-posture).
+Details: [docs/testing.md → Testing posture](docs/testing.md#testing-posture).
 
 ## Branch flow
 

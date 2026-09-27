@@ -1,7 +1,8 @@
 # Architecture
 
 > **Summary:** how the AddOn is built: modules (pure vs glue), signing flow, data model,
-> sync protocol, the security model for peer data, export, game flavors, testing posture.
+> sync protocol, the security model for peer data, export, game flavors. Testing lives in
+> [testing.md](testing.md).
 > **Read when:** writing or reviewing any code, especially sync, validation, storage caps
 > or a new module.
 
@@ -165,36 +166,6 @@ data, not from retail or Classic databases.
 
 ## Testing posture
 
-Proportional, not ceremonial:
-
-- **Test hard (busted, test-as-you-go):** `SyncProtocol` validation (every rule above
-  with malicious-input cases), `Ledger` dedupe/caps/eviction, `Collection` math,
-  `Phrase` validation, `Export` encode/decode round-trip.
-- **Stubbed WoW API.** Pure modules take client values as arguments; any glue exercised
-  in tests goes through a small stub layer of the WoW API, so `busted` runs outside the
-  game.
-- **Module pattern.** Every file starts `local _, ns = ...` and assigns `ns.<Module>`
-  (data goes under `ns.Data`). `spec/helpers/load.lua` runs a file with a fresh `ns`, as
-  the client does. Pure modules load in a strict plain-Lua environment that errors on
-  any other global, which catches access at load time; `.luacheckrc` gives pure and
-  data files only those same plain-Lua names, which catches it inside functions too
-  (`_G`, `os`, `io` and every WoW global included). The helper also holds the module
-  lists (`PURE`, `DATA`, `GLUE`; specs check them against the TOC and `.luacheckrc`)
-  and can load the whole AddOn in TOC order (libraries included).
-- **The stub** (`spec/helpers/wow_stub.lua`): `install(overrides)` / `uninstall()`
-  (restores `_G`), `fire(event, ...)`, `slash("/cmd")`, a settable clock (`wow.now`,
-  `wow.advance(s)` runs timers as they fall due), plus recorded chat output, sent addon
-  messages, queued timers and errors the libraries catch. It supplies the client's
-  `xpcall`, which passes extra arguments to the function; stock Lua 5.1's drops them,
-  and Ace3 then calls `OnInitialize` without `self` and swallows the error.
-- **Peer data is hostile in tests.** For every rule in the security model, cover
-  malformed, oversized and multi-part messages (dropped unread), relayed (third-party),
-  replayed and forged-signer input, unknown inn/phrase IDs, `NaN`/`inf`/hex/decimal
-  numbers, out-of-range timestamps, and floods over the rate limit.
-- **Lint:** `luacheck` clean.
-- **Test by hand in the client:** signing flow, gossip integration, UI, real
-  addon messages between two accounts/characters. These go on the in-client batch in
-  [status.md](status.md) rather than blocking other work.
-- **CI:** every check runs on every push and PR, and each has a local command
-  ([CONTRIBUTING.md → Development setup](../CONTRIBUTING.md#development-setup)). Pure
-  modules have coverage floors (95% for `Ledger`, `SyncProtocol`, `SyncSchedule`; 90% the rest).
+Moved to [testing.md](testing.md): what gets tested hard, the module pattern and strict
+environment, the WoW stub, hostile-peer-data tests, fuzzing, coverage floors and the
+in-client batch.

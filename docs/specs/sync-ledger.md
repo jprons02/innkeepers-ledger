@@ -625,8 +625,8 @@ clock.
 - **Round trip:** every encoder's output is accepted by `receive` and stores exactly the
   input entries under the sender.
 - **Every rule in 5.1**, with the named test for each row, and in particular the
-  **hostile cases** from [architecture.md → Testing
-  posture](../architecture.md#testing-posture):
+  **hostile cases** from [testing.md → Testing
+  posture](../testing.md#testing-posture):
   - malformed: truncated at every byte position of a valid ENTRIES (each is a drop or a
     valid shorter message, never an error); random bytes (a seeded loop of 1 000
     strings) never throw and never store;

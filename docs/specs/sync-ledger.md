@@ -70,8 +70,7 @@ by `SyncProtocol`:
 | `futureTolerance` | 300 s | both sides use `GetServerTime()`; 5 min covers skew |
 | `nameMaxBytes` | 96 | display only; covers two-part names, UTF-8 and a realm suffix |
 | `cosmeticIdMax` | 9 999 | for earned times |
-| `weekAnchor` | 1 789 120 800 (Friday 2026-09-11 10:00 UTC) | a signing week starts every Friday 10:00 UTC; the anchor sits before `tMin`, so week numbers are never negative |
-| `weekLength` | 604 800 s | 7 days; UTC has no daylight saving, so every week is exactly this long |
+| `weekLength` | 604 800 s | 7 days; signing weeks follow the game's weekly reset, whose time the glue passes in (4.4, 8) |
 
 `Ledger.CAPS` and `SyncProtocol` rate limits are in [§4](#4-data-model) and
 [§5.3](#53-rate-limits).
@@ -252,10 +251,11 @@ InnkeepersLedgerDB.global.ledgers["Player-1234-0ABCDEF0"] = {
 
 ### 4.3 Load, versions and migration
 
-`Ledger.new(data, owner)` with `owner = { guid = <string>, name = <string> }`. `Core`
+`Ledger.new(data, owner, weekAnchor)` with `owner = { guid = <string>, name = <string> }`
+and `weekAnchor` = the server time of any weekly reset, past or future (4.4). `Core`
 creates `{}` only when the saved value is `nil`; it never replaces a non-table.
-1. `owner.guid` fails `Ledger.validGUID` → error (a programming bug in the caller, not
-   peer data).
+1. `owner.guid` fails `Ledger.validGUID`, or `weekAnchor` isn't an integer in
+   0..`tMax` → error (a programming bug in the caller, not peer data).
 2. `data` isn't a table → an empty **read-only** ledger.
 3. `data` is empty → initialize it as schema 1 with all six fields: `schema`, `me`
    (`{ name = owner.name }` if that passes `validName`, else `{}`), `own`, `travelers`,
@@ -315,13 +315,18 @@ foreign count per inn, total foreign count.
 
 Own entries are never evicted and have no cap.
 
-**One signature per inn per week** (decisions.md → 2026-09-27 — Re-signing an inn: once
-per week). `Ledger.weekOf(t) = math.floor((t − weekAnchor) / weekLength)`; a week runs
-from Friday 10:00:00 UTC up to the next Friday 09:59:59. A signer may hold at most one
-entry per `(inn, weekOf(t))`, and the ledger enforces it for both sides:
+**One signature per inn per week** (decisions.md → 2026-09-27 — Re-signing follows the
+game's weekly reset). A signing week runs from one weekly reset up to the next.
+`ledger:weekOf(t) = math.floor((t − weekAnchor) / weekLength)`, where `weekAnchor` is the
+reset time passed to `Ledger.new` (week numbers may be negative; only equality matters).
+The ledger stays region-agnostic: the glue supplies the reset time of the player's own
+region (8). Players only ever sync with their own region (Forever is realmless per
+region, and regions never group or share guilds), so both sides of a sync agree on the
+weeks. A signer may hold at most one entry per `(inn, weekOf(t))`, and the ledger
+enforces it for both sides:
 - **Own:** `addOwn` returns `"too_soon"` when an own entry at that inn already falls in
   the same week. `ledger:canSign(inn, now)` answers the same question for the `Sign` UI,
-  and `Ledger.nextWeekStart(now)` gives the time the next week opens (for "sign again
+  and `ledger:nextWeekStart(now)` gives the time of the next reset (for "sign again
   after …" text).
 - **Foreign:** `addForeign` returns `"too_soon"` when that signer already has a stored
   entry at that inn in the same week; the first stored one wins. An honest client never
@@ -351,12 +356,12 @@ or its indexes.
 
 | Function | Returns |
 |---|---|
-| `Ledger.new(data, owner)` | a ledger object (see 4.3); `ledger.readOnly`, `ledger.loadReport` |
+| `Ledger.new(data, owner, weekAnchor)` | a ledger object (see 4.3); `ledger.readOnly`, `ledger.loadReport` |
 | `Ledger.validEntry(e)` | boolean (4.1) |
 | `Ledger.validGUID(s)` | boolean: a string of ≤ 40 bytes matching `^Player%-%d+%-%x+$` |
 | `Ledger.validName(s)` | boolean: the name rule (5.2) |
 | `Ledger.innFromNpcGUID(guid, inns)` | NPC ID if `guid` is a creature GUID whose NPC ID is a key of `inns`, else `nil`; never throws (5.2) |
-| `Ledger.weekOf(t)` / `Ledger.nextWeekStart(now)` | the week number of `t` / the start time of the week after `now`'s (4.4) |
+| `ledger:weekOf(t)` / `ledger:nextWeekStart(now)` | the signing-week number of `t` / the time of the first weekly reset after `now` (4.4) |
 | `ledger:canSign(inn, now)` | `false` if an own entry at `inn` falls in `weekOf(now)` (or the ledger is read-only), else `true` |
 | `ledger:addOwn(e)` | `"added"`, `"dup"`, `"too_soon"`, `"invalid"`, `"readonly"` |
 | `ledger:addForeign(signer, name, e, now)` | `"added"`, `"dup"`, `"too_soon"`, `"dropped"`, `"invalid"`, `"self"` (signer is the owner), `"readonly"` |
@@ -539,11 +544,16 @@ clock.
   `Player-1-`, `Player-1-AB-CD`, `Player-1-0x1F`, a 41-byte GUID, an embedded NUL, a
   pipe, a control byte, two spaces, three words, a trailing `-`, 1 and 97 bytes,
   non-strings.
-- **Weeks:** `weekOf` of `weekAnchor` is 0, of `weekAnchor − 1` is −1, of Friday
-  09:59:59 and 10:00:00 UTC differ by one; `nextWeekStart` at, just before and just after
-  a boundary; `weekOf(tMin) >= 0`.
+- **Weeks** (fixture `weekAnchor` = 1 790 089 200, Tuesday 2026-09-22 15:00 UTC, the
+  retail US reset): `weekOf` of the anchor is 0, of `anchor − 1` is −1; Tuesday
+  14:59:59 and 15:00:00 UTC differ by one; `nextWeekStart` at, just before and just after
+  a boundary; an anchor a few weeks in the future partitions time exactly like the past
+  one; `Ledger.new` errors on a missing, fractional or `NaN` anchor.
+- **Anchor change on load:** a ledger saved under one anchor and reopened under an anchor
+  shifted by a day re-applies the weekly rule to foreign entries and keeps every own
+  entry.
 - **addOwn:** added; dup on the same `(inn, t)`; `"too_soon"` for the same inn later in
-  the same week, `"added"` at the next Friday 10:00:00 UTC; a different inn in the same
+  the same week, `"added"` at the next reset (Tuesday 15:00:00 UTC in the fixture); a different inn in the same
   week is fine; `canSign` agrees with `addOwn` on each case; invalid; kept sorted by
   `(t, inn)` whatever the insert order; own entries survive any number of foreign adds
   (never evicted); changing the caller's table after `addOwn` changes nothing stored.
@@ -685,6 +695,17 @@ Not built here; the `Sync` spec/ticket must honor it.
   `PLAYER_REGEN_ENABLED`) in that PR, citing that decision entry.
 - **Read-only ledger:** `Sync` neither sends nor receives.
 - **State:** the rate limiter and the WANT memo live for the session only.
+
+**Weekly reset source** (for `Core` when it calls `Ledger.new`; also binds `Sign`):
+- `weekAnchor` = `GetServerTime() + C_DateAndTime.GetSecondsUntilWeeklyReset()`,
+  rounded to the nearest 60 s (the two calls can straddle a second). The client knows its
+  own region's reset, so nothing about regions is hard-coded.
+- If that API is missing or returns a non-number or hidden value, fall back to a small
+  table of known reset times keyed by `GetCurrentRegion()`, filled from #12. If the
+  region is unknown too, use the US reset (Tuesday 15:00 UTC). A wrong anchor only
+  shifts when the week turns over; it can't corrupt data.
+- Recompute the anchor at each login. Blizzard can move the reset; normalize re-applies
+  the weekly rule to foreign entries and never drops own ones.
 
 ## Assumptions (listed for the maintainer)
 

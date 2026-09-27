@@ -10,6 +10,28 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Re-signing follows the game's weekly reset (supersedes the Friday 10:00 UTC entry below)
+
+A character may still sign each inn once per week, but the signing week now turns over
+at **the game's own weekly reset** for the player's region, not Friday 10:00 UTC. The
+maintainer chose this. The glue reads the reset from the client
+(`C_DateAndTime.GetSecondsUntilWeeklyReset`, with a per-region fallback table), and
+`Ledger` takes it as an argument, so no region's time is hard-coded. The rule still
+applies to incoming signatures. Details: `docs/specs/sync-ledger.md` §4.4, §8.
+
+The region concern in the entry below doesn't hold: Forever is realmless per region,
+and players from different regions never group or share a guild, so they never sync.
+Everyone who syncs shares one reset.
+
+*Rejected:*
+- **Friday 10:00 UTC** (the entry below): a second weekly rhythm players would have to
+  learn, next to the reset they already plan around.
+- **Hard-coding each region's reset time:** Blizzard can move it, and Forever's times
+  are unverified; the client already knows.
+
+*Reflected in:* `docs/specs/sync-ledger.md`; `docs/platform-forever.md` → Verification
+checklist; ticket #30.
+
 ### 2026-09-27 — Re-signing an inn: once per week, resetting Friday 10:00 UTC
 
 A character may sign each inn once per signing week. Weeks start every **Friday at

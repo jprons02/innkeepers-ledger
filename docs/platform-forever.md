@@ -83,6 +83,8 @@ unverified · ❓ unknown
       sender of `CHAT_MSG_ADDON`, arrive as a normal value?
 - [ ] Addon messages to a custom channel (`"CHANNEL"`): allowed or blocked?
 - [ ] Player GUID and name format on the mega-realm (two-part names?)
+- [ ] Weekly reset: `C_DateAndTime.GetSecondsUntilWeeklyReset()` works, and the reset
+      day and time per region (for the fallback table)
 - [ ] Addon-message sender name resolves to a GUID: `UnitGUID(sender)` for group
       members; guild roster exposes member GUIDs
 - [ ] Collect innkeeper NPC IDs for every inn (the `Data/Inns` table)

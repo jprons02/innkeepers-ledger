@@ -10,6 +10,35 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Ledger orders by bytes, keeps sorted indexes, and tightens two inputs
+
+Built in #30 (PR #38). Three choices the spec left open or that came out of review:
+- **Signer GUIDs compare byte by byte** in the eviction order `(t, signer, inn)` and in
+  `travelers()`. Lua 5.1's string `<` uses `strcoll`, so its order follows the C
+  locale. Some locales rank distinct strings equal, which would let a binary-search
+  removal take the wrong entry and leave an index stale.
+- **Foreign entries live in sorted indexes** (all foreign, and per inn, both in
+  eviction order). Each add or eviction costs a binary search plus one array shift. A
+  full 3 000-entry store takes a 10 000-entry flood in well under a second.
+- **`addForeign` takes `now` only in `tMin..tMax`**, the range normalize accepts for
+  `met`, so a bad clock can't plant a `met` that resets on every load. **Only an
+  `"added"` entry renames a traveler**; a `"dropped"` one changes nothing.
+
+*Rejected:*
+- **String `<` for signers:** simpler, but its result depends on the client's collation.
+- **Linear scans for the oldest entry:** about 20 M comparisons for the 10 000-entry
+  flood.
+- **Renaming on any accepted-looking add, including `"dropped"`:** it changes what's
+  stored while reporting that nothing was.
+- **Batching the load-time cap pass now:** a tampered file far over the caps (40 000
+  entries) loads in about 4 s because each eviction shifts large arrays. Peers can't
+  cause this and honest data stays under 3 000 entries, so it's a follow-up in
+  `status.md`, not a v1 need.
+
+*Reflected in:* `Ledger.lua`; `docs/specs/sync-ledger.md` §4.3–§4.5 (which also records
+the smaller clarifications: `loadReport` fields, `canSign` and `markEarned` on bad input,
+non-table own entries, the post-migration shape check).
+
 ### 2026-09-27 — Coverage floors on pure modules, a doc-link check, and local test runs
 
 Two required CI jobs join the others. `coverage` runs `busted --coverage` and luacov

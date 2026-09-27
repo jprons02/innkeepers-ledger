@@ -349,7 +349,9 @@ enforces it for both sides:
 5. Drop a traveler record that has no entries left.
 
 "Oldest" = smallest `(t, signer, inn)`, compared in that order (a total order, since
-`(inn, t)` is unique per signer). On an add, each step removes at most one entry. If the
+`(inn, t)` is unique per signer). Signer GUIDs compare **byte by byte**, never with Lua's
+string `<`, which follows the C locale's collation (decisions.md → 2026-09-27 — Ledger
+orders by bytes). On an add, each step removes at most one entry. If the
 new entry is the one removed, the result is `"dropped"`: the store always holds the
 newest entries under every cap.
 
@@ -377,7 +379,7 @@ or its indexes.
 | `ledger:shareWindow(n)` | newest `n` own entries, `(t, inn)` ascending |
 | `ledger:signerEntries(guid)` | that traveler's entries, `(t, inn)` ascending (empty for unknown) |
 | `ledger:innEntries(inn)` | `{ own = { entry, ... }, foreign = { { signer = guid, name = s, entry = e }, ... } }`, `own` in `(t, inn)` order, `foreign` in `(t, signer)` order, both ascending |
-| `ledger:travelers()` | `{ { guid = s, name = s, met = t, count = n }, ... }`, `met` descending, then `guid` |
+| `ledger:travelers()` | `{ { guid = s, name = s, met = t, count = n }, ... }`, `met` descending, then `guid` (byte order) |
 | `ledger:counts()` | `{ own = n, foreign = n, travelers = n }` |
 | `ledger:setOwnerName(name)` | `true` if `name` passes `validName` and was stored in `me.name`, else `false` |
 | `ledger:markEarned(id, t)` | `true` for a valid call (the cosmetic is recorded; an earlier stored time is kept); `false` if `id` isn't an integer in 1..`cosmeticIdMax`, `t` isn't an integer in `tMin`..`tMax`, or the ledger is read-only |

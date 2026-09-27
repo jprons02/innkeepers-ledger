@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #36)
+**Updated:** 2026-09-27 (after #30)
 
 ## Current state
 
@@ -14,7 +14,11 @@
   ([kickoff.md](kickoff.md)).
 - **AddOn scaffold (#8):** TOC (placeholder interface number), `Libs/embeds.xml`, every
   module as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger`, and a WoW
-  API stub so the whole AddOn loads under `busted`. Module logic: ⬜ none yet.
+  API stub so the whole AddOn loads under `busted`.
+- **`Ledger` built (#30, PR #38):** the entry store, weekly rule, caps and eviction,
+  queries, earned times, and load, migration and read-only behavior, all per the spec.
+  It has 100% line coverage. The reviewer's model fuzz (132 k operations, 0 mismatches)
+  and mutation check both passed. Other module logic: ⬜ none yet.
 - **Slice-1 spec done (#11, #32):** [specs/sync-ledger.md](specs/sync-ledger.md) settles
   the wire format, digest, validation table, storage caps, rate limits (with a traffic
   model) and SavedVariables shape. It passed two security-level reviewer passes; the
@@ -27,8 +31,9 @@
   `busted` (Lua 5.1), `coverage` (floors on pure modules), `docs-links`,
   `libs-manifest`, `forbidden-apis`. Release PRs also get a security review
   ([security-checklist.md](security-checklist.md)).
-- **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs-only
-  changes (#25–#36; #36 also added the `coverage` and `docs-links` checks). No tags yet (maintainer gate).
+- **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs and CI
+  changes (#25–#37; #36 added the `coverage` and `docs-links` checks) and the first
+  module logic (`Ledger`, #38). No tags yet (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
   per inn, seal per zone). A public profile website is a post-v1, separate project the
   AddOn never names ([vision.md](vision.md) → Where it can grow).
@@ -41,8 +46,10 @@
 
 ## Next step
 
-**#30: build `Ledger`** (`ready`), then **#31: build `SyncProtocol`** (blocked by #30).
-Both are sub-issues of slice 1 (#10) and implement the spec above. When #31 is done,
+**#31: build `SyncProtocol`** (`ready`; its blocker #30 is closed). It's the second
+sub-issue of slice 1 (#10) and implements the spec above. It reads `Ledger.LIMITS` and
+`Ledger.CAPS`, aliases `validGUID` / `validName`, and writes only through
+`ledger:addForeign`. When #31 is done,
 file the `Sync` glue ticket from the spec's §8 (send budget, HELLO debounce, WANT
 jitter, deferred full replies, combat hold with its `forbidden-apis` allow-list change).
 
@@ -80,6 +87,10 @@ items.
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
   before export v1 is finalized ([export-format.md](export-format.md)).
 - CI pins only the top-level rocks; if an upstream release breaks CI, pin dependencies too.
-- `decisions.md` is at 495 lines. At the start of October, move the September entries to
+- `Ledger`'s cap pass at load time is quadratic: a tampered SavedVariables file far over
+  the caps (40 000 entries) loads in about 4 s. Peers can't reach this, so it's not
+  needed for v1; batch the evictions if it ever matters (decisions.md → 2026-09-27 —
+  Ledger orders by bytes).
+- `decisions.md` is at 524 lines. At the start of October, move the September entries to
   `docs/archive/decisions-2026-09.md` and leave an index line. `architecture.md` is at
   198; split a section out before adding to it.

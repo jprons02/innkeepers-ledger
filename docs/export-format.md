@@ -40,7 +40,9 @@ links or recommends any consumer of it.**
     signed = <int>, total = <int>,
     byZone = { [<zone key>] = { signed = <int>, total = <int> }, ... },
   },
-  cosmetics = { <unlocked cosmetic IDs> },
+  cosmetics = {                -- unlocked quills, inks, seals and badges
+    { id = <cosmetic id>, t = <time earned> }, ...
+  },
   entries = {                  -- your own signatures (always)
     { inn = <npcId>, t = <time>, phrase = { <ids> }, seal = <id> }, ...
   },
@@ -53,6 +55,18 @@ links or recommends any consumer of it.**
 Phrase and inn IDs refer to the tables shipped in the AddOn (`Data/Phrases`,
 `Data/Inns`). A future version of this doc should publish those tables (or a generated
 JSON of them) so consumers can render text without reading Lua.
+
+Times on cosmetics let a consumer check that an unlock came after the entries that earn
+it. Each stamp is an entry, and a zone's seal appears in `cosmetics`.
+
+## Sharing in-game
+
+- The ledger has a **Share** button (and `/ledger share`). It opens a small window with
+  the export string already selected and the hint "Press Ctrl+C to copy". The window
+  never names or links any site or consumer.
+- When the ledger has changed since the last share, the button can say so ("Your
+  ledger has changed since you last shared it"). This is a nudge, not a prompt, and it
+  names no destination either.
 
 ## Privacy
 

@@ -29,8 +29,12 @@ unverified · ❓ unknown
   about a minute grants rested status, buffs, vendors and repairs. ❓ Whether you can
   bind a hearthstone at a camp (reported as not confirmed). ❓ How camps show up to the
   API (object GUIDs, events). Relevant for post-v1.
-- ✅ **Hardcore ruleset exists.** ❓ What the client exposes about other characters'
-  deaths.
+- ✅ **Hardcore ruleset announced, but not at launch** ("soon" after, no date).
+  ❓ What the client exposes about other characters' deaths.
+- ⚠️ **Names:** reported as two-part (a surname is mandatory) and unique across the
+  region. Fan-site report of a developer Q&A; confirm in the client.
+- ✅ **Recent Allies** (Blizzard's built-in list of players you grouped with) ships in
+  Forever and colors their names.
 
 ## AddOns and the API
 
@@ -52,6 +56,15 @@ unverified · ❓ unknown
 - ❓ **Gossip frame integration.** How to add a "Sign the ledger" option to (or next to)
   the innkeeper's gossip menu.
 - ❓ **Sitting detection.** Whether any API reports that the player is sitting.
+- ⚠️ **Hidden ("secret") values.** Fan sites report that Forever carries Midnight's
+  secret values beyond combat: unit and creature names can arrive hidden, `CHAT_MSG_*`
+  senders can arrive hidden under chat lockdown, and an addon message with a hidden
+  argument is silently not sent. If true outside combat, it affects reading the
+  innkeeper's NPC ID and resolving who sent a sync message. Unverified; top of the
+  in-client list.
+- ❓ **Addon messages on custom channels.** Retail allows `SendAddonMessage` to
+  `"CHANNEL"`; Classic has blocked it since 1.13.3 (2019). Which one Forever follows
+  decides whether an "inn common room" with strangers is possible (post-v1).
 
 ## Verification checklist (needs a Forever client: beta until 2026-10-21, or launch 2026-11-04)
 
@@ -65,7 +78,10 @@ unverified · ❓ unknown
 - [ ] Addon messages inside an instance / during an encounter
 - [ ] Addon message size limit (255 bytes on retail) and send rate limits (what
       ChatThrottleLib assumes)
-- [ ] Player GUID and name format on the mega-realm
+- [ ] Hidden values outside combat: does `UnitGUID("npc")` at an innkeeper, and the
+      sender of `CHAT_MSG_ADDON`, arrive as a normal value?
+- [ ] Addon messages to a custom channel (`"CHANNEL"`): allowed or blocked?
+- [ ] Player GUID and name format on the mega-realm (two-part names?)
 - [ ] Addon-message sender name resolves to a GUID: `UnitGUID(sender)` for group
       members; guild roster exposes member GUIDs
 - [ ] Collect innkeeper NPC IDs for every inn (the `Data/Inns` table)

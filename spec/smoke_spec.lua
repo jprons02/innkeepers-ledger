@@ -9,9 +9,14 @@ describe("pure modules", function()
     assert.is_nil(rawget(_G, "LibStub"))
   end)
 
-  for _, module in ipairs(PURE) do
+  -- Each module gets a fresh ns holding the pure modules before it in the TOC, as in the
+  -- client (SyncProtocol reads ns.Ledger when it loads).
+  for i, module in ipairs(PURE) do
     it(module.path .. " loads in plain Lua and registers ns." .. module.name, function()
-      local ns = load.file(module.path, {}, load.pure_env())
+      local ns = {}
+      for j = 1, i do
+        load.file(PURE[j].path, ns, load.pure_env())
+      end
       assert.is_table(ns[module.name])
     end)
   end

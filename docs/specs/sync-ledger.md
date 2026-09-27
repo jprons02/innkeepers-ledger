@@ -402,7 +402,7 @@ written to the ledger until every whole-message check has passed. Result is
 | # | Rule | Exact check | On failure | Test (in `spec/sync_protocol_spec.lua`) |
 |---|---|---|---|---|
 | 1 | Never throws | the whole body runs inside `pcall` | `nil, "error"` | `receive never throws on a hostile value in any argument` |
-| 2 | Context sane | `ctx` is a table; `ctx.now` an integer; `ctx.selfGUID` passes `Ledger.validGUID` and equals the ledger owner's GUID; `ctx.ledger` is not read-only (a read-only ledger gives `"readonly"`) | `"ctx"` / `"readonly"` | `drops everything when selfGUID is a hidden-value stand-in`; `… when the ledger is read-only` |
+| 2 | Context sane | `ctx` is a table (its fields are read with `rawget`); `ctx.now` an integer in 0..`tMax`; `ctx.selfGUID` passes `Ledger.validGUID` and equals the ledger owner's GUID; `ctx.limiter` has `admit` and `admitEntries`; `ctx.wantMemo.seen`, `ctx.inns`, `ctx.phrases` and `ctx.seals` are tables; `ctx.phraseOk` is nil or a function; then `ctx.ledger` is not read-only (a read-only ledger gives `"readonly"`) | `"ctx"` / `"readonly"` | `drops everything when selfGUID is a hidden-value stand-in`; `… when the ledger is read-only` |
 | 3 | Channel | `channel` is `"PARTY"`, `"RAID"` or `"GUILD"` | `"channel"` | `drops WHISPER, CHANNEL, SAY, INSTANCE_CHAT and nil` |
 | 4 | Sender resolved | `sender` is a table; `Ledger.validGUID(sender.guid)`; `Ledger.validName(sender.name)` (5.2) | `"sender"` | `drops a nil, empty, non-string or malformed sender GUID`; `drops a sender name with a pipe or control byte` |
 | 5 | Not our own echo | `sender.guid ~= ctx.selfGUID` | `"self"` | `drops our own messages echoed back by the channel` |
@@ -411,12 +411,12 @@ written to the ledger until every whole-message check has passed. Result is
 | 8 | Charset | no byte outside `0-9 A-Z a-z : ; , . -`, checked with explicit byte ranges (this also rejects AceComm's multi-part marker bytes `\001`–`\004`, `|`, spaces, NUL and UTF-8) | `"charset"` | `drops multi-part-marked messages`; `drops a message with a pipe escape`; `… with NUL`; `… with a space` |
 | 9 | Header | matches `^[A-Z]%d+:`; type in `H`/`W`/`E`; version string exactly `"1"` | `"header"` / `"version"` | `drops an unknown type`; `drops version 2 and version 01` |
 | 10 | Schema | exact grammar of 3.2 for the type: field count, separators, no empty fields, no trailing separator, 1..5 entries, 1..5 phrase IDs; WANT target passes `Ledger.validGUID` | `"schema"` | `drops an ENTRIES with 6 entries`; `… a phrase with 6 IDs`; `… an extra field`; `… a missing field`; `… ;; and a trailing ;`; `… a malformed WANT target` |
-| 11 | Numbers | each token matches its digit pattern and max length **before** `tonumber`; then the range; so `NaN`, `inf`, `1e9`, `0x1F`, `-5`, `+5`, `1.5`, `007` and 400-digit strings all fail | `"number"` | `drops NaN, inf, exponent, hex, signed, decimal, leading-zero and overlong numbers` (one case each) |
+| 11 | Numbers | each token matches its digit pattern and max length **before** `tonumber`; then the range; so `NaN`, `inf`, `1e9`, `0x1F`, `-5`, `1.5`, `007` and overlong digit strings all fail (`+5` and `" 5"` already fail rule 8, and a 400-digit string rule 6; the tests use 200-digit tokens here) | `"number"` | `drops NaN, inf, exponent, hex, signed, decimal, leading-zero and overlong numbers` (one case each) |
 | 12 | HELLO consistency | `count <= SHARE_MAX`; `count == 0` implies `digest == 0` | `"schema"` | `drops HELLO count 41`; `drops count 0 with a non-zero digest` |
 | 13 | WANT `since` and target | `since == 0` or `tMin <= since <= now + futureTolerance`. A target other than `ctx.selfGUID` is not an error: it is recorded in `ctx.wantMemo.seen[channel .. ":" .. target]` (3.3) and returned as `want_seen`; it is never stored in the ledger | `"number"` | `records a WANT for someone else as seen`; `a WANT target is never stored in the ledger`; `since 0 passes` |
 | 14 | Rate (entries) | limiter admits all parsed entries of the message for this sender, counted **before** the per-entry skips of rules 15–16 (5.3) | whole message `"rate"` | `drops ENTRIES past 80 entries per sender per minute` |
 | 15 | Time window (per entry) | `tMin <= t <= now + futureTolerance` | entry skipped (`rejected`) | `skips an entry from before tMin`; `skips an entry 301 s in the future, keeps one 300 s ahead` |
-| 16 | Known IDs (per entry) | `ctx.inns[inn] ~= nil`; **every** phrase ID has `ctx.phrases[id] ~= nil`, **and** `ctx.phraseOk(ids)` is true when that hook is given (additive: the hook can only reject more); seal `nil` or `ctx.seals[seal] ~= nil` | entry skipped (`rejected`) | `skips an unknown inn but keeps its valid siblings`; `… unknown phrase ID`; `… unknown seal`; `a permissive phraseOk can't admit an unknown ID` |
+| 16 | Known IDs (per entry) | `ctx.inns[inn] ~= nil`; **every** phrase ID has `ctx.phrases[id] ~= nil`, **and** `ctx.phraseOk(ids)` returns exactly `true` when that hook is given (additive: the hook can only reject more; it's called on a copy of the IDs, inside `pcall`, and an error rejects the entry); seal `nil` or `ctx.seals[seal] ~= nil` | entry skipped (`rejected`) | `skips an unknown inn but keeps its valid siblings`; `… unknown phrase ID`; `… unknown seal`; `a permissive phraseOk can't admit an unknown ID` |
 | 17 | Own-signature | signer and name come only from `sender`; the entry is stored with `ledger:addForeign(sender.guid, sender.name, e, now)` | n/a (no other path exists) | `stores a relayed copy of B's entry under the relayer A, never under B`; `a GUID inside an entry is dropped and nothing is stored` (assert `nil` and no storage, not a specific reason) |
 | 18 | Dedupe / replay / weekly | ledger dedupe on `(signer, inn, t)`; the first stored copy wins (a later copy with a different phrase is a dup); a second entry from the same signer at the same inn in the same week is `"too_soon"` (4.4) | counted as `dup`; `too_soon` counted as `rejected` | `replaying an ENTRIES 1 000 times leaves storage unchanged`; `a conflicting re-send doesn't overwrite`; `a second signature at one inn in one week is rejected, siblings kept` |
 | 19 | Caps | ledger caps and eviction (4.4) | counted as `dropped` | see `spec/ledger_spec.lua` |
@@ -426,8 +426,9 @@ Successful results:
   (3.3, 8).
 - WANT for us → `{ kind = "want", since = n }`.
 - WANT for someone else → `{ kind = "want_seen", target = guid, since = n }`, after
-  recording it in `ctx.wantMemo.seen[channel .. ":" .. target]` (keeping the smaller `since` if one was
-  seen in the last 30 s).
+  recording it in `ctx.wantMemo.seen[channel .. ":" .. target]` as `{ at = now, since }`
+  (keeping the smaller `since` if one was seen in the last 30 s; `at` always becomes
+  `now`).
 - ENTRIES → `{ kind = "entries", added = n, dup = n, dropped = n, rejected = n }`, where
   `rejected` counts the rule 15–16 skips, `"too_soon"`, and any `addForeign` result of
   `"invalid"`, `"self"` or `"readonly"` (the last three shouldn't occur after
@@ -455,8 +456,15 @@ Successful results:
 | `decideWant(memo, guid, channel, count, digest, held, now)` | function | `since` or `nil` (3.3) |
 
 The encoders take our own entries, which `Ledger` has already validated; they still
-assert every message is ≤ `MAX_BYTES`. All client values arrive as arguments;
-`SyncProtocol` reads no globals.
+raise (a caller bug, never peer data) on an entry that fails `Ledger.validEntry`, a HELLO
+window over `SHARE_MAX`, a WANT target that fails `validGUID`, a WANT `since` that isn't `0`
+or a valid time, an `encodeEntries` `since` that isn't an integer in 0..`tMax`, and any
+message over `MAX_BYTES`. The limiter refuses (returns `false`)
+a non-string GUID or a `now` that isn't an integer in 0..`tMax`; `admitEntries` also
+refuses an `n` outside 0..`MAX_ENTRIES_PER_MSG` and a sender with no open window (it
+follows an admitted message in the same window). `decideWant` returns `nil` on arguments
+of the wrong type or range. All client values arrive as arguments; `SyncProtocol` reads
+no globals, and it asserts `ns.Ledger` is present when it loads.
 
 ### 5.2 Hidden ("secret") values and identity
 

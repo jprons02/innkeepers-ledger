@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #30)
+**Updated:** 2026-09-27 (after #31)
 
 ## Current state
 
@@ -15,10 +15,14 @@
 - **AddOn scaffold (#8):** TOC (placeholder interface number), `Libs/embeds.xml`, every
   module as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger`, and a WoW
   API stub so the whole AddOn loads under `busted`.
-- **`Ledger` built (#30, PR #38):** the entry store, weekly rule, caps and eviction,
-  queries, earned times, and load, migration and read-only behavior, all per the spec.
-  It has 100% line coverage. The reviewer's model fuzz (132 k operations, 0 mismatches)
-  and mutation check both passed. Other module logic: ⬜ none yet.
+- **Slice 1 done (#10 closed):**
+  - **`Ledger`** (#30, PR #38): the entry store, weekly rule, caps and eviction,
+    queries, earned times, and load, migration and read-only behavior.
+  - **`SyncProtocol`** (#31, PR #40): encoders, strict decoder (rules 1–19), digest,
+    limiter, WANT memo and `decideWant`.
+  - Both have 100% line coverage. The security-level review of `SyncProtocol` passed:
+    2.2 M differential-fuzz messages with 0 mismatches, and every security mutant is
+    killed. Other module logic: ⬜ none yet.
 - **Slice-1 spec done (#11, #32):** [specs/sync-ledger.md](specs/sync-ledger.md) settles
   the wire format, digest, validation table, storage caps, rate limits (with a traffic
   model) and SavedVariables shape. It passed two security-level reviewer passes; the
@@ -32,8 +36,8 @@
   `libs-manifest`, `forbidden-apis`. Release PRs also get a security review
   ([security-checklist.md](security-checklist.md)).
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs and CI
-  changes (#25–#37; #36 added the `coverage` and `docs-links` checks) and the first
-  module logic (`Ledger`, #38). No tags yet (maintainer gate).
+  changes (#25–#39; #36 added the `coverage` and `docs-links` checks) and the first
+  module logic (`Ledger` #38, `SyncProtocol` #40). No tags yet (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
   per inn, seal per zone). A public profile website is a post-v1, separate project the
   AddOn never names ([vision.md](vision.md) → Where it can grow).
@@ -46,12 +50,16 @@
 
 ## Next step
 
-**#31: build `SyncProtocol`** (`ready`; its blocker #30 is closed). It's the second
-sub-issue of slice 1 (#10) and implements the spec above. It reads `Ledger.LIMITS` and
-`Ledger.CAPS`, aliases `validGUID` / `validName`, and writes only through
-`ledger:addForeign`. When #31 is done,
-file the `Sync` glue ticket from the spec's §8 (send budget, HELLO debounce, WANT
-jitter, deferred full replies, combat hold with its `forbidden-apis` allow-list change).
+**#42: write the `Sync` glue spec** (`ready`, no blockers). It's the first sub-issue of
+slice 2 (#41, the `Sync` glue). It expands [specs/sync-ledger.md](specs/sync-ledger.md)
+§8 into `docs/specs/sync-glue.md`: `Core` ledger wiring, receive path and sender
+resolution, send budget and timers, the guild HELLO interval, the combat hold and its
+`forbidden-apis` allow-list change, and the debug log. Then it files the implementation
+sub-issues under #41.
+
+Also unfiled from [kickoff.md](kickoff.md) Phase 1 step 5: `Phrase` + `Data/Phrases`,
+then `Collection` + `Cosmetics`, then `Export`. Until `Data/Phrases` has entries, every
+received entry is rejected as an unknown phrase.
 
 In-client work is #12 (needs a Forever client and the maintainer).
 

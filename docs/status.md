@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #11 / #32)
+**Updated:** 2026-09-27 (after #36)
 
 ## Current state
 
@@ -28,7 +28,7 @@
   `libs-manifest`, `forbidden-apis`. Release PRs also get a security review
   ([security-checklist.md](security-checklist.md)).
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs-only
-  changes (#25–#32). No tags yet (maintainer gate).
+  changes (#25–#36; #36 also added the `coverage` and `docs-links` checks). No tags yet (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
   per inn, seal per zone). A public profile website is a post-v1, separate project the
   AddOn never names ([vision.md](vision.md) → Where it can grow).
@@ -80,6 +80,6 @@ items.
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
   before export v1 is finalized ([export-format.md](export-format.md)).
 - CI pins only the top-level rocks; if an upstream release breaks CI, pin dependencies too.
-- `decisions.md` is at 467 lines. At the start of October, move the September entries to
+- `decisions.md` is at 495 lines. At the start of October, move the September entries to
   `docs/archive/decisions-2026-09.md` and leave an index line. `architecture.md` is at
-  197; split a section out before adding to it.
+  198; split a section out before adding to it.

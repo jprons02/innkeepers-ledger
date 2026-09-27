@@ -671,7 +671,9 @@ comments ("the combat flag", "the transport"). The README principle about checki
   - fixture `inns` / `phrases` / `seals` tables (the real `Data` tables are empty);
   - per-client combat flags and the `PLAYER_REGEN_*` events.
   It loads the pure modules through `spec/helpers/load.lua` and `Sync.lua` as a file with
-  a fresh `ns` for each client.
+  a fresh `ns` for each client. *Built in #46,* except the combat flags and events and
+  `LE_PARTY_CATEGORY_HOME` (the group functions ignore their argument), which #47 adds.
+  A client function the harness should expose must also be listed in its `API_NAMES`.
 
 ### 6.2 `spec/sync_schedule_spec.lua` (pure, strict environment, fixed `now`, a scripted `rand`)
 

@@ -10,6 +10,35 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Sync receive: fail-closed choices where the spec was silent
+
+Settled while building the `Sync` receive path (#46, PR #55). The security-level review
+checked each and found them sound.
+- **An `issecretvalue` that raises counts as hidden**, as in `Core`. A hidden
+  `IsInGuild` counts as not in a guild. A `GUILD_ROSTER_UPDATE` while the clock is
+  unreadable is skipped (the next update or the trailing rebuild catches up).
+- **Leaving the guild resets the roster-request gate**, so a quick rejoin asks for the
+  roster at once. **An immediate map rebuild cancels a pending trailing one**
+  (generation bump), so a lost timer can't block later trailing rebuilds.
+- **`api.Enum` is an optional client input** (for the prefix-result enum), so the
+  instance never reads `_G`; without it only `true` and `0` are accepted.
+- **Accepted messages get a debug line too** (`sync: got <kind> <CHANNEL> <guid>`, plus
+  the ENTRIES counts). Reason and kind codes that aren't plain lower-case words are
+  written `unknown`, in stats and in debug lines.
+- **Hidden values are checked before the prefix**, as spec §3.3.3 orders it. So another
+  AddOn's hidden traffic counts under `dropped.hidden` and gets a debug line. Kept
+  literal for now; see *Rejected*.
+
+*Rejected:*
+- **Checking the prefix before the other three arguments' hidden checks** (hidden
+  prefix first, then compare it, then the rest): it keeps other AddOns' hidden traffic
+  out of the counters and log, but it changes the spec's order and only matters if the
+  client hides senders broadly, in which case sync can't work anyway (spec §8). Revisit
+  if #12 shows hidden senders.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.3.1 (`Enum`); `Sync.lua`; `docs/status.md`
+→ Follow-ups.
+
 ### 2026-09-27 — Group senders resolve through our own unit scan, never `UnitGUID(sender)`
 
 Found in #46's security review. The `Sync` glue spec resolved PARTY / RAID senders with

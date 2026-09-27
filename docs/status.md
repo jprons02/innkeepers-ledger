@@ -30,17 +30,16 @@
     95% floor. Its security-level review fuzzed hours of simulated time; every bound
     held, and one late-wake bug was found and fixed. Failed sends keep their gates
     (decisions.md → *SyncSchedule: failed sends keep their gates*).
-  - **#46 `Sync` receive path done:** prefix, hidden-value checks, sender resolution
+  - **#46 `Sync` receive path done** (PR #55): hidden-value checks, sender resolution
     (group via `UnitGUID`, guild via the roster map), `SyncProtocol.receive`, dispatch
-    into `SyncSchedule`, `stats` at `ns.Sync.stats` (the `/ledger debug` report shows
-    them). A two-client harness (`spec/helpers/sync_harness.lua`) runs N clients in one
-    Lua state. Nothing is sent yet, and `onHello` / `onWant` are ignored until #47
-    makes the channels available. Its security review found one design hole, filed as
-    #54 (below).
+    into `SyncSchedule`, `stats` at `ns.Sync.stats` (shown by `/ledger debug`), and a
+    multi-client harness (`spec/helpers/sync_harness.lua`). Nothing is sent yet;
+    `onHello` / `onWant` are ignored until #47 makes the channels available. Its
+    security review found no code defect but one design hole in the spec (#54).
   - Other module logic (`Phrase`, `Collection`, `Cosmetics`, `Export`, UI): ⬜ none yet.
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs and CI
   changes (#25–#39) and module logic (`Ledger` #38, `SyncProtocol` #40, `Core` #50,
-  `SyncSchedule` #52, `Sync` receive). No tags yet (maintainer gate).
+  `SyncSchedule` #52, `Sync` receive #55). No tags yet (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
   per inn, seal per zone). A public profile website is a post-v1, separate project the
   AddOn never names ([vision.md](vision.md) → Where it can grow).
@@ -49,20 +48,23 @@
 
 ## Next step
 
-1. **#47** `Sync` send path, combat hold and the `combat state` guard rule (unblocked).
-   Its 40-player-raid simulation checks the traffic model. Harness notes from #46:
-   `c.sendMode` (`"sync"` / `"defer"` / `"fail"`) and `c.sendDelay` switch the send
-   callback; `w:setGroup(members, raid)` drives the unit scan; `requestPump` is a no-op
-   placeholder to fill; combat (a per-client flag, `InCombatLockdown` in the harness's
-   `API_NAMES`, the `PLAYER_REGEN_*` events) and `LE_PARTY_CATEGORY_HOME` aren't in the
-   harness yet.
+1. **#47** `Sync` send path, combat hold and the `combat state` guard rule (`ready`).
+   Its 40-player-raid simulation checks the traffic model.
+   - From #46: `Sync.lua` needs `requestPump` filled (a no-op now), `send` and the
+     combat function added to `realDeps().api`, and more `EVENTS`. `stats.sent` and
+     `sendFailed` exist but nothing counts them yet. The harness's send switches
+     (`c.sendMode` = `"sync"` / `"defer"` / `"fail"`, `c.sendDelay`) and
+     `w:setGroup(members, raid)` are ready; what it lacks is in
+     [specs/sync-glue.md §6.1](specs/sync-glue.md#61-harness-and-stub).
+   - From #45: the glue passes `ledger:shareWindow(SHARE_MAX)` as `io.window` and to
+     `onWant`; the schedule counts its own failed sends in `snapshot().sendFailed`; its
+     gates never reach the 30-message cap on their own (at most 29 at once), so the cap
+     is a backstop.
+   - Keep the `partyN` / `raidN` scan in one function; #54 extends it.
 2. **#54** Group senders resolve through our own unit scan, never `UnitGUID(sender)`
    (blocked by #47; must land before the first release). A character named like a unit
    token (`Target`, `Focus`) could otherwise get entries stored under another player's
-   GUID (decisions.md → *Group senders resolve through our own unit scan*). Notes from #45: the glue
-   passes `ledger:shareWindow(SHARE_MAX)` as `io.window` and to `onWant`; the schedule
-   counts its own failed sends in `snapshot().sendFailed`; its gates never reach the
-   30-message cap on their own (at most 29 at once), so the cap is a backstop.
+   GUID (decisions.md → *Group senders resolve through our own unit scan*).
 
 Then, unfiled, from [kickoff.md](kickoff.md) Phase 1 step 5: `Phrase` + `Data/Phrases`,
 `Collection` + `Cosmetics`, `Export`. Until `Data/Phrases` has entries, every received
@@ -105,5 +107,8 @@ items.
 - `Ledger`'s cap pass at load time is quadratic: a tampered SavedVariables file far over
   the caps (40 000 entries) loads in about 4 s. Peers can't reach this; batch the
   evictions if it ever matters (decisions.md → 2026-09-27 — Ledger orders by bytes).
-- `decisions.md` is at 642 lines. At the start of October, move the September entries to
+- Another AddOn's hidden addon traffic is counted and logged as a `hidden` drop, since
+  the hidden check comes before the prefix (decisions.md → *Sync receive: fail-closed
+  choices*); revisit if #12 shows hidden senders.
+- `decisions.md` is at about 690 lines. At the start of October, move the September entries to
   `docs/archive/decisions-2026-09.md` and leave an index line.

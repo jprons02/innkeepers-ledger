@@ -2,7 +2,7 @@
 # Set it from the client (/dump select(4, GetBuildInfo())); tracked in #12.
 ## Interface: 120000
 ## Title: Innkeeper's Ledger
-## Notes: Talk to an innkeeper, sign the ledger, and fill a book of every inn you've rested at.
+## Notes: Sign the ledger at every inn you rest in, and collect the signatures of travelers you meet along the way.
 ## Version: @project-version@
 ## SavedVariables: InnkeepersLedgerDB
 

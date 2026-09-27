@@ -69,12 +69,6 @@ In-client work is #12 (needs a Forever client and the maintainer).
 
 - **Beta access (#1, #2):** not opted in as of 2026-09-27. The free opt-in costs nothing;
   opting in soon improves the odds. Decides the plan branch by ~2026-10-03.
-- **AddOn list blurb (low priority):** keep the TOC `## Notes` line ("Talk to an
-  innkeeper, sign the ledger, and fill a book of every inn you've rested at.") or replace
-  it. Suggested alternative: "Sign the ledger at every inn you rest in, and collect the
-  signatures of travelers you meet along the way."
-- **#3:** an old seed ticket duplicated by #10/#11. Proposed: close it as a duplicate of
-  #10 (awaiting the maintainer's OK).
 
 ## Waiting on the maintainer in the client (batch)
 
@@ -97,6 +91,6 @@ Tracked in #12; full list in [platform-forever.md → Verification checklist](pl
 - Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
   before export v1 is finalized ([export-format.md](export-format.md)).
 - CI pins only the top-level rocks; if an upstream release breaks CI, pin dependencies too.
-- `decisions.md` is at 331 lines. At the start of October, move the September entries to
+- `decisions.md` is at 344 lines. At the start of October, move the September entries to
   `docs/archive/decisions-2026-09.md` and leave an index line. `architecture.md` is at
   199; split a section out before adding to it.

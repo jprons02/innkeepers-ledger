@@ -10,6 +10,19 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — AddOn list blurb names both halves of the AddOn
+
+The TOC `## Notes` line (the tooltip in the in-game AddOns list) reads "Sign the ledger
+at every inn you rest in, and collect the signatures of travelers you meet along the
+way." The maintainer took this recommendation.
+
+*Rejected:*
+- **Reusing the README's line** ("Talk to an innkeeper, sign the ledger, and fill a book
+  of every inn you've rested at."): it describes only the inn collection and leaves out
+  travelers crossing paths, which is what sets the AddOn apart.
+
+*Reflected in:* `InnkeepersLedger.toc`.
+
 ### 2026-09-27 — Profile site trust: showcase only, no profile key in the v1 export
 
 Exports can't be proven genuine: the code is public, there's no network, and the player

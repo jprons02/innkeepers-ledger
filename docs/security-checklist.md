@@ -67,8 +67,9 @@ overwritten. Release review item 1 covers those.
   decision entry. The alternative, overwriting the frame's methods, taints it.
 - **Combat state in `Sync.lua`:** holding sends during encounters might need
   `InCombatLockdown` or the `PLAYER_REGEN_*` events. That reads a combat *state* flag,
-  not combat data, but "never read combat data" is a maintainer rule, so ask before
-  allowing it.
+  not combat data. **Approved by the maintainer** ([decisions.md](decisions.md),
+  2026-09-27): add the allow-list entry when the sync implementation lands, citing that
+  decision.
 
 ## Release review (every `dev → main` PR)
 

@@ -10,6 +10,74 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Profile website: after v1, a separate project, reached by one paste
+
+A website with public player profiles (passport stamps, zone seals, earned badges) is a
+post-v1 direction. The goal is that players go out of their way to share. The flow is
+the export string: **Share** in the ledger shows the string preselected, the player
+copies it, pastes it into the site, sees a preview and publishes. Pasting again later
+updates the profile. WoW players already do this daily with WeakAuras and
+SimulationCraft strings, so it isn't a scary step. v1 only needs the Share button and an
+export that carries stamps, seals and badges with the time each was earned
+([export-format.md](export-format.md)). The site itself is its own project, not part of
+this repo.
+
+The maintainer ruled that **neither the AddOn nor its download pages (CurseForge, Wago)
+name or link the site**, so the policy rule in [addon-policy.md](addon-policy.md) stands
+unchanged. Players find the site through the site itself and word of mouth. Profiles
+show only the uploader's own signatures, never the travelers they met. How far the site
+should trust uploads is still being discussed ([status.md](status.md)).
+
+*Rejected:*
+- **A companion desktop app that uploads automatically:** an install, Windows
+  "unknown publisher" warnings unless a code-signing certificate is bought every year,
+  and a second product to maintain.
+- **Dragging the SavedVariables file onto the site:** players would have to find a
+  folder buried in the WoW install.
+- **An in-game prompt to upload:** it would name an outside site (Rule 4).
+- **Mentioning the site on the download pages:** the maintainer said no.
+- **Building the site before launch:** it would put the 2026-11-04 date at risk, and a
+  versioned export means launch-day strings still work later.
+
+*Reflected in:* `docs/vision.md` → Where it can grow; `docs/export-format.md`.
+
+### 2026-09-27 — Keep the inn ledger after a pivot review
+
+The maintainer considered changing the concept. Research on 2026-09-27 found every
+alternative already taken on Forever or elsewhere, while nothing on Forever collects or
+signs inns ([prior-art.md](prior-art.md) → The Forever landscape). The ledger stays;
+v1 leans harder into the collection feeling like a passport (a stamp per inn, a seal per
+zone).
+
+*Rejected:*
+- **Player memory ("familiar faces"):** Blizzard's Recent Allies ships in Forever, and
+  iWillRemember already runs there.
+- **An automatic character chronicle:** Forever Journal launched 2026-09-24, from an
+  author shipping a Forever AddOn almost daily.
+- **A Hardcore memorial wall:** Deathlog, Hardcore and a Forever-native memorial exist,
+  and Forever has no Hardcore ruleset at launch.
+- **Campfire stories:** 13 camping AddOns appeared in the first 10 days of the beta.
+- **An "inn common room" with strangers over a hidden channel:** Blizzard blocked
+  addon messages to custom channels in Classic in 2019. Whether Forever allows them is
+  on the in-client checklist; if it does, this is a post-v1 candidate.
+
+### 2026-09-27 — Sync may read combat state, and players are told
+
+`Sync` may use `InCombatLockdown` and the `PLAYER_REGEN_*` events to hold sends until a
+fight ends. That's a yes/no state flag; combat *data* (damage, targets, logs) stays
+off-limits. Because "reads combat" sounds alarming, the README's principles say exactly
+what is checked and why. The `forbidden-apis` allow-list for `Sync.lua` widens only
+when the sync implementation lands, citing this entry.
+
+*Rejected:*
+- **Sending during fights:** extra traffic while players least want it, and Midnight-era
+  rules may block addon messages in encounters anyway.
+- **Not telling players:** the check is harmless, but a silent one looks like a hidden
+  combat reader to anyone reading the code.
+
+*Reflected in:* `README.md` → Principles; `docs/security-checklist.md` → Expected future
+exceptions.
+
 ### 2026-09-26 — Security checks: forbidden-API guard on every PR, review before every release
 
 A required CI job (`forbidden-apis`, `scripts/check-apis.sh`) greps shipped code for

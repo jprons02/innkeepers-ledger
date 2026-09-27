@@ -64,5 +64,14 @@ means you keep meeting the same travelers, which makes crossing paths stronger. 
 - **Companions.** The crossing-paths sync is already a record of who you've played
   with. A "people I've traveled with" view (how often, where, when you last saw them)
   is the natural next layer.
+- **Profile website.** Public player profiles showing passport stamps, zone seals and
+  earned badges, so players have a place to show off their collection. The AddOn stays
+  complete without it. The only bridge is one paste: **Share** in the ledger, copy,
+  paste on the site, publish. Neither the AddOn nor its download pages name the site.
+  Profiles show only the uploader's own signatures. It's a separate project, started
+  after launch.
+- **Inn common room.** Seeing every AddOn user who stayed at your inn, strangers
+  included, over a hidden chat channel. Only possible if Forever allows addon messages
+  on custom channels (Classic blocks them); see [platform-forever.md](platform-forever.md).
 
 None of these are in v1. See [decisions.md](decisions.md).

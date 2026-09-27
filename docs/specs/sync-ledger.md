@@ -266,7 +266,8 @@ creates `{}` only when the saved value is `nil`; it never replaces a non-table.
    `Ledger.MIGRATIONS[n](copy)` for n = schema .. SCHEMA−1 (each takes n to n+1 and sets
    `schema`) inside `pcall`. On success, write the copy back into `data` in place
    (clear its keys, copy the new ones in, so AceDB keeps the same table). On any error,
-   `data` stays untouched and the ledger opens read-only. v1 has no migrations; v2 adds
+   or if the result's `schema` isn't `SCHEMA` or a top-level field has the wrong type
+   (step 6), `data` stays untouched and the ledger opens read-only. v1 has no migrations; v2 adds
    `MIGRATIONS[1]` with a fixture test of the v1 shape.
 6. **Read-only** in every other case: `schema` above `SCHEMA` (a downgraded AddOn),
    missing or not an integer on a non-empty table, or a top-level field of the wrong
@@ -287,8 +288,9 @@ and `Sync` sends nothing from one.
 - a traveler's `met` that isn't an integer in `tMin`..`tMax` becomes its oldest entry's
   `t`;
 - drop `earned` pairs whose key or time fails the `markEarned` checks;
-- move invalid own entries to `quarantine` (at most 100; beyond that they're dropped),
-  and drop non-table `quarantine` items;
+- move invalid own entries to `quarantine` (at most 100 items in all, existing items
+  first; beyond that they're dropped), and drop non-table `quarantine` items and
+  non-table own "entries" (they carry nothing worth keeping);
 - a `me.name` that fails `validName` becomes `owner.name` if that passes, else is
   removed;
 - remove duplicate keys (first kept), sort, rebuild the indexes;
@@ -298,7 +300,11 @@ and `Sync` sends nothing from one.
 - re-apply the caps (in case a later version lowers them): remove the oldest
   repeatedly until under every cap, in the order perSigner, perInn, foreignTotal.
 
-`ledger.loadReport` counts what was dropped, quarantined or reset, for the debug log.
+`ledger.loadReport` counts what was dropped, quarantined or reset, for the debug log:
+`foreignDropped`, `travelersDropped`, `metReset`, `earnedDropped`, `quarantined`,
+`quarantineDropped`, `nameReset`, `duplicates`, `weekly`, `evicted`, plus `migrated`
+(boolean) and, for a read-only ledger, `reason` (`"not_table"`, `"bad_field"`,
+`"bad_schema"`, `"newer_schema"` or `"migration_failed"`).
 
 Indexes (in memory, never saved): dedupe set keyed `signer .. "\0" .. inn .. "\0" .. t`,
 foreign count per inn, total foreign count.
@@ -335,8 +341,8 @@ enforces it for both sides:
 - Own entries and foreign entries don't limit each other (the rule is per signer).
 
 `addForeign` on a new, valid, non-duplicate entry:
-1. Insert it (creating the traveler record with `met = now` if needed; update the
-   traveler's `name` to the given one).
+1. Insert it (creating the traveler record with `met = now` if needed). If the entry
+   is kept (the result is `"added"`), update the traveler's `name` to the given one.
 2. If the signer now holds more than `perSigner`: remove the signer's oldest.
 3. If the inn now holds more than `perInn` foreign entries: remove the inn's oldest.
 4. If the total exceeds `foreignTotal`: remove the oldest foreign entry anywhere.
@@ -362,7 +368,7 @@ or its indexes.
 | `Ledger.validName(s)` | boolean: the name rule (5.2) |
 | `Ledger.innFromNpcGUID(guid, inns)` | NPC ID if `guid` is a creature GUID whose NPC ID is a key of `inns`, else `nil`; never throws (5.2) |
 | `ledger:weekOf(t)` / `ledger:nextWeekStart(now)` | the signing-week number of `t` / the time of the first weekly reset after `now` (4.4) |
-| `ledger:canSign(inn, now)` | `false` if an own entry at `inn` falls in `weekOf(now)` (or the ledger is read-only), else `true` |
+| `ledger:canSign(inn, now)` | `false` if an own entry at `inn` falls in `weekOf(now)` (or the ledger is read-only, or `inn` / `now` isn't a valid integer), else `true` |
 | `ledger:addOwn(e)` | `"added"`, `"dup"`, `"too_soon"`, `"invalid"`, `"readonly"` |
 | `ledger:addForeign(signer, name, e, now)` | `"added"`, `"dup"`, `"too_soon"`, `"dropped"`, `"invalid"`, `"self"` (signer is the owner), `"readonly"` |
 | `ledger:ownerGUID()` | the owner's GUID |
@@ -374,12 +380,12 @@ or its indexes.
 | `ledger:travelers()` | `{ { guid = s, name = s, met = t, count = n }, ... }`, `met` descending, then `guid` |
 | `ledger:counts()` | `{ own = n, foreign = n, travelers = n }` |
 | `ledger:setOwnerName(name)` | `true` if `name` passes `validName` and was stored in `me.name`, else `false` |
-| `ledger:markEarned(id, t)` | `true` if recorded; keeps the earliest time; `id` an integer in 1..`cosmeticIdMax`, `t` an integer in `tMin`..`tMax`, else `false` |
+| `ledger:markEarned(id, t)` | `true` for a valid call (the cosmetic is recorded; an earlier stored time is kept); `false` if `id` isn't an integer in 1..`cosmeticIdMax`, `t` isn't an integer in `tMin`..`tMax`, or the ledger is read-only |
 | `ledger:earnedAt(id)` / `ledger:earned()` | time or nil / a copy of the map |
 
 `addForeign` checks its own inputs as a second line of defense (`validGUID(signer)`,
-`validName(name)`, `validEntry(e)`, `now` an integer), but known-ID and time-window
-checks live in `SyncProtocol`.
+`validName(name)`, `validEntry(e)`, `now` an integer in `tMin`..`tMax`), but known-ID
+and time-window checks live in `SyncProtocol`.
 
 ## 5. Security notes
 

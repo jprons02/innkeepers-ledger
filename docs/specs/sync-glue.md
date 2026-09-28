@@ -927,6 +927,8 @@ Filed under #41, in order:
 4. **#47 `Sync` send path and combat hold** — §3.5.1 triggers, §3.5.6's glue pump, §3.6
    (including §3.3.2 step 3 and the `PLAYER_REGEN_*` events), §3.7, §5.2 in the same PR,
    and the send and end-to-end cases of §6.4 (incl. the 40-raid check). Blocked by #46.
+5. **#54 group map** (filed after #46's review) — §3.4 step 3 and "The group map", the
+   group-map cases of §6.4, §8's `UnitFullName` row. Built in PR #59; #41 closed.
 
 ## Assumptions (listed for the maintainer)
 

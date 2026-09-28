@@ -38,7 +38,9 @@ Proportional, not ceremonial:
 - **The sync harness** (`spec/helpers/sync_harness.lua`): N `Sync` clients in one Lua
   state, each with its own `ns`, ledger, GUID and fake `api` (no stub, no `_G`), sharing
   a clock, a timer queue, an addon-message bus that echoes to the sender, and the group
-  and guild lists behind `UnitGUID`, the group calls and the roster. `c.impl.X` replaces
+  and guild lists behind the unit functions (`UnitGUID`, `UnitFullName`, `UnitName`),
+  the group calls and the roster. `c.tokens` makes `UnitGUID` answer unit tokens like
+  `target` in any case, as the client does, so a test can play a member named like one. `c.impl.X` replaces
   one client function, `c.calls.X` counts its calls, `c.secret(v)` is the client's
   `issecretvalue`. Fixture inns, phrases and seals stand in for the empty `Data` tables.
   For the send side: `c.sendMode` (`"sync"`, `"defer"` by `c.sendDelay` s, `"fail"`),

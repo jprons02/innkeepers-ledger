@@ -290,9 +290,9 @@ describe("Sync receive: unresolved sender", function()
     assert.same({}, asked)
     assert.equal(0, recv.n)
     assert.equal(0, stored(me))
-    -- The same sender on PARTY resolves through the group.
+    -- The same sender on PARTY resolves through the group map built at start.
     inject(me, "InnLedger", text, "PARTY", bram.full)
-    assert.same({ bram.full }, asked)
+    assert.same({}, asked)
     assert.equal(1, stored(me))
   end)
 
@@ -327,6 +327,7 @@ describe("Sync receive: sender that left the group", function()
     assert.equal(1, me.client.schedule:snapshot().wants)
     local before = recv.n
     w:setGroup({ me })
+    me.client:onEvent("GROUP_ROSTER_UPDATE") -- the group map follows the roster
     inject(me, "InnLedger", entriesText(mira)[1], "PARTY", mira.full)
     inject(me, "InnLedger", helloText(mira), "PARTY", mira.full)
     assert.equal(before, recv.n)
@@ -418,6 +419,7 @@ describe("Sync receive: hidden values", function()
 
   it("stores nothing while the clock is hidden, and doesn't throw", function()
     local w, me, mira, recv = party()
+    me.client:onEvent("GROUP_ROSTER_UPDATE") -- a hidden clock allows no rescan on a miss
     me.secret = function(v) return v == w.now end
     assert.has_no.errors(function()
       inject(me, "InnLedger", entriesText(mira)[1], "PARTY", mira.full)
@@ -431,7 +433,7 @@ describe("Sync receive: hidden values", function()
     assert.equal(3, stored(me))
   end)
 
-  it("drops a sender whose UnitGUID is a stand-in or a hidden value", function()
+  it("drops a sender whose unit's UnitGUID is a stand-in or a hidden value", function()
     for _, make in ipairs({ hostileTable, hostileProxy }) do
       local _, me, mira, recv = party()
       local bad = make()
@@ -448,7 +450,7 @@ describe("Sync receive: hidden values", function()
     assert.equal(0, recv.n)
   end)
 
-  it("drops a sender whose UnitGUID raises or isn't a player GUID", function()
+  it("drops a sender whose unit's UnitGUID raises or isn't a player GUID", function()
     for _, bad in ipairs({ "Creature-0-1-2-3-4-5", "", 42, "Player-1-0000BEEF " }) do
       local _, me, mira, recv = party()
       me.impl.UnitGUID = function() return bad end
@@ -584,24 +586,329 @@ describe("Sync receive: name normalization", function()
       assert.equal(0, recv.n)
     end
     -- 96 bytes passes the shape check and reaches receive (whose name rule drops it).
-    local _, me, mira, recv = party()
-    me.impl.UnitGUID = function() return mira.guid end
+    local w, me, mira, recv = party()
+    w:setGroup({ me, harness.member(("A"):rep(96), mira.guid) })
     inject(me, "InnLedger", entriesText(mira)[1], "PARTY", ("A"):rep(96))
-    assert.equal(1, me.calls.UnitGUID)
     assert.equal(1, recv.n)
     assert.equal(1, stats(me).dropped.sender)
     assert.equal(0, stored(me))
   end)
+end)
 
-  it("looks the sender up in the group exactly as the server gave it", function()
-    local _, me, mira = party()
-    local asked = {}
-    me.impl.UnitGUID = function(unit)
-      asked[#asked + 1] = unit
-      return mira.guid
+describe("Sync receive: group map (#54)", function()
+  -- Me (Aldric) grouped with `others` (clients or records), started after the group is set.
+  local function groupOf(others, raid)
+    local w = harness.new()
+    local recv = { n = 0 }
+    local me = w:add("Aldric", { setup = spyReceive(recv), start = false })
+    local members = { me }
+    for _, m in ipairs(others) do
+      members[#members + 1] = type(m) == "string" and w:add(m) or m
     end
-    inject(me, "InnLedger", entriesText(mira)[1], "PARTY", "Mira")
-    assert.same({ "Mira" }, asked)
+    w:setGroup(members, raid)
+    for i = 2, #members do
+      if members[i].client then
+        members[i].client:onEvent("GROUP_ROSTER_UPDATE")
+      end
+    end
+    assert.is_true(me.client:start())
+    return w, me, members, recv
+  end
+
+  local function resolves(me, sender, channel)
+    local before = stats(me).dropped.unresolved or 0
+    inject(me, "InnLedger", "H1:0:0", channel or "PARTY", sender)
+    return (stats(me).dropped.unresolved or 0) == before
+  end
+
+  local function keys(me)
+    local out = {}
+    for key in pairs(me.client.group) do
+      out[#out + 1] = key
+    end
+    table.sort(out)
+    return out
+  end
+
+  -- Records every argument the unit functions get.
+  local function spyUnits(c)
+    local asked = {}
+    for _, fname in ipairs({ "UnitGUID", "UnitFullName", "UnitName" }) do
+      local real = c.impl[fname]
+      c.impl[fname] = function(unit, ...)
+        asked[#asked + 1] = unit
+        return real(unit, ...)
+      end
+    end
+    return asked
+  end
+
+  local TOKENS = { "Target", "focus", "MOUSEOVER", "Targettarget", "Softfriend" }
+
+  it("stores a member named like a unit token under its own GUID, never our target's",
+    function()
+      for _, token in ipairs(TOKENS) do
+        local _, me, members = groupOf({ "Bram", token })
+        local bram, peer = members[2], members[3]
+        me.tokens[token:lower()] = bram.guid -- we target (focus, mouse over, ...) Bram
+        sign(peer, 3)
+        -- A bare sender, as the client might give it.
+        for _, text in ipairs(entriesText(peer)) do
+          inject(me, "InnLedger", text, "PARTY", token)
+        end
+        assert.equal(0, (held(me, bram.guid)), token)
+        local n, name = held(me, peer.guid)
+        assert.equal(3, n, token)
+        assert.equal(token .. "-Stubrealm", name, token)
+        assert.equal(3, stored(me), token)
+      end
+    end)
+
+  it("drops a sender named like a token that no unit carries, in any case", function()
+    local _, me, members, recv = groupOf({ "Bram", "Target" })
+    local bram, peer = members[2], members[3]
+    sign(peer, 3)
+    for _, token in ipairs({ "target", "TARGET", "tArGeT", "focus", "Mouseover", "player",
+      "party1", "raid1", "Target-Stubrealm-Stubrealm" }) do
+      me.tokens[token:lower()] = bram.guid
+      inject(me, "InnLedger", entriesText(peer)[1], "PARTY", token)
+    end
+    assert.equal(9, stats(me).dropped.unresolved)
+    assert.equal(0, recv.n)
+    assert.equal(0, stored(me))
+  end)
+
+  it("never passes a peer string to a unit function (party, raid, guild, hostile names)",
+    function()
+      for _, raid in ipairs({ false, true }) do
+        local w, me, members = groupOf({ "Mira", "Target", "Bram" }, raid)
+        local asked = spyUnits(me)
+        sign(members[2], 12)
+        w:setGuild(members)
+        me.client:onEvent("PLAYER_GUILD_UPDATE")
+        me.client:onEvent("GUILD_ROSTER_UPDATE")
+        for _, sender in ipairs({ "Target", "target", "focus", "Mira", "Mira-Stubrealm",
+          "player", "party1", "raid1", "Stranger", "Stranger-Farshore" }) do
+          inject(me, "InnLedger", entriesText(members[2])[1], raid and "RAID" or "PARTY",
+            sender)
+          inject(me, "InnLedger", "H1:0:0", "GUILD", sender)
+          w:advance(11) -- lets each miss rescan
+        end
+        me.client:onEvent("GROUP_ROSTER_UPDATE")
+        w:advance(120) -- a whole sync round, both ways
+        assert.is_true(#asked > 0)
+        for _, unit in ipairs(asked) do
+          assert.truthy(unit == "player" or unit:match("^party%d+$")
+            or unit:match("^raid%d+$"), unit)
+        end
+        assert.equal(12, (held(me, members[2].guid)))
+      end
+    end)
+
+  it("models the client: a bare token answers our target, a full name the member", function()
+    -- Documents the harness model this ticket's forgery test relies on.
+    local _, me, members = groupOf({ "Bram", "Target" })
+    me.tokens.target = members[2].guid
+    assert.equal(members[2].guid, me.api.UnitGUID("Target"))
+    assert.equal(members[3].guid, me.api.UnitGUID("Target-Stubrealm"))
+  end)
+
+  it("leaves out a key that two units claim, until a scan finds it once", function()
+    local w, me = groupOf({
+      harness.member("Bram", "Player-1-0000B001"),
+      harness.member("Bram", "Player-1-0000B002"),
+      harness.member("Cora", "Player-1-0000C001"),
+      harness.member("Cora", "Player-1-0000C002", "Farshore"),
+    })
+    assert.same({ "Aldric-Stubrealm", "Cora-Farshore", "Cora-Stubrealm" }, keys(me))
+    assert.is_false(resolves(me, "Bram"))
+    assert.is_false(resolves(me, "Bram-Stubrealm"))
+    assert.is_true(resolves(me, "Cora"))
+    assert.is_true(resolves(me, "Cora-Farshore"))
+    assert.equal("Player-1-0000C001", me.client.group["Cora-Stubrealm"])
+    assert.equal("Player-1-0000C002", me.client.group["Cora-Farshore"])
+    -- A unit whose realm reads as ours in full collides with one whose realm reads nil.
+    local fullName = me.impl.UnitFullName
+    me.impl.UnitFullName = function(unit)
+      if unit == "party4" then
+        return "Cora", "Stubrealm"
+      end
+      return fullName(unit)
+    end
+    me.client:onEvent("GROUP_ROSTER_UPDATE")
+    assert.is_nil(me.client.group["Cora-Stubrealm"])
+    -- One Bram leaves: the next scan resolves the other.
+    table.remove(w.group.members, 2)
+    me.client:onEvent("GROUP_ROSTER_UPDATE")
+    assert.equal("Player-1-0000B002", me.client.group["Bram-Stubrealm"])
+  end)
+
+  it("keys our own name, so our echo counts as self, but never adds us to the members",
+    function()
+      for _, raid in ipairs({ false, true }) do
+        local w, me, members = groupOf({ "Mira" }, raid)
+        assert.same({ "Aldric-Stubrealm", "Mira-Stubrealm" }, keys(me))
+        assert.same({ [members[2].guid] = true }, me.client.members)
+        sign(me, 1)
+        w:post(me, raid and "RAID" or "PARTY", helloText(me))
+        w:deliver()
+        assert.equal(1, stats(me).dropped.self)
+        assert.is_nil(stats(me).dropped.unresolved)
+      end
+    end)
+
+  it("puts a unit's realm in the sender's form: no spaces or dashes, none means ours",
+    function()
+      local _, me = groupOf({ "Mira" })
+      local realms = {
+        { "Area 52", "Mira-Area52" },
+        { "Azjol-Nerub", "Mira-AzjolNerub" },
+        { "Farshore", "Mira-Farshore" },
+        { "", "Mira-Stubrealm" },
+        { " - ", "Mira-Stubrealm" },
+        { ("R"):rep(48), "Mira-" .. ("R"):rep(48) },
+      }
+      for _, case in ipairs(realms) do
+        me.impl.UnitFullName = function(unit)
+          if unit == "party1" then
+            return "Mira", case[1]
+          end
+        end
+        me.client:onEvent("GROUP_ROSTER_UPDATE")
+        assert.same({ case[2] }, keys(me), case[1])
+      end
+      -- Skipped: a realm too long once normalized, not a string, or hidden.
+      local hiddenRealm = "Veiled"
+      me.secret = function(v) return v == hiddenRealm end
+      for i, bad in ipairs({ ("R"):rep(49), 42, {}, hiddenRealm, hostileProxy() }) do
+        me.impl.UnitFullName = function(unit)
+          if unit == "party1" then
+            return "Mira", bad
+          end
+        end
+        me.client:onEvent("GROUP_ROSTER_UPDATE")
+        assert.same({}, keys(me), i)
+      end
+      assert.equal(0, stats(me).errors)
+    end)
+
+  it("falls back to UnitName, whose realm keeps its spaces", function()
+    local _, me = groupOf({ harness.member("Mira", "Player-1-0000A001", "Area 52"), "Bram" })
+    me.api.UnitFullName = nil
+    me.client:onEvent("GROUP_ROSTER_UPDATE")
+    assert.same({ "Aldric-Stubrealm", "Bram-Stubrealm", "Mira-Area52" }, keys(me))
+    assert.is_true(resolves(me, "Mira-Area52"))
+    assert.is_true(resolves(me, "Bram"))
+    -- Neither: an empty map, every group sender unresolved.
+    me.api.UnitName = nil
+    me.client:onEvent("GROUP_ROSTER_UPDATE")
+    assert.same({}, keys(me))
+    assert.is_false(resolves(me, "Bram"))
+    assert.equal(0, stats(me).errors)
+  end)
+
+  it("skips placeholder, dashed, hidden, odd and unreadable names, and keeps reading",
+    function()
+      local names = {
+        "Unknown", "Inconnu", "Mi-ra", "Veiled", ("L"):rep(97), "", 42, false,
+        hostileTable(), hostileProxy(), "RAISE", "Good",
+      }
+      local others = {}
+      for i = 1, #names do
+        others[i] = harness.member("Slot", ("Player-1-%08X"):format(0xA000 + i))
+      end
+      local _, me = groupOf(others)
+      me.api.UNKNOWNOBJECT = "Inconnu"
+      me.secret = function(v) return v == "Veiled" end
+      me.impl.UnitFullName = function(unit)
+        if unit == "player" then
+          return "Aldric", "Stubrealm"
+        end
+        local name = names[tonumber(unit:match("%d+"))]
+        if name == "RAISE" then
+          error("boom")
+        end
+        return name, nil
+      end
+      me.client:onEvent("GROUP_ROSTER_UPDATE")
+      -- "Unknown" is a real name here, since the client's placeholder is "Inconnu".
+      assert.same({ "Aldric-Stubrealm", "Good-Stubrealm", "Unknown-Stubrealm" }, keys(me))
+      me.api.UNKNOWNOBJECT = nil -- unreadable: the placeholder is "Unknown"
+      me.client:onEvent("GROUP_ROSTER_UPDATE")
+      assert.same({ "Aldric-Stubrealm", "Good-Stubrealm", "Inconnu-Stubrealm" }, keys(me))
+      assert.equal(0, stats(me).errors)
+    end)
+
+  it("rescans the map on a miss at most once per 10 s, never touching the members",
+    function()
+      local w, me, members = groupOf({ "Mira" })
+      local mira = members[2]
+      sign(mira, 3)
+      local loaded = false
+      local fullName = me.impl.UnitFullName
+      me.impl.UnitFullName = function(unit)
+        if unit == "party1" and not loaded then
+          return "Unknown", nil
+        end
+        return fullName(unit)
+      end
+      me.client:onEvent("GROUP_ROSTER_UPDATE")
+      assert.same({ [mira.guid] = true }, me.client.members)
+      local scans = function() return me.calls.UnitFullName or 0 end
+      local before = scans()
+      assert.is_false(resolves(me, "Mira")) -- a miss: one rescan, still not loaded
+      assert.equal(before + 2, scans())      -- player and party1
+      loaded = true
+      for _ = 1, 100 do
+        assert.is_false(resolves(me, "Mira"))
+      end
+      w:advance(9)
+      assert.is_false(resolves(me, "Mira"))
+      assert.equal(before + 2, scans())
+      w:advance(1)
+      inject(me, "InnLedger", entriesText(mira)[1], "PARTY", "Mira")
+      assert.equal(3, stored(me))
+      assert.equal(before + 4, scans())
+      -- A newcomer with no roster event yet resolves through a rescan, but joins neither
+      -- the member set nor a HELLO.
+      local bram = w:add("Bram")
+      sign(bram, 2, 50)
+      w.group.members[#w.group.members + 1] = bram
+      local hellos = 0
+      local schedule = me.client.schedule
+      local requestHello = schedule.requestHello
+      schedule.requestHello = function(...)
+        hellos = hellos + 1
+        return requestHello(...)
+      end
+      w:advance(10)
+      inject(me, "InnLedger", entriesText(bram)[1], "PARTY", bram.full)
+      assert.equal(2, (held(me, bram.guid)))
+      assert.same({ [mira.guid] = true }, me.client.members)
+      assert.equal(0, hellos)
+      schedule.requestHello = requestHello
+      -- A clock that went back allows a rescan at once; a hidden one allows none.
+      loaded = false
+      me.client:onEvent("GROUP_ROSTER_UPDATE")
+      loaded = true
+      w.now = w.now - 3600
+      assert.is_true(resolves(me, "Mira"))
+      loaded = false
+      me.client:onEvent("GROUP_ROSTER_UPDATE")
+      loaded = true
+      w:advance(20)
+      me.secret = function(v) return v == w.now end
+      assert.is_false(resolves(me, "Mira"))
+    end)
+
+  it("empties the map when we leave the group", function()
+    local w, me = groupOf({ "Mira" })
+    assert.is_true(resolves(me, "Mira"))
+    w:setGroup({})
+    me.client:onEvent("GROUP_ROSTER_UPDATE")
+    assert.same({}, keys(me))
+    w:advance(10)
+    assert.is_false(resolves(me, "Mira"))
   end)
 end)
 
@@ -1331,9 +1638,20 @@ describe("ns.Sync:Start (the real client)", function()
     } }
   end
 
-  local function inParty(unit)
-    if unit == "player" then return GUID end
-    if unit == "Mira-Stubrealm" then return MIRA end
+  -- A party of the stub's player and Mira: the unit scan finds her as party1.
+  local function inParty()
+    return {
+      IsInGroup = function() return true end,
+      GetNumGroupMembers = function() return 2 end,
+      UnitGUID = function(unit)
+        if unit == "player" then return GUID end
+        if unit == "party1" then return MIRA end
+      end,
+      UnitFullName = function(unit)
+        if unit == "player" then return "Traveler", "Stubrealm" end
+        if unit == "party1" then return "Mira", nil end
+      end,
+    }
   end
 
   after_each(wow.uninstall)
@@ -1355,7 +1673,7 @@ describe("ns.Sync:Start (the real client)", function()
   end)
 
   it("receives CHAT_MSG_ADDON; with the real, empty data every entry is rejected", function()
-    local ns = login({ overrides = { UnitGUID = inParty } })
+    local ns = login({ overrides = inParty() })
     wow.fire("CHAT_MSG_ADDON", "InnLedger", "E1:1," .. (STUB_NOW - 50) .. ",1,0", "PARTY",
       "Mira-Stubrealm", "", 0, 0, "", 0)
     assert.same({}, wow.errors)
@@ -1453,7 +1771,7 @@ describe("ns.Sync:Start (the real client)", function()
   end)
 
   it("writes debug lines to chat without peer strings", function()
-    local ns = login({ overrides = { UnitGUID = inParty } })
+    local ns = login({ overrides = inParty() })
     wow.slash("/ledger debug")
     wow.chat = {}
     wow.fire("CHAT_MSG_ADDON", "InnLedger", "H1:0:0", "PARTY", "Evil|cffff0000Name")

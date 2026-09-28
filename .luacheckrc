@@ -44,6 +44,8 @@ local wow = {
   "IsResting",
   "LE_PARTY_CATEGORY_HOME",
   "LibStub",
+  "UNKNOWNOBJECT",
+  "UnitFullName",
   "UnitGUID",
   "UnitName",
   "issecretvalue",

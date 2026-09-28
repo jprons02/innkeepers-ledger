@@ -24,7 +24,7 @@ local Sync = {}
 ns.Sync = Sync
 
 local find, floor, min, select = string.find, math.floor, math.min, select
-local sub = string.sub
+local gsub, sub = string.gsub, string.sub
 
 local PREFIX = "InnLedger"
 local CHANNELS = SP.CHANNELS      -- PARTY, RAID, GUILD
@@ -33,7 +33,9 @@ local REALM_MAX = 48              -- bytes in a realm name
 local ROSTER_ROWS = 2000          -- guild roster rows read, at most
 local ROSTER_GAP = 60             -- at most one roster request per this many s
 local REBUILD_GAP = 10            -- at most one guild map rebuild per this many s
-local GROUP_MAX = 40              -- group units scanned, at most
+local GROUP_MAX = 40              -- group units scanned, at most (plus "player" in a party)
+local RESCAN_GAP = 10             -- a group map miss rescans at most once per this many s
+local PLACEHOLDER = "Unknown"     -- a name not loaded yet, when UNKNOWNOBJECT isn't readable
 local PUMP_HORIZON = 5            -- the pump timer never targets more than this many s out
 local BAD_CLOCK_RETRY = 5         -- a pump that read a bad clock retries after this many s
 local HELD_RECHECK = 30           -- while held, re-check combat this often, s
@@ -137,6 +139,8 @@ function Sync.new(deps)
     rebuildPending = false,
     rosterAt = nil,        -- when the roster was last requested
     members = {},          -- GUIDs of the other group members, from our unit scan
+    group = {},            -- full name -> GUID, from the same scan (us included)
+    rescanAt = nil,        -- when a group map miss last rescanned
     guildOn = false,       -- the GUILD channel is available
     timerGen = 0,          -- the live pump timer's generation; older timers are stale
     timerLive = false,     -- a pump timer is armed and hasn't fired
@@ -449,9 +453,59 @@ function Client:groupCall(fn)
   return call(fn)
 end
 
--- The unit scan: in a group, returns whether it's a raid and the set of the other
--- members' GUIDs (hidden, invalid and own GUIDs skipped; at most 40 units). Not in a
--- group: nil. The one place group units are read (#54 extends it to read names too).
+-- The client's placeholder for a name that hasn't loaded yet.
+function Client:placeholder()
+  local name = self.api.UNKNOWNOBJECT
+  if type(name) == "string" and not self:hidden(name) then
+    return name
+  end
+  return PLACEHOLDER
+end
+
+-- The name and realm of one of our own units: UnitFullName, or UnitName where it's
+-- missing. Only ever called with "player", "partyN" or "raidN".
+local function unitName(api, unit)
+  local fn = api.UnitFullName
+  if type(fn) ~= "function" then
+    fn = api.UnitName
+  end
+  if type(fn) ~= "function" then
+    return nil, nil
+  end
+  local ok, name, realm = pcall(fn, unit)
+  if not ok then
+    return nil, nil
+  end
+  return name, realm
+end
+
+-- The group map key for a unit's name and realm, or nil to skip the unit (spec 3.4). The
+-- realm loses its spaces and dashes (the GetNormalizedRealmName form); none means ours.
+function Client:unitKey(name, realm, ourRealm, placeholder)
+  if self:hidden(name) or self:hidden(realm) or type(name) ~= "string" or #name < 1
+    or #name > SENDER_MAX or find(name, "-", 1, true) or name == placeholder then
+    return nil
+  end
+  if realm ~= nil then
+    if type(realm) ~= "string" then
+      return nil
+    end
+    realm = gsub(realm, "[%s%-]", "")
+    if #realm > REALM_MAX then
+      return nil
+    end
+    if realm ~= "" then
+      return name .. "-" .. realm
+    end
+  end
+  return fullName(name, ourRealm)
+end
+
+-- The unit scan: in a group, returns whether it's a raid, the set of the other members'
+-- GUIDs (hidden, invalid and own GUIDs skipped; at most 40 units) and the group map, full
+-- name -> GUID, us included (a unit whose name can't be read is left out, and so is a
+-- name two units claim). Not in a group: nil. The one place group units are read; no
+-- string from a peer ever reaches a client function here.
 function Client:scanGroup()
   local api = self.api
   if not self:yes(self:groupCall(api.IsInGroup)) then
@@ -468,25 +522,47 @@ function Client:scanGroup()
     unit, last = "raid", n
   end
   local own = self.ledger:ownerGUID()
-  local set = {}
-  for i = 1, last do
-    local guid = call(api.UnitGUID, unit .. i)
-    if not self:hidden(guid) and Ledger.validGUID(guid) and guid ~= own then
-      set[guid] = true
+  local ourRealm, placeholder = self:realm(), self:placeholder()
+  local set, map, claimed = {}, {}, {}
+  local function add(u, guid)
+    local name, realm = unitName(api, u)
+    local key = self:unitKey(name, realm, ourRealm, placeholder)
+    if key == nil then
+      return
+    end
+    if claimed[key] then
+      map[key] = nil
+    else
+      claimed[key] = true
+      map[key] = guid
     end
   end
-  return raid, set
+  if not raid and Ledger.validGUID(own) then
+    add("player", own) -- a raid lists us among raid1..raidN
+  end
+  for i = 1, last do
+    local u = unit .. i
+    local guid = call(api.UnitGUID, u)
+    if not self:hidden(guid) and Ledger.validGUID(guid) then
+      if guid ~= own then
+        set[guid] = true
+      end
+      add(u, guid)
+    end
+  end
+  return raid, set, map
 end
 
 -- GROUP_ROSTER_UPDATE and start: set the GROUP channel and ask for a HELLO when the scan
 -- holds someone the last one didn't. Members only leaving sends nothing.
 function Client:onGroup(now)
-  local raid, set = self:scanGroup()
+  local raid, set, map = self:scanGroup()
   if set == nil then
     self.schedule:setChannel("GROUP", nil)
-    self.members = {}
+    self.members, self.group = {}, {}
     return
   end
+  self.group = map
   self.schedule:setChannel("GROUP", raid and "RAID" or "PARTY")
   local new = false
   for guid in next, set do
@@ -687,6 +763,17 @@ end
 -- ---------------------------------------------------------------------------
 -- Receive (spec 3.3.3 and 3.4).
 
+-- Whether a group map miss may rescan now: at most once per RESCAN_GAP (a clock that
+-- went back allows one at once). The rescan replaces the map only, never the member set.
+function Client:rescanDue(now)
+  local last = self.rescanAt
+  if now == nil or (last ~= nil and now >= last and now < last + RESCAN_GAP) then
+    return false
+  end
+  self.rescanAt = now
+  return true
+end
+
 -- { guid, name } for the sender of a message on `channel`, or nil (unresolved).
 function Client:resolve(channel, sender, now)
   if type(sender) ~= "string" or #sender < 1 or #sender > SENDER_MAX then
@@ -701,8 +788,16 @@ function Client:resolve(channel, sender, now)
       return nil
     end
   else
-    -- The sender string exactly as the server gave it; it resolves for group members only.
-    guid = call(self.api.UnitGUID, sender)
+    -- Only compared with names our own unit scan read; never handed to a client function.
+    guid = self.group[full]
+    if guid == nil and self:rescanDue(now) then
+      local _, _, map = self:scanGroup()
+      self.group = map or {}
+      guid = self.group[full]
+    end
+    if guid == nil then
+      return nil
+    end
   end
   if self:hidden(guid) or not Ledger.validGUID(guid) then
     return nil
@@ -854,6 +949,9 @@ local function realDeps()
     api = {
       GetServerTime = GetServerTime,
       UnitGUID = UnitGUID,
+      UnitFullName = UnitFullName,
+      UnitName = UnitName,
+      UNKNOWNOBJECT = UNKNOWNOBJECT,
       IsInGroup = IsInGroup,
       IsInRaid = IsInRaid,
       GetNumGroupMembers = GetNumGroupMembers,

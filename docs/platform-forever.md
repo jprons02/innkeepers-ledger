@@ -85,11 +85,11 @@ unverified · ❓ unknown
 - [ ] Player GUID and name format on the mega-realm (two-part names?)
 - [ ] Weekly reset: `C_DateAndTime.GetSecondsUntilWeeklyReset()` works, and the reset
       day and time per region (for the fallback table)
-- [ ] Addon-message sender name resolves to a GUID: `UnitGUID(sender)` for group
-      members; guild roster exposes member GUIDs
+- [ ] Addon-message sender name resolves to a GUID: through our own unit scan for group
+      members (see the #54 item); guild roster exposes member GUIDs
 - [ ] Sync glue ([specs/sync-glue.md §8](specs/sync-glue.md#8-unverified-client-facts-this-spec-relies-on)):
       the `CHAT_MSG_ADDON` sender string's form (realm suffix? a space in two-part
-      names?) and whether `UnitGUID` accepts it; `GetNormalizedRealmName()` on a
+      names?); `GetNormalizedRealmName()` on a
       mega-realm; `GetGuildRosterInfo`'s GUID is its 17th return; `GUILD_ROSTER_UPDATE`
       and `C_GuildInfo.GuildRoster()` behave as on retail; `UnitGUID("player")` and the
       weekly-reset API are readable at `PLAYER_LOGIN`; what
@@ -99,8 +99,12 @@ unverified · ❓ unknown
       instance-only ones
 - [ ] Group sender names (#54): does `CHAT_MSG_ADDON` ever give a bare name without
       `-Realm`? Can a character be named like a unit token (`Target`, `Focus`,
-      `Mouseover`)? Which of `UnitName` / `UnitFullName` on `partyN` gives the realm in
-      the same form as the sender string?
+      `Mouseover`)? Does `UnitFullName("partyN")`'s name plus realm (spaces and `-`
+      removed; `nil` or empty meaning our realm) match the sender string exactly, for
+      our realm and a connected one? Does `UnitFullName("player")` return our realm?
+      Is `UNKNOWNOBJECT` what a not-yet-loaded member's name reads as, and does
+      `GROUP_ROSTER_UPDATE` fire again once it loads? (Spec
+      [§3.4 → The group map](specs/sync-glue.md#34-sender-resolution).)
 - [ ] Collect innkeeper NPC IDs for every inn (the `Data/Inns` table)
 - [ ] Sitting detection, if any
 

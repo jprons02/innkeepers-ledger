@@ -88,6 +88,11 @@ Batched in #12; the list is
   review nits).
 - Publish `Data/Inns`, `Data/Phrases` and `Data/Cosmetics` as a generated reference for
   export consumers; needs #12's inn data.
+- **Before the first tag (packager setup):** name tags plainly (`vX.Y.Z`), since the
+  packaged `## Version` must match `[A-Za-z0-9._+-]{1,32}` or every export refuses
+  (security-checklist item 13); add a CI step that checks it when the packager workflow
+  lands. Answer the phrase and catalog questions first: IDs freeze at the first public
+  release.
 - Export golden string (`GOLDEN_F`): regenerate if a library or interpreter change breaks
   it while its decode still matches, and say so in the PR.
 - `Ledger`'s load-time cap pass is quadratic on a tampered file (40 000 entries ≈ 4 s);

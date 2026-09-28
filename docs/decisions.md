@@ -10,6 +10,82 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Phrase grammar, ID scheme and rendering
+
+Settled in #62, which built `Phrase` and the first draft `Data/Phrases`. Spec:
+[specs/phrase.md §3](specs/phrase.md#3-approach). The wording of the draft set is still
+the maintainer's (open question in [status.md](status.md)); nothing here waits on it.
+- **One ID space, keyed directly by number:** templates 1..499, conjunctions 500..599,
+  words 1000..9999, 600..999 reserved. Each value is a record (`kind`, `text`, and `cat`
+  for a word). Words take blocks of 100 per category (category `k`: `900 + 100k` ..);
+  the record's `cat` is what counts. `SyncProtocol`'s one-table lookup and `Sync`'s
+  wiring stay unchanged.
+- **Grammar:** a clause is a slotted template plus one word, or a slotless template; a
+  phrase is one clause or two joined by a conjunction. Exactly six shapes (`t`, `TW`,
+  `tCt`, `tCTW`, `TWCt`, `TWCTW`) fill the five wire slots. Any word fits any slot.
+  After the first release the grammar may only grow, never shrink.
+- **Rendering:** the slot `{w}` is replaced with plain `find` + `sub`, never `gsub`; no
+  case changes and no added punctuation (conjunctions are sentence openers ending in
+  `...`). Record limits bound any rendering at 156 bytes, under `renderBytes` 160. These
+  rules and the IDs freeze at the first release.
+- **Validation:** `Phrase.validIds` is the `phraseOk` hook: raw `next`/`rawget` only,
+  stops counting past 5 keys, never writes, returns exactly `true`/`false`. `bind`
+  excludes a bad record (named in `invalid`, a CI test keeps it empty) instead of
+  raising, and missing data binds an empty set that rejects everything.
+- **Where the spec was silent (fail closed):** at most 90 categories are read (one block
+  of 100 IDs each; more is named in `invalid`); `compose` returns `nil` for any sixth
+  non-`nil` argument; `invalid` prints only numeric keys and names any other key by its
+  type, so no data string is echoed; the exported `SLOT`/`LIMITS`/`RANGES`/`SHAPES` are
+  copies, so changing them can't loosen the grammar.
+
+*Rejected:*
+- **Separate tables per kind, each numbered from 1:** needs `Sync` and `sync-glue.md`
+  changes, and IDs of different kinds could collide.
+- **Kind from the ID range only, with bare-string values:** no home for a word's
+  category or a later "retired" flag.
+- **Typed slots:** more data to keep consistent and a weaker content argument; still
+  possible for new templates later.
+- **Lowercasing the second clause after a connector:** needs per-template case rules.
+- **Storing or sending rendered text:** reopens free text and costs wire bytes.
+- **Checking the grammar inside `SyncProtocol`,** or **raising in `bind` on a bad
+  record** (a data typo would take the AddOn down in the client).
+
+*Reflected in:* `docs/specs/phrase.md`; `Phrase.lua`; `Data/Phrases.lua`;
+`InnkeepersLedger.toc` (`Phrase.lua` after `Ledger.lua`); `docs/export-format.md` →
+phrase IDs; `docs/architecture.md` → Modules.
+
+### 2026-09-27 — Phrase content rules
+
+Settled in #62. Entries spread peer to peer with no moderator, and the draft allows
+about 19 million two-clause phrases, so safety comes from rules on the parts that make
+every combination inoffensive ([specs/phrase.md §3.6](specs/phrase.md#36-content-rules-why-no-combination-is-offensive);
+[addon-policy.md](addon-policy.md) Rule 6).
+- **Words:** no person or body (no body parts, even in idioms; nothing worn); no
+  identity group (race, class, faction, gender, nationality, religion); nothing
+  intimacy-adjacent (no bed or bath words, no food with a slang meaning); no violence,
+  death, weapons or drugs; no proper nouns (Warcraft creature kinds as common nouns are
+  allowed for now); each a lowercase noun phrase that reads as an object in every
+  template.
+- **Templates:** warm or neutral, never negative about the slot; no verbs of desire,
+  touch or intimacy; the slot is an object, never a verb's subject; the only person
+  named is the reader. The first draft's "Thank the innkeeper for {w}" and "Ask the
+  innkeeper about {w}" were dropped in review: with "good company" in the slot they read
+  as a tavern euphemism.
+- **Conjunctions** carry no content.
+- **Enforcement:** a reviewer reads the whole set against the rules, and a tripwire test
+  fails CI if any template, conjunction or word contains a deny-listed word. A failing
+  word is changed, or the list is amended with a reason in the PR.
+
+*Rejected:*
+- **Negative or warning templates** ("Be wary of {w}"): with any word in the slot they
+  can be aimed at something, and the book is meant to be warm.
+- **Free text, or free text through a filter:** settled against (*Canned phrases, not
+  free text*, [archive](archive/decisions-2026-09.md)).
+- **Reading every combination:** far too many; rules on the parts cover them all.
+
+*Reflected in:* `docs/specs/phrase.md` §3.6, §9; `spec/phrase_spec.lua` (the tripwire);
+`Data/Phrases.lua`.
+
 ### 2026-09-27 — Group map details: realm form, our own name, rescan on a miss
 
 Settled in #54, which built the group map that *Group senders resolve through our own

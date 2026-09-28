@@ -11,8 +11,8 @@ Libs\embeds.xml
 Data\Inns.lua
 Data\Phrases.lua
 
-Phrase.lua
 Ledger.lua
+Phrase.lua
 Collection.lua
 Cosmetics.lua
 SyncProtocol.lua

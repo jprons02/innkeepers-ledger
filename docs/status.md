@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #54, PR #59)
+**Updated:** 2026-09-27 (#62 Phrase)
 
 ## Current state
 
@@ -31,11 +31,14 @@
   specs left open are in decisions.md (*Sync receive: fail-closed choices*, *Sync send:
   timer, clock and hold choices*, *Group map details*).
   `Sign` must call `ns.Sync:WindowChanged()` after `addOwn` returns `"added"`.
-- **Other module logic** (`Phrase`, `Collection`, `Cosmetics`, `Export`, `Sign`, UI): ⬜
-  none yet.
+- **Slice 3 (#61), in progress:** `Phrase` + a DRAFT `Data/Phrases` set (#62), spec
+  [specs/phrase.md](specs/phrase.md): 24 templates, 4 conjunctions, 120 words; synced
+  entries with real phrase IDs are now stored. `Phrase.lua` at 100% coverage; passed a
+  security-level review. Next: `Collection` + `Cosmetics` (#63), then `Export` (#64).
+- **Other module logic** (`Sign`, UI): ⬜ none yet.
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs and CI
   changes (#25–#39) and module logic (`Ledger` #38, `SyncProtocol` #40, `Core` #50,
-  `SyncSchedule` #52, `Sync` receive #55, `Sync` send #57, group map #59). No tags yet
+  `SyncSchedule` #52, `Sync` receive #55, `Sync` send #57, group map #59, `Phrase` #62). No tags yet
   (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
   per inn, seal per zone). A public profile website is a post-v1, separate project the
@@ -45,10 +48,8 @@
 
 ## Next step
 
-Slice 2 is closed (#41). Next, unfiled, from [kickoff.md](kickoff.md) Phase 1 step 5:
-`Phrase` + `Data/Phrases`, `Collection` + `Cosmetics`, `Export`; file them as tickets
-first. Until `Data/Phrases` has entries, every received entry is rejected as an unknown
-phrase. In-client work is #12.
+Slice 3 (#61), [kickoff.md](kickoff.md) Phase 1 step 5: #63 `Collection` + `Cosmetics`
+(ready), then #64 `Export` (blocked by #63). In-client work is #12.
 
 ## Client access plan
 
@@ -66,6 +67,11 @@ phrase. In-client work is #12.
 
 - **Beta access (#1, #2):** not opted in as of 2026-09-27. The free opt-in costs nothing;
   opting in soon improves the odds. Decides the plan branch by ~2026-10-03.
+- **Phrase wording (#62):** the DRAFT set in
+  [specs/phrase.md §9](specs/phrase.md#9-draft-phrase-set-draft) is on `dev`: warm
+  inn-and-road lines with a little Dark Souls whimsy. Ship as is, or redirect? IDs change
+  freely until the first release. Also: keep the alcohol words ("a mug of ale", "spiced
+  cider")? Keep Warcraft creature words ("the murlocs") or stay generic fantasy?
 
 ## Waiting on the maintainer in the client
 

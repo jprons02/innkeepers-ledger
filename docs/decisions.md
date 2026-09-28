@@ -67,8 +67,10 @@ every combination inoffensive ([specs/phrase.md §3.6](specs/phrase.md#36-conten
   allowed for now); each a lowercase noun phrase that reads as an object in every
   template.
 - **Templates:** warm or neutral, never negative about the slot; no verbs of desire,
-  touch or intimacy; the slot is an object, never a verb's subject; the only people
-  named are the innkeeper and the reader.
+  touch or intimacy; the slot is an object, never a verb's subject; the only person
+  named is the reader. The first draft's "Thank the innkeeper for {w}" and "Ask the
+  innkeeper about {w}" were dropped in review: with "good company" in the slot they read
+  as a tavern euphemism.
 - **Conjunctions** carry no content.
 - **Enforcement:** a reviewer reads the whole set against the rules, and a tripwire test
   fails CI if any template, conjunction or word contains a deny-listed word. A failing

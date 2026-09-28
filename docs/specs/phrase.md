@@ -260,18 +260,23 @@ from rules on the parts that make every combination safe:
    come/came, love, bed), and nothing about spending the night with or for something.
 3. **The slot is an object or complement,** never a verb's subject, so no verb has to
    agree with a word ("Here's to {w}!", not "{w} was lovely").
-4. The only people a template names are "the innkeeper" and the reader ("traveler",
-   "friend").
+4. The only person a template names is the reader ("traveler", "friend"). No template
+   names the innkeeper or makes anyone the source of the slot: "Ask the innkeeper about
+   good company" reads as a tavern euphemism (#62 review).
 
 **Conjunctions** are neutral connectors with no content of their own.
 
 **Why that covers every combination:** a clause is a warm or neutral statement about an
 inoffensive thing, because no word refers to a person, body or identity and no template
 is negative or intimate. A second clause adds a second such statement; a conjunction
-adds no content; five IDs are too few to spell anything with initials. Cross-clause
-innuendo needs a person or body in one clause and an intimate object or verb in the
-other, and the rules remove both halves. Dark Souls' famous crude messages came from
-its body-part words; this set has none.
+adds no content; five IDs are too few to spell anything with initials. The Company
+words do name people, but only collectively and as the reader's own circle ("old
+friends", "my companions", "the guild"), and no template offers, arranges or spends the
+night with the slot, so they read as fellowship. Innuendo needs a body, an intimate
+object, or a provider-and-service frame ("ask X about Y"), and the rules remove all
+three. Dark Souls' famous crude messages came from its body-part words; this set has
+none. Words with a crude slang or phallic reading ("warm milk", "a walking staff") were
+replaced in review, and the tripwire now lists them.
 
 **Enforcement:** a reviewer reads the whole set against these rules (the lists are short),
 and a **tripwire test** ([§6.3](#63-the-real-data-table)) fails if any template, word or
@@ -558,7 +563,9 @@ rejecting). A second message with one entry at inn 1239 using an unknown ID
 
 - **`Sign`:** builds the sequence with `ns.Phrase.compose(...)` (or checks
   `ns.Phrase.validIds(ids) == true`) and never calls `ledger:addOwn` with a sequence that
-  fails, so every own entry is one peers will accept.
+  fails, so every own entry is one peers will accept. `compose` keeps the non-`nil`
+  arguments in order and ignores their positions (`compose(nil, nil, 101)` is `{101}`),
+  so the builder passes the parts in the order it wants them, not by slot.
 - **UI / phrase builder:** lists parts with `templates()`, `conjunctions()`,
   `categories()`, `words(cat)` and `text(id)` (showing `Phrase.SLOT` as a blank);
   never hard-codes an ID. Shows `render` output as plain text (never as a format string
@@ -584,10 +591,10 @@ rejecting). A second message with one entry at inn 1239 using an unknown ID
 |---|---|---|---|---|
 | 1 | `Rested here, dreaming of {w}.` | | 10 | `Tomorrow, {w}.` |
 | 2 | `Lingered a day longer for {w}.` | | 11 | `Will miss {w}.` |
-| 3 | `Here's to {w}!` | | 12 | `Thank the innkeeper for {w}.` |
+| 3 | `Here's to {w}!` | | 12 | `Raised a cup to {w}.` |
 | 4 | `Grateful for {w}.` | | 13 | `The road led me to {w}.` |
-| 5 | `Found {w} here.` | | 14 | `Stopped to rest, stayed for {w}.` |
-| 6 | `Warmed by {w}.` | | 15 | `Ask the innkeeper about {w}.` |
+| 5 | `Found {w} here.` | | 14 | `Stopped to rest, thought of {w}.` |
+| 6 | `Warmed by {w}.` | | 15 | `Heard songs of {w}.` |
 | 7 | `Remember {w}.` | | 16 | `Traded tales of {w}.` |
 | 8 | `Seek {w}, traveler.` | | 17 | `Write home about {w}.` |
 | 9 | `Never forget {w}.` | | 18 | `May you find {w}.` |
@@ -617,9 +624,9 @@ Slotless:
 | # | Category (block) | Words, IDs from block + 1 in this order |
 |---|---|---|
 | 1 | Hearth and home (1000..1099) | home, the hearth, a warm fire, a cozy corner, the common room, a good night's sleep, a warm blanket, a lantern's glow, a rocking chair, a window seat, the creaky stairs, a roof overhead, the inn's cat, the stables, a quiet room |
-| 2 | Food and drink (1100..1199) | fresh bread, hot stew, a bowl of soup, sweet rolls, honey cakes, apple pie, a wheel of cheese, roast boar, fresh berries, a hearty breakfast, a second helping, hot tea, warm milk, spiced cider, a mug of ale |
+| 2 | Food and drink (1100..1199) | fresh bread, hot stew, a bowl of soup, sweet rolls, honey cakes, apple pie, a wheel of cheese, roast boar, fresh berries, a hearty breakfast, a second helping, hot tea, warm porridge, spiced cider, a mug of ale |
 | 3 | Company (1200..1299) | old friends, new friends, good company, fellow travelers, my companions, the guild, the whole party, a warm welcome, a kind word, a good deed, a shared meal, a good laugh, tall tales, a song by the fire, a game of cards |
-| 4 | The road (1300..1399) | the long road, the open road, a winding path, the next town, the mountain pass, a river crossing, the ferry, a shortcut, a well-worn map, a sturdy pack, a walking staff, a quiet trail, the crossroads, the way home, faraway lands |
+| 4 | The road (1300..1399) | the long road, the open road, a winding path, the next town, the mountain pass, a river crossing, the ferry, a shortcut, a well-worn map, a trusty compass, a signpost, a quiet trail, the crossroads, the way home, faraway lands |
 | 5 | Places (1400..1499) | the sea, the mountains, the deep forest, a quiet village, the big city, the harbor, rolling hills, a still lake, a waterfall, the meadow, the old bridge, the countryside, a hidden valley, the coast, the snowy peaks |
 | 6 | Sky and seasons (1500..1599) | the morning sun, a starry night, the full moon, soft rain, fresh snow, a summer breeze, autumn leaves, the first frost, a thunderstorm, morning mist, a rainbow, the sunset, the dawn, the harvest, spring flowers |
 | 7 | Adventure (1600..1699) | adventure, treasure, a new quest, an old legend, a lucky find, a hidden cave, ancient ruins, a secret door, a sunken ship, a glinting gem, a dragon, the wolves, the murlocs, a long climb, the unknown |

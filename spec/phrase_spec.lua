@@ -939,7 +939,7 @@ describe("Data/Phrases (the draft set)", function()
       melon melons sausage peach peaches breast thigh hole tongue rear hand head heart belly
       blood kill die dead death horde alliance human dwarf dwarves elf elves gnome gnomes
       orc orcs troll trolls tauren undead forsaken warrior mage priest rogue hunter warlock
-      paladin druid shaman man woman men women boy girl
+      paladin druid shaman man woman men women boy girl innkeeper stayed milk staff
     ]]):gmatch("%S+") do
       DENY[w] = true
     end

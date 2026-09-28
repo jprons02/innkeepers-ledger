@@ -103,7 +103,9 @@ Set in GitHub, not in files; re-check them in each release review (item 12). Set
 
 The packager publishes to every player, so a stolen token or account is the worst
 supply-chain case. Before its workflow merges:
-- 2FA on the maintainer's GitHub, CurseForge and Wago accounts.
+- 2FA on the maintainer's GitHub (on since 2026-09-28), CurseForge and Wago accounts.
+  The CurseForge and Wago accounts don't exist yet; the maintainer creates them at
+  release time, with 2FA from the start.
 - The workflow runs only on `v*` tag pushes; a tag ruleset lets only the maintainer
   create or move `v*` tags.
 - The CurseForge and Wago tokens live in a GitHub Environment with the maintainer as

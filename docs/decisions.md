@@ -10,6 +10,23 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-28 — Account email settings stay as they are
+
+This supersedes one clause of *Security audit: repository hardening* below ("Account
+settings stop new ones"). The audit suggested turning on GitHub's commit-email privacy
+and push blocking, and changing the machine's global git email. The maintainer declined:
+all three apply to the whole account or machine, not just this repo, and the current
+setup works. This repo's own git config already commits with the noreply address. Only
+merges made on GitHub record the account's commit email.
+
+*Rejected:*
+- **Turning on email privacy and push blocking:** they're account-wide, so they can
+  reject pushes or change commit authors in repos outside this project.
+- **Changing the global git email:** it would restamp commits in every other repo on the
+  machine.
+
+*Reflected in:* `docs/status.md` → Waiting on the maintainer's accounts.
+
 ### 2026-09-28 — Guild sync stays on by default; players are told what it shares
 
 The security audit noted that sync sends your newest signatures (up to 40, each with its

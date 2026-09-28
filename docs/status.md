@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #47)
+**Updated:** 2026-09-27 (after #54)
 
 ## Current state
 
@@ -21,13 +21,15 @@
 - **Slice 1 done (#10),** spec [specs/sync-ledger.md](specs/sync-ledger.md): `Ledger`
   (#30) and `SyncProtocol` (#31), both at 100% coverage; `SyncProtocol` passed a
   security-level review. Re-signing an inn: once per week, at the game's weekly reset.
-- **Slice 2 (#41) built except #54,** spec [specs/sync-glue.md](specs/sync-glue.md):
+- **Slice 2 (#41) done,** spec [specs/sync-glue.md](specs/sync-glue.md):
   `Core` opens the ledger at login as `ns.ledger` (#44); `SyncSchedule`, the pure send
   schedule (#45); `Sync` receives and resolves senders (#46), and sends, with the combat
-  hold and the `combat state` guard rule (#47, PR #57). **Two players' AddOns now trade
-  signatures**; the 40-player raid simulation stays under every rate limit. Each piece
-  passed a security-level review. Choices the specs left open are in decisions.md
-  (*Sync receive: fail-closed choices*, *Sync send: timer, clock and hold choices*).
+  hold and the `combat state` guard rule (#47, PR #57). Group senders resolve through a
+  name → GUID map from our own unit scan, so no peer string reaches a client function
+  (#54). **Two players' AddOns now trade signatures**; the 40-player raid simulation
+  stays under every rate limit. Each piece passed a security-level review. Choices the
+  specs left open are in decisions.md (*Sync receive: fail-closed choices*, *Sync send:
+  timer, clock and hold choices*, *Group map details*).
   `Sign` must call `ns.Sync:WindowChanged()` after `addOwn` returns `"added"`.
 - **Other module logic** (`Phrase`, `Collection`, `Cosmetics`, `Export`, `Sign`, UI): ⬜
   none yet.
@@ -42,15 +44,10 @@
 
 ## Next step
 
-1. **#54** (`ready`): group senders resolve through our own unit scan, never
-   `UnitGUID(sender)`. Must land before the first release; a character named like a unit
-   token (`Target`, `Focus`) could otherwise get entries stored under another player's
-   GUID (decisions.md → *Group senders resolve through our own unit scan*). Extend
-   `Client:scanGroup()` in `Sync.lua`, the one place group units are read.
-
-Then, unfiled, from [kickoff.md](kickoff.md) Phase 1 step 5: `Phrase` + `Data/Phrases`,
-`Collection` + `Cosmetics`, `Export`. Until `Data/Phrases` has entries, every received
-entry is rejected as an unknown phrase. In-client work is #12.
+Slice 2 is closed (#41). Next, unfiled, from [kickoff.md](kickoff.md) Phase 1 step 5:
+`Phrase` + `Data/Phrases`, `Collection` + `Cosmetics`, `Export`; file them as tickets
+first. Until `Data/Phrases` has entries, every received entry is rejected as an unknown
+phrase. In-client work is #12.
 
 ## Client access plan
 
@@ -95,6 +92,10 @@ items.
 - Harness: `"defer"` mode puts a message on the bus at hand-off; ChatThrottleLib puts a
   queued one on the wire at its callback. #47's review checked that model separately (it
   held); a harness option for it would make the deferred raid run more realistic.
+- Group map rescan (#54 review, low): a server clock swinging back and forth allows a
+  rescan per miss (41 units each), as `requestRoster` does; and if our own name can't be
+  read, our echoes spend the 10 s rescan budget, delaying a late-loading newcomer. Both
+  fail closed; revisit if #12 shows either.
 - A timer `C_Timer.After` silently drops is replaced only on the next request (any
   incoming message or event). The real client doesn't drop timers; revisit if #12 does.
 - `decisions.md` is at about 730 lines. At the start of October, move the September

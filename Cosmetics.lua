@@ -163,11 +163,14 @@ local ZONES_MAX = RANGES.zoneSeal[2] - RANGES.zoneSeal[1] + 1 -- one seal each
 local function zoneSeals(atlas)
   local out = {}
   local keys = atlas.zoneKeys()
+  if type(keys) ~= "table" then
+    return nil
+  end
   for i = 1, ZONES_MAX + 1 do
-    local key = type(keys) == "table" and rawget(keys, i) or nil
+    local key = rawget(keys, i)
     if key == nil then
       return out
-    elseif i > ZONES_MAX then
+    elseif i > ZONES_MAX or type(key) ~= "number" then
       return nil
     end
     local z = atlas.zone(key)

@@ -59,10 +59,11 @@ links or recommends any consumer of it.**
 Phrase and inn IDs refer to the tables shipped in the AddOn (`Data/Phrases`,
 `Data/Inns`); zone and continent keys (the client's map IDs) to `Data/Inns`'s `Zones` and
 `Continents`, and cosmetic IDs to `Data/Cosmetics` plus each zone's `seal`. `collection`
-and `cosmetics` are the results of `Collection.progress` and `Cosmetics.unlocked` as is
-(shapes, ID ranges and how each time is derived:
-[specs/collection-cosmetics.md](specs/collection-cosmetics.md) §3.3–§3.6). v1 has no
-separate badge kind; a consumer may present any earned cosmetic as a badge. A future version of this doc should publish those tables (or a generated
+is the result of `Collection.progress` minus `inns`, `unknown` and `truncated`;
+`cosmetics` is `Cosmetics.unlocked` as is (shapes, ID ranges and how each time is
+derived: [specs/collection-cosmetics.md](specs/collection-cosmetics.md) §3.3–§3.6 and
+§4). v1 has no separate badge kind; a consumer may present any earned cosmetic as a
+badge. A future version of this doc should publish those tables (or a generated
 JSON of them) so consumers can render text without reading Lua. To turn a phrase ID
 array into text, follow the rendering rules in
 [specs/phrase.md §3.4](specs/phrase.md#34-rendering); an ID a consumer doesn't know

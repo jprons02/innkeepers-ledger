@@ -86,7 +86,7 @@ done): serialize `Collection.progress` and `Cosmetics.unlocked` as
   cider")? Keep Warcraft creature words ("the murlocs") or stay generic fantasy?
 - **Cosmetic catalog (#63):** the DRAFT in
   [specs/collection-cosmetics.md §9](specs/collection-cosmetics.md#9-draft-catalog-draft)
-  is on the branch: Sepia ink (first signature), Wayfarer's seal (5 inns), Traveler's
+  is on `dev`: Sepia ink (first signature), Wayfarer's seal (5 inns), Traveler's
   quill (10), Owl-feather quill (20), Forest-green ink (3 zones), Midnight-blue ink (10
   zones), Cartographer's quill (a continent), Innkeeper's seal (every inn), plus a seal
   per zone. Ship as is, or redirect the set, names or ladder? Thresholds get retuned

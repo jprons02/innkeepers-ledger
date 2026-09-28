@@ -346,11 +346,17 @@ describe("Cosmetics.bind", function()
       assert.same({ 1, 2 }, keys(set.SEALS))
       assert.same({}, set.unlocked(fx.entries(), "Alliance"))
     end
-    -- A non-table zoneKeys result gives no zone seals but keeps the atlas.
-    local set = Cosmetics.bind(atlasWith(function() return "x" end, good.zone), fx.catalog())
-    assert.same({ 1, 2 }, keys(set.SEALS))
-    assert.same(U({ { 1, T + 100 }, { 1102, T + 100 }, { 1001, T + 300 }, { 1101, T + 300 },
-      { 2, T + 400 } }), set.unlocked(fx.entries(), "Alliance"))
+    -- A non-table zoneKeys result, or a non-number key mid-list, empties the atlas too
+    -- (spec 3.8: zones that misbehave), rather than keeping a partial zone list.
+    for _, zk in ipairs({
+      function() return "x" end,
+      function() return { 10, false, 11 } end,
+      function() return { 10, "11" } end,
+    }) do
+      local set = Cosmetics.bind(atlasWith(zk, good.zone), fx.catalog())
+      assert.same({ 1, 2 }, keys(set.SEALS))
+      assert.same({}, set.unlocked(fx.entries(), "Alliance"))
+    end
   end)
 
   it("an atlas whose progress raises unlocks nothing, never throwing", function()

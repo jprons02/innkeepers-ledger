@@ -32,6 +32,7 @@ task needs, using the "Read when" column. Don't read everything.
 | [docs/kickoff.md](docs/kickoff.md) | phased build sequence to v1, cut order, completion criteria | picking the next step; timeline slips |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | local dev setup (Lua 5.1, busted, luacheck; Windows notes), PR conventions | setting up tooling; tests won't run locally |
 | [docs/specs/phrase.md](docs/specs/phrase.md) | the `Phrase` spec: phrase data shape and ID ranges, the composition grammar, rendering, content rules, the draft phrase set | `Phrase.lua` or `Data/Phrases.lua`; adding or rewording phrases; rendering entries (UI, export) |
+| [docs/specs/collection-cosmetics.md](docs/specs/collection-cosmetics.md) | the `Collection` + `Cosmetics` spec: `Data/Inns` shape (inns, zones, continents, aliases, factions), progress math, stamps, cosmetic IDs and unlock rules, `SEALS`, the draft catalog | `Collection.lua`, `Cosmetics.lua`, `Data/Inns.lua` or `Data/Cosmetics.lua`; filling `Data/Inns` (#12); a seal on signing; the collection view or export |
 | `docs/specs/<feature>.md` | one spec per feature (written by the planner) | working on that feature |
 
 At the end of a session with real work or decisions: rewrite `docs/status.md`, add dated

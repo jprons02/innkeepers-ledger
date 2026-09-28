@@ -105,7 +105,18 @@ unverified · ❓ unknown
       Is `UNKNOWNOBJECT` what a not-yet-loaded member's name reads as, and does
       `GROUP_ROSTER_UPDATE` fire again once it loads? (Spec
       [§3.4 → The group map](specs/sync-glue.md#34-sender-resolution).)
-- [ ] Collect innkeeper NPC IDs for every inn (the `Data/Inns` table)
+- [ ] Collect every inn for the `Data/Inns` table (#12), per innkeeper: the NPC ID; the
+      inn's English name; the zone's map ID and English name; the continent's map ID
+      and English name; the innkeeper's faction (`"Alliance"`, `"Horde"`, or neutral if
+      both can use it); whether another innkeeper serves the same inn (an alias). Zone
+      seals are numbered 101, 102, … in the order zones are added
+      ([specs/collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices))
+- [ ] Map IDs readable at each inn (`C_Map.GetBestMapForUnit("player")`, then the
+      `C_Map.GetMapInfo(id).parentMapID` chain up to the first *Zone*- and
+      *Continent*-type maps); a capital city is its own zone
+- [ ] The player's faction token (`UnitFactionGroup("player")`: English and
+      locale-independent; hidden or not?) and each innkeeper's faction (which faction
+      can talk to them)
 - [ ] Sitting detection, if any
 
 ## Sources

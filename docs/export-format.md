@@ -36,11 +36,15 @@ links or recommends any consumer of it.**
     guid  = "<player GUID>",
     name  = "<character name>",
   },
-  collection = {
+  collection = {               -- inns open to the player's faction; own signatures only
+    faction = "Alliance" | "Horde" | nil,   -- nil: faction unreadable, every inn counted
     signed = <int>, total = <int>,
-    byZone = { [<zone key>] = { signed = <int>, total = <int> }, ... },
+    done = <time> | nil,       -- when the last inn was first signed, once signed == total
+    byContinent = { [<continent map ID>] = { signed = <int>, total = <int>, done = <time> | nil }, ... },
+    byZone = { [<zone map ID>] = { signed = <int>, total = <int>, continent = <continent map ID>,
+                                   done = <time> | nil }, ... },
   },
-  cosmetics = {                -- unlocked quills, inks, seals and badges
+  cosmetics = {                -- unlocked quills, inks and seals, (t, id) ascending
     { id = <cosmetic id>, t = <time earned> }, ...
   },
   entries = {                  -- your own signatures (always)
@@ -53,7 +57,12 @@ links or recommends any consumer of it.**
 ```
 
 Phrase and inn IDs refer to the tables shipped in the AddOn (`Data/Phrases`,
-`Data/Inns`). A future version of this doc should publish those tables (or a generated
+`Data/Inns`); zone and continent keys (the client's map IDs) to `Data/Inns`'s `Zones` and
+`Continents`, and cosmetic IDs to `Data/Cosmetics` plus each zone's `seal`. `collection`
+and `cosmetics` are the results of `Collection.progress` and `Cosmetics.unlocked` as is
+(shapes, ID ranges and how each time is derived:
+[specs/collection-cosmetics.md](specs/collection-cosmetics.md) §3.3–§3.6). v1 has no
+separate badge kind; a consumer may present any earned cosmetic as a badge. A future version of this doc should publish those tables (or a generated
 JSON of them) so consumers can render text without reading Lua. To turn a phrase ID
 array into text, follow the rendering rules in
 [specs/phrase.md §3.4](specs/phrase.md#34-rendering); an ID a consumer doesn't know

@@ -19,6 +19,7 @@ M.PURE = {
 M.DATA = {
   { path = "Data/Inns.lua", name = "Inns" },
   { path = "Data/Phrases.lua", name = "Phrases" },
+  { path = "Data/Cosmetics.lua", name = "Cosmetics" },
 }
 M.GLUE = {
   { path = "Core.lua", name = "Core" },

@@ -48,6 +48,10 @@ Proportional, not ceremonial:
   `c.groupArgs` (the group calls' argument) and `w:timersOf(c)`. The send cases and the
   end-to-end runs live in `spec/sync_send_spec.lua`; the receive cases in
   `spec/sync_spec.lua`.
+- **Place fixtures** (`spec/helpers/places.lua`): the fixture places, own entries and
+  catalog of [specs/collection-cosmetics.md §6](specs/collection-cosmetics.md#6-test-plan),
+  the two hidden-value stand-ins, a raw snapshot (nothing written) and a seeded shuffle,
+  shared by `spec/collection_spec.lua` and `spec/cosmetics_spec.lua`.
 - **Long simulations are tagged `#sim`** (the 40-player raid, an hour in a guild, the
   10-minute flood). `busted` runs them (about 10 s); the coverage run skips them with
   `--exclude-tags=sim`, since under luacov they take minutes and cover no pure-module

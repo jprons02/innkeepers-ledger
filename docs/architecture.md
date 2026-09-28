@@ -25,13 +25,14 @@ vs **client glue** (events, frames, API calls).
 | Module | Kind | Responsibility |
 |---|---|---|
 | `Core` | glue | AceAddon setup, AceDB SavedVariables, slash command, wiring |
-| `Data/Inns` | data | Innkeeper NPC ID → inn record (inn name, zone, continent). One table per game flavor. |
+| `Data/Inns` | data | Innkeeper NPC ID → inn record (name, zone, faction) or alias of one; zones and continents keyed by the client's map IDs, each zone with its seal ID ([spec](specs/collection-cosmetics.md#31-places-inns-zones-continents)). One table per game flavor. |
 | `Data/Phrases` | data | Phrase templates + word lists, each with a stable numeric ID |
+| `Data/Cosmetics` | data | The cosmetic catalog: milestone seals, quills and inks, each with a stable numeric ID and its unlock rule ([spec](specs/collection-cosmetics.md#35-cosmetic-ids)) |
 | `Sign` | glue | Detects an innkeeper interaction, offers "Sign the ledger", creates the entry |
 | `Ledger` | pure | The entry store: add, dedupe, query by inn/signer, prune, storage caps |
 | `Phrase` | pure | Builds, renders and validates phrase IDs → text ([spec](specs/phrase.md)) |
-| `Collection` | pure | Progress math: signed/total by continent and zone, unlock thresholds |
-| `Cosmetics` | pure | Maps collection progress → unlocked quills/inks/seals |
+| `Collection` | pure | Progress over your own signatures: signed/total by continent and zone, per inn ([spec](specs/collection-cosmetics.md)) |
+| `Cosmetics` | pure | The catalog, unlocked quills/inks/seals and when each was earned, `SEALS` for peer validation, the seal check on signing ([spec](specs/collection-cosmetics.md)) |
 | `SyncProtocol` | pure | Own fixed-format message codec, digest comparison, **all validation** |
 | `SyncSchedule` | pure | What `Sync` sends and when: send budget, HELLO / WANT / reply gates, pending queues, combat hold state, the pump ([spec](specs/sync-glue.md#35-send-path-syncschedule)) |
 | `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers, the pump that drives `SyncSchedule`, the combat hold ([spec](specs/sync-glue.md)) |
@@ -64,7 +65,7 @@ Entry {
   inn      : innkeeper NPC ID (int)         -- identifies the inn
   t        : server time of signing, GetServerTime() (int)
   phrase   : array of phrase/word IDs (ints)
-  seal     : cosmetic ID used when signing (int, optional)
+  seal     : seal ID from Cosmetics.SEALS used when signing (int 1..999, optional)
 }
 -- held per signer: signer = player GUID (identity), name = display only
 ```
@@ -140,8 +141,10 @@ AddOn. `SyncProtocol` validates everything before anything reaches `Ledger`:
 - **Numbers:** every numeric field must be a **finite integer within its range** (reject
   `NaN`, `inf`, hex, decimals, signs where not allowed). `NaN` fails every comparison, so
   range checks alone don't catch it.
-- **Known IDs only:** `inn` must exist in `Data/Inns`, and every phrase/word ID must
-  exist in `Data/Phrases`. Canned phrases make this a lookup table, not a text filter.
+- **Known IDs only:** `inn` must exist in `Data/Inns`, every phrase/word ID must
+  exist in `Data/Phrases`, and a `seal` must be a key of `Cosmetics.SEALS` (every seal
+  the catalog knows, unlocked or not). Canned phrases make this a lookup table, not a
+  text filter.
 - **Name:** length-capped and matched against the character name pattern (no `|`, so no
   UI escape codes); it's rendered only as text, never interpreted.
 - **Time sanity:** reject timestamps in the future (small tolerance) or before the

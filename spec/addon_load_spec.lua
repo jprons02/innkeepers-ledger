@@ -140,6 +140,24 @@ describe("the whole AddOn under the WoW stub", function()
     assert.is_true(ns.Phrase.validIds({ 101 }))
   end)
 
+  it("binds the shipped places and cosmetics, so Sync validates seals against SEALS", function()
+    assert.is_table(ns.Data.Cosmetics)
+    assert.is_table(ns.Data.Zones)
+    assert.is_table(ns.Data.Continents)
+    assert.same({}, ns.Collection.invalid)
+    assert.same({}, ns.Cosmetics.invalid)
+    local seals = ns.Cosmetics.SEALS
+    assert.is_table(seals)
+    assert.is_table(seals[1])
+    for id in pairs(seals) do
+      assert.is_true(type(id) == "number" and id % 1 == 0 and id >= 1 and id <= 999,
+        tostring(id))
+    end
+    -- Sync's realDeps reads the right name: the running client checks peers against it.
+    assert.is_table(ns.Sync.client)
+    assert.is_true(rawequal(ns.Sync.client.ctx.seals, seals))
+  end)
+
   it("creates the SavedVariables through AceDB", function()
     assert.is_table(ns.Core.db)
     assert.is_table(_G.InnkeepersLedgerDB)

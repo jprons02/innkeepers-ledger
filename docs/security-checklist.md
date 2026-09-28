@@ -55,7 +55,9 @@ lists.
 - **Account and group actions:** invites, group and guild membership, CVars,
   reload/logout, store, items, trade, turning other AddOns on or off.
 - **General-purpose decoders:** AceSerializer's `Deserialize` and LibDeflate's
-  `Decompress…`, `DecodeFor…` and `CreateCodec` (its codec decodes) functions. Allowed
+  `Decompress…`, `DecodeFor…` and `CreateCodec` (its codec decodes) functions, and the
+  client's own `C_EncodingUtil` namespace with its decoders (`DecompressString`,
+  `DecodeBase64`, `DeserializeCBOR`, `DeserializeJSON`). Allowed
   nowhere: nothing we ship reads an
   export string or any other serialized or compressed data, so a crafted string can't
   reach an unbounded inflate or a float-yielding reader

@@ -35,9 +35,13 @@ files="$files${files:+$nl}Libs/embeds.xml"
 # label | allowed files | names
 # A name matches as a whole word, also after "." or ":" (so aliases like CI.SendChatMessage
 # match). Dots in a name are literal. "re:<ERE>" is used as is.
+# "combat state" is only whether we're in combat, never combat data, and only in Sync.lua
+# (docs/decisions.md, 2026-09-27: "Sync may read combat state, and players are told").
+# The "combat data" rule stays closed everywhere.
 rules='dynamic code|-|loadstring loadfile dofile setfenv getfenv RunScript ConsoleExec re:(^|[^A-Za-z0-9_.:])load([[:space:]]*[(,);}"[-]|[[:space:]]*$)
 global lookup by name|-|_G getglobal setglobal
-combat data|-|CombatLogGetCurrentEventInfo COMBAT_LOG_EVENT COMBAT_LOG_EVENT_UNFILTERED C_CombatLog C_DamageMeter UnitHealth UnitHealthMax UnitPower UnitPowerMax UnitAura C_UnitAuras UnitDetailedThreatSituation UnitThreatSituation UnitAffectingCombat InCombatLockdown PLAYER_REGEN_DISABLED PLAYER_REGEN_ENABLED UNIT_COMBAT
+combat data|-|CombatLogGetCurrentEventInfo COMBAT_LOG_EVENT COMBAT_LOG_EVENT_UNFILTERED C_CombatLog C_DamageMeter UnitHealth UnitHealthMax UnitPower UnitPowerMax UnitAura C_UnitAuras UnitDetailedThreatSituation UnitThreatSituation UnitAffectingCombat UNIT_COMBAT
+combat state|Sync.lua|InCombatLockdown PLAYER_REGEN_DISABLED PLAYER_REGEN_ENABLED
 chat and social sending|-|SendChatMessage ChatEdit_SendText BNSendWhisper BNSendGameData BNSendFriendInvite C_BattleNet C_Club SendMail C_Mail C_FriendList AddFriend AddIgnore SendWho
 hooks|-|hooksecurefunc HookScript securecall issecurevariable ChatFrame_AddMessageEventFilter
 macros and bindings|-|RunMacro RunMacroText CreateMacro EditMacro DeleteMacro C_Macro SecureActionButtonTemplate macrotext SetBinding SetBindingClick SetBindingMacro SetBindingSpell SetBindingItem SetOverrideBinding SetOverrideBindingClick SaveBindings

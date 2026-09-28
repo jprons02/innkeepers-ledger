@@ -35,8 +35,15 @@ lists.
 - **Dynamic code:** `loadstring`, `load`, `setfenv`, `RunScript`, `ConsoleExec`, …
 - **Global lookup by name:** `_G`, `getglobal`, `setglobal`. This closes the easy way
   around the grep (`_G["Run" .. "Script"]`).
-- **Combat data:** combat log, health/power/aura/threat and in-combat state
+- **Combat data:** combat log, health/power/aura/threat, `UnitAffectingCombat`
   ([addon-policy.md → Combat restrictions](addon-policy.md#combat-restrictions-midnight-2026-01-28)).
+  Allowed nowhere.
+- **Combat state:** `InCombatLockdown`, `PLAYER_REGEN_DISABLED`, `PLAYER_REGEN_ENABLED`.
+  Allowed only in `Sync.lua`, which reads *whether* we're in combat to hold sends during
+  fights and nothing more ([decisions.md](decisions.md), 2026-09-27 — Sync may read
+  combat state, and players are told;
+  [specs/sync-glue.md §5.2](specs/sync-glue.md#52-the-forbidden-apis-change)). Added in
+  #47 as its own rule so the combat-data rule stays closed.
 - **Chat and social sending:** say/whisper/Battle.net/community messages, mail, friends
   and ignore lists, `/who`.
 - **Hooks:** `hooksecurefunc`, `HookScript`, chat message filters, …
@@ -67,13 +74,6 @@ overwritten. Release review item 1 covers those.
 - **Hooks in `Sign.lua`:** injecting the gossip option will likely need
   `hooksecurefunc`/`HookScript` on the gossip frame. Add an allow-list entry with a
   decision entry. The alternative, overwriting the frame's methods, taints it.
-- **Combat state in `Sync.lua`:** holding sends during encounters might need
-  `InCombatLockdown` or the `PLAYER_REGEN_*` events. That reads a combat *state* flag,
-  not combat data. **Approved by the maintainer** ([decisions.md](decisions.md),
-  2026-09-27): add the allow-list entry when the sync implementation lands, citing that
-  decision. It goes in as a separate `combat state` rule allowed only in `Sync.lua`; the
-  `combat data` rule stays closed everywhere
-  ([specs/sync-glue.md §5.2](specs/sync-glue.md#52-the-forbidden-apis-change)).
 
 ## Release review (every `dev → main` PR)
 

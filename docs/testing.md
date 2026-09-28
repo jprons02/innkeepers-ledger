@@ -41,6 +41,15 @@ Proportional, not ceremonial:
   and guild lists behind `UnitGUID`, the group calls and the roster. `c.impl.X` replaces
   one client function, `c.calls.X` counts its calls, `c.secret(v)` is the client's
   `issecretvalue`. Fixture inns, phrases and seals stand in for the empty `Data` tables.
+  For the send side: `c.sendMode` (`"sync"`, `"defer"` by `c.sendDelay` s, `"fail"`),
+  `w.sent` (every message handed over), `c.inCombat` and `harness.combat(c, on)`,
+  `c.groupArgs` (the group calls' argument) and `w:timersOf(c)`. The send cases and the
+  end-to-end runs live in `spec/sync_send_spec.lua`; the receive cases in
+  `spec/sync_spec.lua`.
+- **Long simulations are tagged `#sim`** (the 40-player raid, an hour in a guild, the
+  10-minute flood). `busted` runs them (about 10 s); the coverage run skips them with
+  `--exclude-tags=sim`, since under luacov they take minutes and cover no pure-module
+  line the module specs don't.
 - **Peer data is hostile in tests.** For every rule in the security model, cover
   malformed, oversized and multi-part messages (dropped unread), relayed (third-party),
   replayed and forged-signer input, unknown inn/phrase IDs, `NaN`/`inf`/hex/decimal

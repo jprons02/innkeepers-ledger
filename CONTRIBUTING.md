@@ -49,7 +49,7 @@ them are required:
 |---|---|
 | Tests | `busted` |
 | Lint | `luacheck .` |
-| Coverage floors | `busted --coverage`, then `luacov`, then `sh scripts/check-coverage.sh` |
+| Coverage floors | `busted --coverage --exclude-tags=sim`, then `luacov`, then `sh scripts/check-coverage.sh` |
 | Forbidden APIs | `sh scripts/check-apis.sh` |
 | Vendored libraries | `sh scripts/check-libs.sh` |
 | Doc links and context map | `sh scripts/check-links.sh` |

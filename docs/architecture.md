@@ -34,7 +34,7 @@ vs **client glue** (events, frames, API calls).
 | `Cosmetics` | pure | Maps collection progress → unlocked quills/inks/seals |
 | `SyncProtocol` | pure | Own fixed-format message codec, digest comparison, **all validation** |
 | `SyncSchedule` | pure | What `Sync` sends and when: send budget, HELLO / WANT / reply gates, pending queues, combat hold state, the pump ([spec](specs/sync-glue.md#35-send-path-syncschedule)) |
-| `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers |
+| `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers, the pump that drives `SyncSchedule`, the combat hold ([spec](specs/sync-glue.md)) |
 | `Export` | pure | Serialize + compress + encode the ledger per [export-format.md](export-format.md) |
 | `UI/Book` | glue | The parchment book: pages per inn, collection view, cosmetics |
 
@@ -82,7 +82,10 @@ Entry {
 Transport: addon messages, prefix `InnLedger` (≤16 chars). Channels: `PARTY`/`RAID` and
 `GUILD`; the global opt-in channel is designed later.
 
-- **Sending:** through ChatThrottleLib, which keeps us under the server's rate limits.
+- **Sending:** through ChatThrottleLib at `BULK`, which keeps us under the server's rate
+  limits, within `SyncSchedule`'s send budget (30 messages / 60 entries in any 60 s).
+  Nothing is sent during combat: `Sync` is the one file allowed to read *whether* we're in
+  combat, never combat data ([specs/sync-glue.md](specs/sync-glue.md) §3.5–3.7).
 - **Receiving:** `Sync` registers the prefix itself and handles `CHAT_MSG_ADDON`
   directly. It does **not** receive through AceComm, which reassembles multi-part
   messages with no size limit before we could reject them

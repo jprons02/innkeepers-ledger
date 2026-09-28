@@ -5,7 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-28 (context save after slice 3; Phase 1 released to `main`)
+**Updated:** 2026-09-28 (security audit: #71, repo hardening, sync and export privacy
+decisions)
 
 ## Current state
 
@@ -30,8 +31,14 @@
 - **CI:** seven required checks on `main` and `dev`; every one also runs locally
   ([CONTRIBUTING.md](../CONTRIBUTING.md#development-setup)). Release PRs get a security
   review ([security-checklist.md](security-checklist.md)).
-- **Releases:** `main` = `dev` as of the Phase 1 release PR (2026-09-28). No tags or
-  published builds (maintainer gate).
+- **Security audit (2026-09-28):** both sides reviewed; no exploitable peer-data path.
+  The decoder guard now covers `C_EncodingUtil` (#71). GitHub settings are hardened
+  ([security-checklist.md → Repository settings](security-checklist.md#repository-settings)),
+  and there's a [SECURITY.md](../SECURITY.md). Guild sync stays on, and the README says what it
+  shares. Published exports show other travelers only as counts
+  ([decisions.md](decisions.md), 2026-09-28).
+- **Releases:** the Phase 1 release PR (2026-09-28) shipped to `main`; the audit changes
+  are on `dev` only. No tags or published builds (maintainer gate).
 - **Client verification** ([platform-forever.md](platform-forever.md)): ⬜ no Forever
   client yet.
 
@@ -76,6 +83,14 @@ None block work; drafts ship and get retuned ([decisions.md](decisions.md) →
 Batched in #12; the list is
 [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
 
+## Waiting on the maintainer's accounts
+
+From the audit; only the account owner can do these.
+- GitHub email settings: keep the commit email private and block pushes that expose it
+  (web merges currently record a personal address).
+- 2FA on GitHub, CurseForge and Wago before the packager lands
+  ([security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)).
+
 ## Follow-ups
 
 - **Revisit if #12 shows it:** forward server-clock jumps in `SyncSchedule`; hidden
@@ -91,8 +106,12 @@ Batched in #12; the list is
 - **Before the first tag (packager setup):** name tags plainly (`vX.Y.Z`), since the
   packaged `## Version` must match `[A-Za-z0-9._+-]{1,32}` or every export refuses
   (security-checklist item 13); add a CI step that checks it when the packager workflow
-  lands. Answer the phrase and catalog questions first: IDs freeze at the first public
-  release.
+  lands. Follow
+  [Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)
+  (tag ruleset, protected Environment, the packager allowed by exact pattern). Answer
+  the phrase and catalog questions first: IDs freeze at the first public release.
+- **`UI/Book`:** the book's in-game help says what sync shares, in the README's words
+  (decisions.md, 2026-09-28, guild sync disclosure).
 - Export golden string (`GOLDEN_F`): regenerate if a library or interpreter change breaks
   it while its decode still matches, and say so in the PR.
 - `Ledger`'s load-time cap pass is quadratic on a tampered file (40 000 entries ≈ 4 s);
@@ -101,6 +120,6 @@ Batched in #12; the list is
   more realistic.
 - CI pins only top-level rocks; pin dependencies if an upstream release breaks CI.
 - Delete GitHub's default labels (maintainer call: deletion).
-- `decisions.md` is ~1 000 lines: early October, move September entries to
+- `decisions.md` is ~1 070 lines: early October, move September entries to
   `docs/archive/decisions-2026-09.md` with an index line.
 - Move [kickoff.md](kickoff.md) to `docs/archive/` once v1 ships.

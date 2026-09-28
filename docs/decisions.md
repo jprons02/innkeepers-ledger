@@ -10,6 +10,66 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-28 — Guild sync stays on by default; players are told what it shares
+
+The security audit noted that sync sends your newest signatures (up to 40, each with its
+inn and exact signing time) to your whole guild. So in a large guild, strangers who use
+the AddOn can see where and when you rested. The maintainer kept the behavior and chose
+disclosure: the README's principles say exactly what sync shares and with whom (the same
+approach as the combat-state entry below). This refines, and doesn't change, the
+2026-09-25 sync-scope decision
+([archive](archive/decisions-2026-09.md#2026-09-25--sync-scope-grouped-with--guild-by-default-global-opt-in)).
+Signatures are meant to be seen, and the guild roster already shows each online member's
+zone.
+
+*Rejected:*
+- **A sync on/off toggle in v1:** more UI and states before launch, and the audit found
+  no harm beyond what the guild roster already shows. Revisit if players ask for it.
+- **Rounding `t` on the wire (e.g. to the hour):** `t` is part of the dedupe key and is
+  shown in the book. Rounding breaks the dedupe key and makes the dates less accurate,
+  and it buys little privacy.
+- **Saying nothing:** a quiet broadcast of where you've been looks worse than it is.
+
+*Reflected in:* `README.md` → Principles. The book's in-game help repeats it when
+`UI/Book` is built (`docs/status.md` → Follow-ups).
+
+### 2026-09-28 — Published exports show other travelers only as counts
+
+An opted-in export carries other travelers' names, GUIDs and signing times. The exporter
+opted in, but the travelers didn't. The format stays v1 (the player's own copy may keep
+everything). Instead, [export-format.md → Privacy](export-format.md#privacy) asks every
+consumer that *publishes* an export to show other travelers only as counts.
+
+*Rejected:*
+- **Dropping traveler times or names from the export (v2):** breaks the pinned v1 format
+  for the player's own backups, and a consumer could publish counts anyway.
+- **Showing names publicly:** it publishes the travelers' own location history without
+  their consent.
+
+*Reflected in:* `docs/export-format.md` → Privacy.
+
+### 2026-09-28 — Security audit: repository hardening
+
+A full audit of the maintainer side and the player side found no exploitable path from
+peer data (details are in the audit PRs #71 and this one). It changed:
+- **Decoder guard:** `C_EncodingUtil` and its decoders joined the *general-purpose
+  decoders* rule in `scripts/check-apis.sh` (#71). This tightens the rule only.
+- **GitHub settings:** Actions limited to GitHub-owned ones and SHA pinning required;
+  private vulnerability reporting on, with `SECURITY.md` (left out of the package).
+- **Packager prerequisites** (2FA, tag-only runs, tag ruleset, a protected Environment for
+  the tokens, the packager pinned and allowed by exact pattern), recorded for when the
+  packager lands.
+
+*Rejected:*
+- **Rewriting history to remove the maintainer's commit email** from web-merge commits:
+  it needs a force-push on protected branches, and the email is already public. Account
+  settings stop new ones.
+- **A domain pattern in `no-urls-in-game-code`:** too noisy (`store.me` matches); links
+  without a scheme are left to review item 9.
+
+*Reflected in:* `docs/security-checklist.md` → Repository settings;
+`scripts/check-apis.sh`; `SECURITY.md`.
+
 ### 2026-09-28 — Maintainer-gated content ships as a DRAFT and doesn't block merge
 
 Slice 3 (#61) needed content that is the maintainer's call under `CLAUDE.md`'s gates:

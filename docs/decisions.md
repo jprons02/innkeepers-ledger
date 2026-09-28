@@ -10,6 +10,28 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-28 — Maintainer-gated content ships as a DRAFT and doesn't block merge
+
+Slice 3 (#61) needed content that is the maintainer's call under `CLAUDE.md`'s gates:
+phrase wording (#62) and the cosmetic catalog, names and thresholds (#63). Each ticket
+shipped a complete, reviewed DRAFT (marked DRAFT in the data file and the spec's §9),
+merged it once tests and review passed, and put the questions in `docs/status.md` →
+Open questions. This works because IDs change freely until the first public release, so
+a redirect costs a data edit, not a migration. It stops being safe at the first release:
+from then on an ID's meaning is frozen ([specs/phrase.md §3.1](specs/phrase.md#31-data-shape-and-id-scheme)).
+Content-safety rules are not gated this way: a draft that breaks
+[addon-policy.md](addon-policy.md) is fixed before merge (as #62's review did with two
+innkeeper templates).
+
+*Rejected:*
+- **Blocking the build on the maintainer's wording:** stalls every later slice (sync
+  rejects every entry until phrases exist) for a choice that's cheap to change later.
+- **Placeholder text ("phrase 1"):** nothing real to react to, and tests would pass on
+  data that can't ship.
+
+*Reflected in:* `docs/status.md` → Open questions; `docs/specs/phrase.md` §9;
+`docs/specs/collection-cosmetics.md` §9.
+
 ### 2026-09-28 — Export v1: what the draft left open
 
 Settled in #64, which built `Export` and `Core:ExportString` and pinned the export string

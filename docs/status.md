@@ -18,33 +18,19 @@
   `libs-manifest`, `forbidden-apis`. Release PRs also get a security review
   ([security-checklist.md](security-checklist.md)). Every check also runs locally
   ([CONTRIBUTING.md](../CONTRIBUTING.md#development-setup)); run them before pushing.
-- **Slice 1 done (#10):** spec [specs/sync-ledger.md](specs/sync-ledger.md) (wire format,
-  digest, validation, caps, rate limits, SavedVariables). `Ledger` (#30) and
-  `SyncProtocol` (#31) built, both at 100% line coverage; `SyncProtocol` passed a
-  security-level review (2.2 M differential-fuzz messages, every security mutant
-  killed). Re-signing an inn: once per week, at the game's weekly reset.
-- **Slice 2 in progress (#41),** spec [specs/sync-glue.md](specs/sync-glue.md):
-  - **#44 `Core` done:** opens the character's ledger at login as `ns.ledger` (GUID
-    retry, weekly anchor with region fallback, damaged-data handling, `/ledger debug`).
-  - **#45 `SyncSchedule` done** (PR #52): the pure send schedule, 100% coverage under a
-    95% floor. Its security-level review fuzzed hours of simulated time; every bound
-    held, and one late-wake bug was found and fixed. Failed sends keep their gates
-    (decisions.md → *SyncSchedule: failed sends keep their gates*).
-  - **#46 `Sync` receive path done** (PR #55): hidden-value checks, sender resolution
-    (group via `UnitGUID`, guild via the roster map), `SyncProtocol.receive`, dispatch
-    into `SyncSchedule`, `stats` at `ns.Sync.stats` (shown by `/ledger debug`), and a
-    multi-client harness (`spec/helpers/sync_harness.lua`). Its security review found
-    no code defect but one design hole in the spec (#54).
-  - **#47 `Sync` send path and combat hold done** (PR #57): group, guild and
-    `WindowChanged` triggers, the glue's pump with one live timer, ChatThrottleLib at
-    `BULK`, the combat hold, and the separate `combat state` guard rule (allowed only in
-    `Sync.lua`). Two players' AddOns now trade signatures. The 40-player raid
-    simulation syncs everyone within 10 minutes with no honest `rate` drop and no
-    client over 30 messages / 60 entries in any 60 s. Its security review fuzzed 162
-    simulated hours of hostile input with every invariant holding; its two robustness
-    findings were fixed (decisions.md → *Sync send: timer, clock and hold choices*).
-    `Sign` must call `ns.Sync:WindowChanged()` after `addOwn` returns `"added"`.
-  - Other module logic (`Phrase`, `Collection`, `Cosmetics`, `Export`, UI): ⬜ none yet.
+- **Slice 1 done (#10),** spec [specs/sync-ledger.md](specs/sync-ledger.md): `Ledger`
+  (#30) and `SyncProtocol` (#31), both at 100% coverage; `SyncProtocol` passed a
+  security-level review. Re-signing an inn: once per week, at the game's weekly reset.
+- **Slice 2 (#41) built except #54,** spec [specs/sync-glue.md](specs/sync-glue.md):
+  `Core` opens the ledger at login as `ns.ledger` (#44); `SyncSchedule`, the pure send
+  schedule (#45); `Sync` receives and resolves senders (#46), and sends, with the combat
+  hold and the `combat state` guard rule (#47, PR #57). **Two players' AddOns now trade
+  signatures**; the 40-player raid simulation stays under every rate limit. Each piece
+  passed a security-level review. Choices the specs left open are in decisions.md
+  (*Sync receive: fail-closed choices*, *Sync send: timer, clock and hold choices*).
+  `Sign` must call `ns.Sync:WindowChanged()` after `addOwn` returns `"added"`.
+- **Other module logic** (`Phrase`, `Collection`, `Cosmetics`, `Export`, `Sign`, UI): ⬜
+  none yet.
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs and CI
   changes (#25–#39) and module logic (`Ledger` #38, `SyncProtocol` #40, `Core` #50,
   `SyncSchedule` #52, `Sync` receive #55, `Sync` send #57). No tags yet (maintainer gate).
@@ -56,12 +42,11 @@
 
 ## Next step
 
-1. **#54** Group senders resolve through our own unit scan, never `UnitGUID(sender)`
-   (now unblocked; must land before the first release). The scan is
-   `Client:scanGroup()` in `Sync.lua`; it returns the member GUID set and is the one
-   place group units are read, so extend it to read names too. A character named like a unit
+1. **#54** (`ready`): group senders resolve through our own unit scan, never
+   `UnitGUID(sender)`. Must land before the first release; a character named like a unit
    token (`Target`, `Focus`) could otherwise get entries stored under another player's
-   GUID (decisions.md → *Group senders resolve through our own unit scan*).
+   GUID (decisions.md → *Group senders resolve through our own unit scan*). Extend
+   `Client:scanGroup()` in `Sync.lua`, the one place group units are read.
 
 Then, unfiled, from [kickoff.md](kickoff.md) Phase 1 step 5: `Phrase` + `Data/Phrases`,
 `Collection` + `Cosmetics`, `Export`. Until `Data/Phrases` has entries, every received
@@ -107,12 +92,10 @@ items.
 - Another AddOn's hidden addon traffic is counted and logged as a `hidden` drop, since
   the hidden check comes before the prefix (decisions.md → *Sync receive: fail-closed
   choices*); revisit if #12 shows hidden senders.
-- The harness's `"defer"` send mode puts a message on the bus at hand-off, while
-  ChatThrottleLib puts a queued one on the wire when its callback fires. #47's review
-  checked that model separately (within 32 messages / 70 entries in any 60 s); a harness
-  option for it would make the deferred raid run more realistic.
-- A timer that `C_Timer.After` silently drops is only replaced on the next request (any
-  incoming message or event). The real client doesn't drop timers; revisit if #12 shows
-  otherwise.
-- `decisions.md` is at about 730 lines. At the start of October, move the September entries to
-  `docs/archive/decisions-2026-09.md` and leave an index line.
+- Harness: `"defer"` mode puts a message on the bus at hand-off; ChatThrottleLib puts a
+  queued one on the wire at its callback. #47's review checked that model separately (it
+  held); a harness option for it would make the deferred raid run more realistic.
+- A timer `C_Timer.After` silently drops is replaced only on the next request (any
+  incoming message or event). The real client doesn't drop timers; revisit if #12 does.
+- `decisions.md` is at about 730 lines. At the start of October, move the September
+  entries to `docs/archive/decisions-2026-09.md` and leave an index line.

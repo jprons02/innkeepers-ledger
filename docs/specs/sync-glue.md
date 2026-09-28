@@ -10,6 +10,10 @@
 
 **Status:** approved (self-approved 2026-09-27, ticket #42). The one maintainer item, the
 debug toggle wording, is settled: keep it as written (maintainer, 2026-09-27).
+**Implemented** in #44–#47 (#54 still changes §3.4 step 3). Points the code settled
+where this spec was silent, and one bad-clock departure from §3.5.1, are in
+[decisions.md](../decisions.md) → *Sync receive: fail-closed choices* and *Sync send:
+timer, clock and hold choices*.
 **Security-sensitive:** yes. Sender resolution, hidden values and everything that reaches
 `SyncProtocol.receive` are attack surface; the reviewer applies security-level scrutiny
 to [§5](#5-security-notes) and must try hostile input of its own.

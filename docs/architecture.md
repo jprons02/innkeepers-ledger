@@ -168,7 +168,8 @@ Pipeline: `Export.build` (validated, fresh data table) → AceSerializer `Serial
 LibDeflate `CompressDeflate` (raw DEFLATE) → our own standard base64 → `!IL1!…`, all on
 our own outgoing data. `Export` is pure: the glue passes the serializer and compressor
 in. **`Core:ExportString(includeTravelers)` is the one glue entry** the Share window and
-`/ledger share` call; it prints, sends and writes nothing. The UI shows the string in a
+`/ledger share` will call (both arrive with the UI slice; `/ledger` handles only `debug`
+today); it prints, sends and writes nothing. The UI shows the string in a
 copyable edit box. Exporting other travelers' entries is **opt-in** per export (only
 `includeTravelers == true`; they're other people's names), and the default exports only
 your own signatures and collection. **No decoder or import ships;** the forbidden-API

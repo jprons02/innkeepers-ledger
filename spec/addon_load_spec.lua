@@ -134,6 +134,12 @@ describe("the whole AddOn under the WoW stub", function()
     end
   end)
 
+  it("binds the shipped phrases, so Sync gets a working phraseOk hook", function()
+    assert.is_function(ns.Phrase.validIds)
+    assert.same({}, ns.Phrase.invalid)
+    assert.is_true(ns.Phrase.validIds({ 101 }))
+  end)
+
   it("creates the SavedVariables through AceDB", function()
     assert.is_table(ns.Core.db)
     assert.is_table(_G.InnkeepersLedgerDB)

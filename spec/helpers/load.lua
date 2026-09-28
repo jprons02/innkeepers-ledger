@@ -8,8 +8,8 @@ M.TOC = "InnkeepersLedger.toc"
 -- Every file of ours in the TOC, by kind (docs/architecture.md -> Modules). A spec
 -- checks the TOC against these lists; GLUE must match the list in .luacheckrc.
 M.PURE = {
-  { path = "Phrase.lua", name = "Phrase" },
   { path = "Ledger.lua", name = "Ledger" },
+  { path = "Phrase.lua", name = "Phrase" },
   { path = "Collection.lua", name = "Collection" },
   { path = "Cosmetics.lua", name = "Cosmetics" },
   { path = "SyncProtocol.lua", name = "SyncProtocol" },

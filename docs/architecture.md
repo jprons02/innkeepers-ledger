@@ -29,7 +29,7 @@ vs **client glue** (events, frames, API calls).
 | `Data/Phrases` | data | Phrase templates + word lists, each with a stable numeric ID |
 | `Sign` | glue | Detects an innkeeper interaction, offers "Sign the ledger", creates the entry |
 | `Ledger` | pure | The entry store: add, dedupe, query by inn/signer, prune, storage caps |
-| `Phrase` | pure | Builds, renders and validates phrase IDs → text |
+| `Phrase` | pure | Builds, renders and validates phrase IDs → text ([spec](specs/phrase.md)) |
 | `Collection` | pure | Progress math: signed/total by continent and zone, unlock thresholds |
 | `Cosmetics` | pure | Maps collection progress → unlocked quills/inks/seals |
 | `SyncProtocol` | pure | Own fixed-format message codec, digest comparison, **all validation** |

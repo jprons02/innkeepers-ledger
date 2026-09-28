@@ -54,7 +54,10 @@ links or recommends any consumer of it.**
 
 Phrase and inn IDs refer to the tables shipped in the AddOn (`Data/Phrases`,
 `Data/Inns`). A future version of this doc should publish those tables (or a generated
-JSON of them) so consumers can render text without reading Lua.
+JSON of them) so consumers can render text without reading Lua. To turn a phrase ID
+array into text, follow the rendering rules in
+[specs/phrase.md §3.4](specs/phrase.md#34-rendering); an ID a consumer doesn't know
+means a newer AddOn wrote it.
 
 Times on cosmetics let a consumer check that an unlock came after the entries that earn
 it. Each stamp is an entry, and a zone's seal appears in `cosmetics`.

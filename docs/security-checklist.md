@@ -23,7 +23,7 @@ All are required checks on `main` and `dev` (`CLAUDE.md` → Branch flow).
 | `coverage` | untested lines in pure modules: 95% floor for `Ledger`, `SyncProtocol` and `SyncSchedule`, 90% for the rest, no `luacov:` opt-outs (`scripts/check-coverage.sh`) |
 | `docs-links` | broken relative links in the docs and docs missing from the context map (`scripts/check-links.sh`) |
 
-GitHub secret scanning with push protection is on for the repo.
+GitHub settings that back these up: [Repository settings](#repository-settings).
 
 ### The forbidden-API check
 
@@ -55,7 +55,9 @@ lists.
 - **Account and group actions:** invites, group and guild membership, CVars,
   reload/logout, store, items, trade, turning other AddOns on or off.
 - **General-purpose decoders:** AceSerializer's `Deserialize` and LibDeflate's
-  `Decompress…`, `DecodeFor…` and `CreateCodec` (its codec decodes) functions. Allowed
+  `Decompress…`, `DecodeFor…` and `CreateCodec` (its codec decodes) functions, and the
+  client's own `C_EncodingUtil` namespace with its decoders (`DecompressString`,
+  `DecodeBase64`, `DeserializeCBOR`, `DeserializeJSON`). Allowed
   nowhere: nothing we ship reads an
   export string or any other serialized or compressed data, so a crafted string can't
   reach an unbounded inflate or a float-yielding reader
@@ -82,6 +84,35 @@ overwritten. Release review item 1 covers those.
 - **Hooks in `Sign.lua`:** injecting the gossip option will likely need
   `hooksecurefunc`/`HookScript` on the gossip frame. Add an allow-list entry with a
   decision entry. The alternative, overwriting the frame's methods, taints it.
+
+## Repository settings
+
+Set in GitHub, not in files; re-check them in each release review (item 12). Set on
+2026-09-28 after the security audit ([decisions.md](decisions.md)).
+
+- **Actions:** only GitHub-owned actions may run, and every action must be pinned to a
+  full commit SHA (the repo's *Require actions to be pinned* setting). The default
+  workflow token is read-only and can't approve PRs. First-time contributors' fork PRs
+  need approval before CI runs.
+- **Reporting:** private vulnerability reporting is on; [SECURITY.md](../SECURITY.md)
+  points reporters there.
+- **Secrets:** secret scanning and push protection are on. No repository secrets exist
+  until the packager needs them.
+
+### Before the packager lands (first tag)
+
+The packager publishes to every player, so a stolen token or account is the worst
+supply-chain case. Before its workflow merges:
+- 2FA on the maintainer's GitHub (on since 2026-09-28), CurseForge and Wago accounts.
+  The CurseForge and Wago accounts don't exist yet; the maintainer creates them at
+  release time, with 2FA from the start.
+- The workflow runs only on `v*` tag pushes; a tag ruleset lets only the maintainer
+  create or move `v*` tags.
+- The CurseForge and Wago tokens live in a GitHub Environment with the maintainer as
+  required reviewer, never as plain repository secrets. Only the publishing job gets
+  `contents: write`.
+- The packager action is pinned by SHA and added to the allowed-actions list by that
+  exact pattern; a decision entry records it (it's a third-party action, item 12).
 
 ## Release review (every `dev → main` PR)
 
@@ -124,7 +155,8 @@ launch the session does this on its own. A finding that needs a maintainer decis
 11. **Public repo hygiene:** no secrets, personal information, private notes or other
     projects in the diff, including docs and tickets.
 12. **Workflows:** read-only token, `persist-credentials: false`, actions pinned by SHA,
-    no `pull_request_target`, no new third-party actions.
+    no `pull_request_target`, no new third-party actions. The
+    [repository settings](#repository-settings) still hold.
 13. **Packaged version:** the version the packager writes into the TOC (`## Version`)
     matches `[A-Za-z0-9._+-]{1,32}`. Anything else (a space, a `/`, 33 bytes) makes every
     export refuse with `"addon"` ([specs/export.md §3.5](specs/export.md#35-build-rules)).

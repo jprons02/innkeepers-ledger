@@ -42,7 +42,9 @@ files="$files${files:+$nl}Libs/embeds.xml"
 # libraries out of shipped code: nothing we ship reads an export string or any other
 # serialized or compressed data (docs/decisions.md, 2026-09-28: "Export v1: what the draft
 # left open"). The test-only decoder lives in spec/. CreateCodec is listed because the codec
-# it returns has a Decode method. Like every rule here it's a guard against honest
+# it returns has a Decode method. The client's own C_EncodingUtil namespace (inflate, base64,
+# CBOR and JSON readers) is listed too, with its decoders by name so a cached alias is
+# caught. Like every rule here it's a guard against honest
 # mistakes: a computed lookup (lib["Decompress" .. "Deflate"]) isn't caught; review is.
 rules='dynamic code|-|loadstring loadfile dofile setfenv getfenv RunScript ConsoleExec re:(^|[^A-Za-z0-9_.:])load([[:space:]]*[(,);}"[-]|[[:space:]]*$)
 global lookup by name|-|_G getglobal setglobal
@@ -53,7 +55,7 @@ hooks|-|hooksecurefunc HookScript securecall issecurevariable ChatFrame_AddMessa
 macros and bindings|-|RunMacro RunMacroText CreateMacro EditMacro DeleteMacro C_Macro SecureActionButtonTemplate macrotext SetBinding SetBindingClick SetBindingMacro SetBindingSpell SetBindingItem SetOverrideBinding SetOverrideBindingClick SaveBindings
 gossip and innkeeper actions|-|SelectGossipOption SelectOption SelectOptionByIndex ConfirmBinder
 account and group actions|-|InviteUnit UninviteUnit LeaveParty PromoteToLeader GuildInvite GuildUninvite GuildLeave GuildDisband GuildSetLeader GuildPromote GuildDemote GuildRosterSetPublicNote GuildRosterSetOfficerNote C_GuildInfo.Invite Uninvite RemoveFromGuild SetCVar SetCVarBitfield ReloadUI Logout Quit ForceQuit C_StorePublic C_WowTokenPublic DeleteCursorItem UseContainerItem BuyMerchantItem InitiateTrade AcceptTrade DisableAddOn EnableAddOn DisableAllAddOns EnableAllAddOns
-general purpose decoders|-|Deserialize DecompressDeflate DecompressDeflateWithDict DecompressZlib DecompressZlibWithDict DecodeForPrint DecodeForWoWAddonChannel DecodeForWoWChatChannel CreateCodec
+general purpose decoders|-|Deserialize DecompressDeflate DecompressDeflateWithDict DecompressZlib DecompressZlibWithDict DecodeForPrint DecodeForWoWAddonChannel DecodeForWoWChatChannel CreateCodec C_EncodingUtil DecompressString DecodeBase64 DeserializeCBOR DeserializeJSON
 addon messages and channels|Sync.lua Libs/embeds.xml|SendAddonMessage SendAddonMessageLogged RegisterAddonMessagePrefix CHAT_MSG_ADDON CHAT_MSG_ADDON_LOGGED BN_CHAT_MSG_ADDON ChatThrottleLib AceComm SendCommMessage RegisterComm JoinChannelByName JoinPermanentChannel JoinTemporaryChannel LeaveChannelByName'
 
 while IFS='|' read -r label allow names; do

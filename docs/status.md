@@ -85,10 +85,11 @@ Batched in #12; the list is
 
 ## Waiting on the maintainer's accounts
 
-From the audit; only the account owner can do these.
-- GitHub email settings: keep the commit email private and block pushes that expose it
-  (web merges currently record a personal address).
-- 2FA on GitHub, CurseForge and Wago before the packager lands
+- GitHub 2FA: ✅ on. Account email settings stay as they are
+  ([decisions.md](decisions.md), 2026-09-28).
+- **At release time, not before:** the maintainer creates the CurseForge and Wago
+  accounts (none exist yet) with 2FA from the start, then the project pages and upload
+  tokens
   ([security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)).
 
 ## Follow-ups

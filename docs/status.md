@@ -33,7 +33,7 @@
   `Sign` must call `ns.Sync:WindowChanged()` after `addOwn` returns `"added"`, check
   `ns.Cosmetics.canSeal` before attaching a seal, and record unlocks with `markEarned`
   (spec [collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
-- **Slice 3 (#61) complete once #64 merges** (#62, #63, #64): `Phrase` + a DRAFT
+- **Slice 3 (#61) complete** (#62, #63, #64): `Phrase` + a DRAFT
   `Data/Phrases` set (#62), spec
   [specs/phrase.md](specs/phrase.md): 24 templates, 4 conjunctions, 120 words; synced
   entries with real phrase IDs are now stored. `Phrase.lua` at 100% coverage; passed a
@@ -67,7 +67,7 @@
 
 ## Next step
 
-Phase 1 is done once #64 merges. What's left needs a client:
+Phase 1 is done. What's left needs a client:
 - **Phase 1.5 (optional), retail prototype:** gossip/NPC-ID detection, `IsResting()`,
   addon-message round-trips on retail, recorded in
   [platform-forever.md](platform-forever.md) as "retail-observed". Needs someone at the

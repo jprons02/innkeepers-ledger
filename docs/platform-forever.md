@@ -117,6 +117,11 @@ unverified · ❓ unknown
 - [ ] The player's faction token (`UnitFactionGroup("player")`: English and
       locale-independent; hidden or not?) and each innkeeper's faction (which faction
       can talk to them)
+- [ ] Export ([specs/export.md §3.10](specs/export.md#310-size-budget)): an edit box
+      holds, shows and copies a ~250 KB string (and how long `SetText` takes); how long
+      an opted-in export of a ledger at the foreign cap takes to build (busted: 0.22 s
+      for 3 000 travelers); memory held after an opted-in export (AceSerializer's
+      module-level `serializeTbl` keeps ~5 MB after a 3 000-traveler export)
 - [ ] Sitting detection, if any
 
 ## Sources

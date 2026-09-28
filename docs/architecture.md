@@ -36,7 +36,7 @@ vs **client glue** (events, frames, API calls).
 | `SyncProtocol` | pure | Own fixed-format message codec, digest comparison, **all validation** |
 | `SyncSchedule` | pure | What `Sync` sends and when: send budget, HELLO / WANT / reply gates, pending queues, combat hold state, the pump ([spec](specs/sync-glue.md#35-send-path-syncschedule)) |
 | `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers, the pump that drives `SyncSchedule`, the combat hold ([spec](specs/sync-glue.md)) |
-| `Export` | pure | Serialize + compress + encode the ledger per [export-format.md](export-format.md) |
+| `Export` | pure | Builds the v1 export table, then serialize + compress + base64 per [export-format.md](export-format.md) ([spec](specs/export.md)) |
 | `UI/Book` | glue | The parchment book: pages per inn, collection view, cosmetics |
 
 Pure modules receive anything they'd get from the client (time, GUIDs, inn data) as
@@ -163,10 +163,16 @@ How these rules are checked (CI and the release review):
 
 ## Export
 
-See [export-format.md](export-format.md). `Export` is pure: AceSerializer + LibDeflate
-`CompressDeflate` + our own standard base64, all on our own outgoing data. The UI shows the string in
-a copyable edit box. Exporting other travelers' entries is **opt-in** (they're other
-people's names), and the default exports only your own signatures and collection.
+See [export-format.md](export-format.md) (v1) and [specs/export.md](specs/export.md).
+Pipeline: `Export.build` (validated, fresh data table) → AceSerializer `Serialize` →
+LibDeflate `CompressDeflate` (raw DEFLATE) → our own standard base64 → `!IL1!…`, all on
+our own outgoing data. `Export` is pure: the glue passes the serializer and compressor
+in. **`Core:ExportString(includeTravelers)` is the one glue entry** the Share window and
+`/ledger share` call; it prints, sends and writes nothing. The UI shows the string in a
+copyable edit box. Exporting other travelers' entries is **opt-in** per export (only
+`includeTravelers == true`; they're other people's names), and the default exports only
+your own signatures and collection. **No decoder or import ships;** the forbidden-API
+check enforces it ([security-checklist.md](security-checklist.md#the-forbidden-api-check)).
 
 ## Game flavors
 

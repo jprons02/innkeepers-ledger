@@ -45,6 +45,7 @@ local wow = {
   "LE_PARTY_CATEGORY_HOME",
   "LibStub",
   "UNKNOWNOBJECT",
+  "UnitFactionGroup",
   "UnitFullName",
   "UnitGUID",
   "UnitName",

@@ -1,6 +1,6 @@
 -- Core (glue): AceAddon setup, AceDB SavedVariables, opening the character's ledger at
--- login, the /ledger command and the debug log.
--- Spec: docs/specs/sync-glue.md (sections 3.2 and 3.8).
+-- login, the /ledger command, the debug log and the export string's glue.
+-- Specs: docs/specs/sync-glue.md (sections 3.2 and 3.8), docs/specs/export.md (3.7).
 local ADDON_NAME, ns = ...
 
 local Core = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME, "AceConsole-3.0", "AceEvent-3.0")
@@ -251,6 +251,70 @@ function Core:Debug(line)
     self.debugSkipped = 0
   end
   self:Print(line)
+end
+
+-- The body of ExportString (docs/specs/export.md 3.7). May raise; the caller catches it.
+local function exportString(includeTravelers)
+  local ledger = ns.ledger
+  if not ledger then
+    return nil, "no_ledger"
+  end
+  local serializer = LibStub("AceSerializer-3.0", true)
+  local deflate = LibStub("LibDeflate", true)
+  if not serializer or not deflate then
+    return nil, "libs"
+  end
+  local codec = {
+    serialize = function(v) return serializer:Serialize(v) end,
+    compress = function(s) return (deflate:CompressDeflate(s)) end,
+  }
+
+  local faction = call(UnitFactionGroup, "player")
+  if hidden(faction) or type(faction) ~= "string" then
+    faction = nil
+  end
+  local now = call(GetServerTime)
+  if hidden(now) then
+    now = nil
+  end
+
+  local own = ledger:own()
+  local progress = ns.Collection.progress(own, faction)
+  local unlocked = ns.Cosmetics.unlocked(own, faction, ledger:earned())
+
+  -- Other travelers' names and GUIDs leave the game only when the player opts in, and
+  -- only exactly `true` opts in.
+  local travelers
+  if rawequal(includeTravelers, true) then
+    travelers = {}
+    for _, t in ipairs(ledger:travelers()) do
+      travelers[#travelers + 1] = {
+        guid = t.guid, name = t.name, met = t.met, entries = ledger:signerEntries(t.guid),
+      }
+    end
+  end
+
+  return ns.Export.string({
+    flavor = "forever", -- v1's TOC targets only Forever
+    exported = now,
+    addon = version(),
+    me = { guid = ledger:ownerGUID(), name = ownerName() },
+    own = own,
+    progress = progress,
+    unlocked = unlocked,
+    travelers = travelers,
+  }, codec)
+end
+
+-- The export string for the Share window and /ledger share, or nil, reason. Only
+-- `includeTravelers == true` adds other travelers' signatures. Prints, sends and writes
+-- nothing; an error inside gives nil, "error".
+function Core.ExportString(_, includeTravelers) -- called as Core:ExportString(opted)
+  local ok, result, reason = pcall(exportString, includeTravelers)
+  if not ok then
+    return nil, "error"
+  end
+  return result, reason
 end
 
 function Core:SlashCommand(input)

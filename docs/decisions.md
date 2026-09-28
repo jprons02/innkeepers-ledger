@@ -10,6 +10,65 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-28 — Export v1: what the draft left open
+
+Settled in #64, which built `Export` and `Core:ExportString` and pinned the export string
+as **v1** ([export-format.md](export-format.md)). Spec: [specs/export.md](specs/export.md).
+From here on export fields are only added; anything else bumps the major (`!IL2!`).
+- **Changes from draft v0:** `travelers` is grouped per traveler (`{ guid, name, met,
+  entries }`, mirroring the store) and traveler entries keep their `seal`; `me.name` is
+  optional; `v` equals the envelope's major; every array order and uniqueness rule is
+  pinned (entries `(t, inn)`, cosmetics `(t, id)`, travelers `met` descending then GUID
+  bytes); optional means absent, never `nil`; integers only (no floats, booleans or
+  `nil` in the serialized text); `addon` is 1..32 bytes of `A-Z a-z 0-9 . _ + -`;
+  `flavor` is `"forever"` in v1; the limits and `too_large`.
+- **No decoder or import ships.** The export is one-way (share, render, keep a copy).
+  A new forbidden-API rule, *general-purpose decoders* (`Deserialize`, LibDeflate's
+  `Decompress…` and `DecodeFor…`), is allowed in no shipped file; the reference decoder
+  lives in `spec/` only. (`scripts/check-apis.sh` asks for a decision entry on rule
+  changes: this is it.)
+- **Limits, refused rather than truncated:** 10 000 own entries, 1 200 cosmetics, 1 000
+  zones or continents, the ledger's foreign caps (3 000 travelers and traveler entries,
+  40 per traveler), and a 4 MiB serialized backstop. No honest ledger reaches them.
+  Measured: a 300-signature ledger exports to about 12 KB; opted in at the foreign cap,
+  about 165 KB.
+- **Travelers opt in per export, by `true` only:** `Core:ExportString(includeTravelers)`
+  passes other travelers' records only when `includeTravelers` is exactly `true`
+  (`rawequal`); nothing remembers the choice. Without it, no other player's GUID or name
+  is anywhere in the string (a test walks every decoded key and value).
+- **Where the spec was silent (fail closed):** a zone whose `continent` isn't a kept
+  `byContinent` key is left out; `collection.done` with `signed ~= total` (or `total`
+  0) refuses with `collection`, as does a `byContinent`/`byZone` that isn't a table;
+  every required-field reason is checked before any item is read; a traveler record's
+  entries are read (and counted) only once its GUID, name and `met` pass; a map item's
+  `done` without `signed == total >= 1` leaves that item out (the review pinned the rule
+  in export-format.md's map rows); a negative zero count is written as `0`.
+
+*Rejected:*
+- **Shipping a decoder or an import:** pasted strings would be untrusted input;
+  LibDeflate has no output limit (722:1 shown) and AceSerializer yields `NaN`, `inf` and
+  floats. v1 has no use for it.
+- **The draft's flat `travelers` list:** repeats a GUID and a name per entry.
+- **Truncating an export over the limits:** a string silently missing stamps is worse
+  than a clear refusal.
+- **Our own deterministic serializer (sorted keys) or JSON:** AceSerializer was chosen and
+  reviewed for export, and byte equality isn't a consumer need.
+- **`Export` calling `Collection`, `Cosmetics` or the ledger itself:** plain inputs keep
+  it a small, fully testable shaper; the glue owns the calls.
+- **LibDeflate `EncodeForPrint`, zlib framing:** already decided (standard base64, raw
+  DEFLATE).
+- **Line-wrapped base64:** edit boxes and pastes mangle newlines.
+- **Comparing export strings for the "changed since you last shared" nudge:** bytes
+  aren't stable across clients; the nudge compares data.
+- **Remembering the travelers opt-in:** the format says per export.
+- **A fixed compression level (9):** very slow in pure Lua for no format gain.
+
+*Reflected in:* `docs/specs/export.md`; `Export.lua`; `Core.lua` (`ExportString`);
+`scripts/check-apis.sh`; `.luacheckrc` (`UnitFactionGroup`); `docs/export-format.md`
+(v1); `docs/architecture.md` → Modules, Export; `docs/libraries.md`;
+`docs/security-checklist.md`; `docs/testing.md`; `docs/platform-forever.md` →
+Verification checklist.
+
 ### 2026-09-27 — Collection: places, keys and faction totals
 
 Settled in #63, which built `Collection` and gave `Data/Inns` its shape (still empty until

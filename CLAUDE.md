@@ -27,12 +27,13 @@ task needs, using the "Read when" column. Don't read everything.
 | [docs/addon-policy.md](docs/addon-policy.md) | Blizzard AddOn policy rules that bind us | in-game text, links, anything paid or cosmetic, distribution pages |
 | [docs/security-checklist.md](docs/security-checklist.md) | security checks on every PR (incl. the forbidden-API list) and the release security review | opening a release PR; changing CI, `scripts/check-*.sh` or an allow-list; calling a new WoW API |
 | [docs/libraries.md](docs/libraries.md) | embedded libraries: versions, reviewed file hashes, licenses, security findings, upgrade steps | touching `Libs/`, sync transport or serialization; "is this library safe/allowed" |
-| [docs/export-format.md](docs/export-format.md) | the export string spec (draft v0) | `Export` module; any change to exported data |
+| [docs/export-format.md](docs/export-format.md) | the export string spec (v1) | `Export` module; any change to exported data |
 | [docs/prior-art.md](docs/prior-art.md) | existing guestbook AddOns and what we took from them; the Forever AddOn landscape near launch | positioning, sync pattern precedent, "does this already exist?" for a new feature |
 | [docs/kickoff.md](docs/kickoff.md) | phased build sequence to v1, cut order, completion criteria | picking the next step; timeline slips |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | local dev setup (Lua 5.1, busted, luacheck; Windows notes), PR conventions | setting up tooling; tests won't run locally |
 | [docs/specs/phrase.md](docs/specs/phrase.md) | the `Phrase` spec: phrase data shape and ID ranges, the composition grammar, rendering, content rules, the draft phrase set | `Phrase.lua` or `Data/Phrases.lua`; adding or rewording phrases; rendering entries (UI, export) |
 | [docs/specs/collection-cosmetics.md](docs/specs/collection-cosmetics.md) | the `Collection` + `Cosmetics` spec: `Data/Inns` shape (inns, zones, continents, aliases, factions), progress math, stamps, cosmetic IDs and unlock rules, `SEALS`, the draft catalog | `Collection.lua`, `Cosmetics.lua`, `Data/Inns.lua` or `Data/Cosmetics.lua`; filling `Data/Inns` (#12); a seal on signing; the collection view or export |
+| [docs/specs/export.md](docs/specs/export.md) | the `Export` spec: the v1 data table (types, ranges, sources), the encoding pipeline, `Core:ExportString`, the travelers opt-in, limits and size budget, the test-only decoder and the no-decoder guard | `Export.lua` or `Core:ExportString`; anything that ends up in an export; the Share window; writing an export consumer |
 | `docs/specs/<feature>.md` | one spec per feature (written by the planner) | working on that feature |
 
 At the end of a session with real work or decisions: rewrite `docs/status.md`, add dated

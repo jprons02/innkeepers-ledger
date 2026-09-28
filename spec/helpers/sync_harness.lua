@@ -15,7 +15,11 @@
 -- test replaces `c.impl.X` to change one, or sets `c.api.X = nil` to make it missing.
 -- `c.secret(v)` is the client's issecretvalue predicate. Sends (the send path) go on the
 -- bus; `c.sendMode` = "sync" (callback at once, the default), "defer" (after
--- `c.sendDelay` s) or "fail" (callback with didSend false).
+-- `c.sendDelay` s) or "fail" (callback with didSend false). `c.inCombat` drives
+-- InCombatLockdown, and `H.combat(c, on)` sets it and fires the PLAYER_REGEN_* event.
+-- The group functions record their argument in `c.groupArgs` (LE_PARTY_CATEGORY_HOME is
+-- `H.HOME` in every client's api) and otherwise ignore it. Timers remember their client
+-- (`timer.owner`).
 local load = require("helpers.load")
 
 local H = {}
@@ -24,6 +28,7 @@ H.PREFIX = "InnLedger"
 H.NOW = 1794000000
 H.ANCHOR = 1790089200 -- Tuesday 2026-09-22 15:00 UTC, the retail US reset
 H.REALM = "Stubrealm"
+H.HOME = 1 -- LE_PARTY_CATEGORY_HOME
 
 -- Fixture data (the real Data tables are empty): inns 1..300, phrases 1..40, seals 1..20.
 H.INNS, H.PHRASES, H.SEALS = {}, {}, {}
@@ -46,7 +51,7 @@ end
 local API_NAMES = {
   "GetServerTime", "UnitGUID", "IsInGroup", "IsInRaid", "GetNumGroupMembers", "IsInGuild",
   "GetNumGuildMembers", "GetGuildRosterInfo", "GuildRoster", "GetNormalizedRealmName",
-  "issecretvalue", "After", "RegisterPrefix", "send", "random",
+  "InCombatLockdown", "issecretvalue", "After", "RegisterPrefix", "send", "random",
 }
 
 local World = {}
@@ -83,10 +88,22 @@ function World:rand(lo, hi)
   return lo + self.seed % (hi - lo + 1)
 end
 
--- Queues fn to run `delay` seconds from now.
-function World:after(delay, fn)
+-- Queues fn to run `delay` seconds from now (`owner`: the client that asked, if any).
+function World:after(delay, fn, owner)
   self.timerSeq = self.timerSeq + 1
-  self.timers[#self.timers + 1] = { due = self.now + delay, seq = self.timerSeq, fn = fn }
+  self.timers[#self.timers + 1] = { due = self.now + delay, seq = self.timerSeq, fn = fn,
+    owner = owner }
+end
+
+-- How many queued timers belong to `c`.
+function World:timersOf(c)
+  local n = 0
+  for _, timer in ipairs(self.timers) do
+    if timer.owner == c then
+      n = n + 1
+    end
+  end
+  return n
 end
 
 -- Runs the earliest-scheduled due timer. False if none is due.
@@ -200,9 +217,16 @@ local function defaults(w, c)
     end
     return nil
   end
-  impl.IsInGroup = function() return inGroup() end
-  impl.IsInRaid = function() return inGroup() and w.group.raid end
-  impl.GetNumGroupMembers = function() return inGroup() and #w.group.members or 0 end
+  local function record(name, ...)
+    c.groupArgs[name] = { n = select("#", ...), ... }
+  end
+  impl.IsInGroup = function(...) record("IsInGroup", ...) return inGroup() end
+  impl.IsInRaid = function(...) record("IsInRaid", ...) return inGroup() and w.group.raid end
+  impl.GetNumGroupMembers = function(...)
+    record("GetNumGroupMembers", ...)
+    return inGroup() and #w.group.members or 0
+  end
+  impl.InCombatLockdown = function() return c.inCombat end
   impl.IsInGuild = function() return inGuild() end
   impl.GetNumGuildMembers = function()
     local n = inGuild() and #w.guild.rows or 0
@@ -220,7 +244,7 @@ local function defaults(w, c)
   impl.GuildRoster = function() end
   impl.GetNormalizedRealmName = function() return w.realm end
   impl.issecretvalue = function(v) return c.secret ~= nil and c.secret(v) == true end
-  impl.After = function(delay, fn) w:after(delay, fn) end
+  impl.After = function(delay, fn) w:after(delay, fn, c) end
   impl.RegisterPrefix = function() return true end
   impl.random = function(lo, hi) return w:rand(lo, hi) end
   -- The send path: record, queue for the next step, and run the callback per sendMode.
@@ -258,6 +282,8 @@ function World:add(name, opts)
     secret = nil,   -- issecretvalue predicate
     sendMode = "sync",
     sendDelay = 1,
+    inCombat = false,
+    groupArgs = {}, -- group function name -> { n = argument count, ... }
   }
   local ns = {}
   load.file("Ledger.lua", ns, load.pure_env())
@@ -285,6 +311,7 @@ function World:add(name, opts)
       return c.impl[fname](...)
     end
   end
+  c.api.LE_PARTY_CATEGORY_HOME = H.HOME
 
   local deps = {
     ledger = c.ledger, inns = H.INNS, phrases = H.PHRASES, seals = H.SEALS,
@@ -318,6 +345,12 @@ end
 
 function H.helloText(c)
   return c.ns.SyncProtocol.encodeHello(c.ledger:shareWindow(c.ns.SyncProtocol.SHARE_MAX))
+end
+
+-- Puts `c` in or out of combat and fires the matching event.
+function H.combat(c, on)
+  c.inCombat = on
+  c.client:onEvent(on and "PLAYER_REGEN_DISABLED" or "PLAYER_REGEN_ENABLED")
 end
 
 -- Delivers CHAT_MSG_ADDON to `c` directly, with any arguments.

@@ -317,8 +317,8 @@ end)
 describe("Sync receive: sender that left the group", function()
   it("drops entries that arrive after the peer left; its pending WANT stays bounded", function()
     local w, me, mira, recv = party()
-    -- Make the schedule's GROUP channel available by hand (the send path does this).
-    me.client.schedule:setChannel("GROUP", "PARTY")
+    me.client:onEvent("GROUP_ROSTER_UPDATE")
+    harness.combat(me, true) -- held, so the pending WANT stays pending
     for i = 1, 50 do
       sign(mira, 1, 3 + i)
       w:post(mira, "PARTY", helloText(mira))
@@ -333,7 +333,13 @@ describe("Sync receive: sender that left the group", function()
     assert.equal(2, stats(me).dropped.unresolved)
     assert.equal(0, stored(me))
     assert.equal(1, me.client.schedule:snapshot().wants)
-    assert.is_nil(w.sent[1])
+    -- The group is gone: the roster update drops it with the GROUP channel. Nothing was sent.
+    w:setGroup({})
+    me.client:onEvent("GROUP_ROSTER_UPDATE")
+    assert.equal(0, me.client.schedule:snapshot().wants)
+    for _, m in ipairs(w.sent) do
+      assert.are_not.equal(me, m.from)
+    end
   end)
 end)
 
@@ -613,6 +619,8 @@ describe("Sync receive: guild map", function()
     if setup then
       setup(me, w)
     end
+    -- These cases count timers and roster reads; the send side's pump timer is switched off.
+    me.client.requestPump = function() end
     assert.is_true(me.client:start())
     sign(mira, 3)
     return w, me, mira, recv
@@ -1071,6 +1079,7 @@ describe("Sync receive: errors inside a handler", function()
 
   it("catches a timer call that raises, and a trailing rebuild that raises", function()
     local w, me = guild()
+    me.client.requestPump = function() end -- only the rebuild timer here
     me.impl.After = function() error("boom") end
     w:advance(1)
     assert.has_no.errors(function() me.client:onEvent("GUILD_ROSTER_UPDATE") end)
@@ -1101,7 +1110,7 @@ describe("Sync receive: errors inside a handler", function()
 
   it("ignores events it doesn't handle", function()
     local _, me = party()
-    me.client:onEvent("GROUP_ROSTER_UPDATE")
+    me.client:onEvent("CHAT_MSG_ADDON_LOGGED")
     me.client:onEvent("SOMETHING_ELSE", 1, 2)
     me.client:onEvent(nil)
     assertQuiet(me)
@@ -1329,13 +1338,14 @@ describe("ns.Sync:Start (the real client)", function()
 
   after_each(wow.uninstall)
 
-  it("registers the prefix and the three receive events, and exposes stats", function()
+  it("registers the prefix and its six events, and exposes stats", function()
     local asked = {}
     local ns, frames = login({ overrides = prefixes(asked) })
     assert.same({}, wow.errors)
     assert.same({ "InnLedger" }, asked)
-    assert.same({ CHAT_MSG_ADDON = true, GUILD_ROSTER_UPDATE = true,
-      PLAYER_GUILD_UPDATE = true }, registered(frames))
+    assert.same({ CHAT_MSG_ADDON = true, GROUP_ROSTER_UPDATE = true, GUILD_ROSTER_UPDATE = true,
+      PLAYER_GUILD_UPDATE = true, PLAYER_REGEN_DISABLED = true, PLAYER_REGEN_ENABLED = true },
+      registered(frames))
     assert.is_table(ns.Sync.stats)
     assert.equal(ns.Sync.client.stats, ns.Sync.stats)
     wow.chat = {}

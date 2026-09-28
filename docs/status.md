@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #46)
+**Updated:** 2026-09-27 (after #47)
 
 ## Current state
 
@@ -33,13 +33,21 @@
   - **#46 `Sync` receive path done** (PR #55): hidden-value checks, sender resolution
     (group via `UnitGUID`, guild via the roster map), `SyncProtocol.receive`, dispatch
     into `SyncSchedule`, `stats` at `ns.Sync.stats` (shown by `/ledger debug`), and a
-    multi-client harness (`spec/helpers/sync_harness.lua`). Nothing is sent yet;
-    `onHello` / `onWant` are ignored until #47 makes the channels available. Its
-    security review found no code defect but one design hole in the spec (#54).
+    multi-client harness (`spec/helpers/sync_harness.lua`). Its security review found
+    no code defect but one design hole in the spec (#54).
+  - **#47 `Sync` send path and combat hold done** (PR #57): group, guild and
+    `WindowChanged` triggers, the glue's pump with one live timer, ChatThrottleLib at
+    `BULK`, the combat hold, and the separate `combat state` guard rule (allowed only in
+    `Sync.lua`). Two players' AddOns now trade signatures. The 40-player raid
+    simulation syncs everyone within 10 minutes with no honest `rate` drop and no
+    client over 30 messages / 60 entries in any 60 s. Its security review fuzzed 162
+    simulated hours of hostile input with every invariant holding; its two robustness
+    findings were fixed (decisions.md → *Sync send: timer, clock and hold choices*).
+    `Sign` must call `ns.Sync:WindowChanged()` after `addOwn` returns `"added"`.
   - Other module logic (`Phrase`, `Collection`, `Cosmetics`, `Export`, UI): ⬜ none yet.
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs and CI
   changes (#25–#39) and module logic (`Ledger` #38, `SyncProtocol` #40, `Core` #50,
-  `SyncSchedule` #52, `Sync` receive #55). No tags yet (maintainer gate).
+  `SyncSchedule` #52, `Sync` receive #55, `Sync` send #57). No tags yet (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
   per inn, seal per zone). A public profile website is a post-v1, separate project the
   AddOn never names ([vision.md](vision.md) → Where it can grow).
@@ -48,21 +56,10 @@
 
 ## Next step
 
-1. **#47** `Sync` send path, combat hold and the `combat state` guard rule (`ready`).
-   Its 40-player-raid simulation checks the traffic model.
-   - From #46: `Sync.lua` needs `requestPump` filled (a no-op now), `send` and the
-     combat function added to `realDeps().api`, and more `EVENTS`. `stats.sent` and
-     `sendFailed` exist but nothing counts them yet. The harness's send switches
-     (`c.sendMode` = `"sync"` / `"defer"` / `"fail"`, `c.sendDelay`) and
-     `w:setGroup(members, raid)` are ready; what it lacks is in
-     [specs/sync-glue.md §6.1](specs/sync-glue.md#61-harness-and-stub).
-   - From #45: the glue passes `ledger:shareWindow(SHARE_MAX)` as `io.window` and to
-     `onWant`; the schedule counts its own failed sends in `snapshot().sendFailed`; its
-     gates never reach the 30-message cap on their own (at most 29 at once), so the cap
-     is a backstop.
-   - Keep the `partyN` / `raidN` scan in one function; #54 extends it.
-2. **#54** Group senders resolve through our own unit scan, never `UnitGUID(sender)`
-   (blocked by #47; must land before the first release). A character named like a unit
+1. **#54** Group senders resolve through our own unit scan, never `UnitGUID(sender)`
+   (now unblocked; must land before the first release). The scan is
+   `Client:scanGroup()` in `Sync.lua`; it returns the member GUID set and is the one
+   place group units are read, so extend it to read names too. A character named like a unit
    token (`Target`, `Focus`) could otherwise get entries stored under another player's
    GUID (decisions.md → *Group senders resolve through our own unit scan*).
 
@@ -110,5 +107,12 @@ items.
 - Another AddOn's hidden addon traffic is counted and logged as a `hidden` drop, since
   the hidden check comes before the prefix (decisions.md → *Sync receive: fail-closed
   choices*); revisit if #12 shows hidden senders.
-- `decisions.md` is at about 690 lines. At the start of October, move the September entries to
+- The harness's `"defer"` send mode puts a message on the bus at hand-off, while
+  ChatThrottleLib puts a queued one on the wire when its callback fires. #47's review
+  checked that model separately (within 32 messages / 70 entries in any 60 s); a harness
+  option for it would make the deferred raid run more realistic.
+- A timer that `C_Timer.After` silently drops is only replaced on the next request (any
+  incoming message or event). The real client doesn't drop timers; revisit if #12 shows
+  otherwise.
+- `decisions.md` is at about 730 lines. At the start of October, move the September entries to
   `docs/archive/decisions-2026-09.md` and leave an index line.

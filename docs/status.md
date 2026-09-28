@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (#62 Phrase)
+**Updated:** 2026-09-27 (#63 Collection + Cosmetics)
 
 ## Current state
 
@@ -30,15 +30,24 @@
   stays under every rate limit. Each piece passed a security-level review. Choices the
   specs left open are in decisions.md (*Sync receive: fail-closed choices*, *Sync send:
   timer, clock and hold choices*, *Group map details*).
-  `Sign` must call `ns.Sync:WindowChanged()` after `addOwn` returns `"added"`.
+  `Sign` must call `ns.Sync:WindowChanged()` after `addOwn` returns `"added"`, check
+  `ns.Cosmetics.canSeal` before attaching a seal, and record unlocks with `markEarned`
+  (spec [collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
 - **Slice 3 (#61), in progress:** `Phrase` + a DRAFT `Data/Phrases` set (#62), spec
   [specs/phrase.md](specs/phrase.md): 24 templates, 4 conjunctions, 120 words; synced
   entries with real phrase IDs are now stored. `Phrase.lua` at 100% coverage; passed a
-  security-level review. Next: `Collection` + `Cosmetics` (#63), then `Export` (#64).
+  security-level review. `Collection` + `Cosmetics` + a DRAFT `Data/Cosmetics` catalog
+  (#63), spec [specs/collection-cosmetics.md](specs/collection-cosmetics.md): the
+  `Data/Inns` shape (inns by NPC ID with aliases and factions, zones and continents by
+  map ID, a seal per zone; still empty until #12), per-faction progress over your own
+  signatures, unlocks derived from entries with the `earned` map as a floor, and
+  `Cosmetics.SEALS`, which `Sync` now validates peers' seals against. Both modules at
+  100% coverage. Next: `Export` (#64).
 - **Other module logic** (`Sign`, UI): ⬜ none yet.
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs and CI
   changes (#25–#39) and module logic (`Ledger` #38, `SyncProtocol` #40, `Core` #50,
-  `SyncSchedule` #52, `Sync` receive #55, `Sync` send #57, group map #59, `Phrase` #62). No tags yet
+  `SyncSchedule` #52, `Sync` receive #55, `Sync` send #57, group map #59, `Phrase` #62,
+  `Collection` + `Cosmetics` #63). No tags yet
   (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
   per inn, seal per zone). A public profile website is a post-v1, separate project the
@@ -48,8 +57,11 @@
 
 ## Next step
 
-Slice 3 (#61), [kickoff.md](kickoff.md) Phase 1 step 5: #63 `Collection` + `Cosmetics`
-(ready), then #64 `Export` (blocked by #63). In-client work is #12.
+Slice 3 (#61), [kickoff.md](kickoff.md) Phase 1 step 5: #64 `Export` (its blocker #63 is
+done): serialize `Collection.progress` and `Cosmetics.unlocked` as
+[export-format.md → Data](export-format.md#data-draft) now describes. In-client work is
+#12, which also fills `Data/Inns` in the shape of
+[specs/collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices).
 
 ## Client access plan
 
@@ -72,6 +84,20 @@ Slice 3 (#61), [kickoff.md](kickoff.md) Phase 1 step 5: #63 `Collection` + `Cosm
   inn-and-road lines with a little Dark Souls whimsy. Ship as is, or redirect? IDs change
   freely until the first release. Also: keep the alcohol words ("a mug of ale", "spiced
   cider")? Keep Warcraft creature words ("the murlocs") or stay generic fantasy?
+- **Cosmetic catalog (#63):** the DRAFT in
+  [specs/collection-cosmetics.md §9](specs/collection-cosmetics.md#9-draft-catalog-draft)
+  is on `dev`: Sepia ink (first signature), Wayfarer's seal (5 inns), Traveler's
+  quill (10), Owl-feather quill (20), Forest-green ink (3 zones), Midnight-blue ink (10
+  zones), Cartographer's quill (a continent), Innkeeper's seal (every inn), plus a seal
+  per zone. Ship as is, or redirect the set, names or ladder? Thresholds get retuned
+  once #12 counts the inns; IDs change freely until the first release. Doesn't block
+  anything.
+- **Per-faction totals (#63):** agree that "every inn" means every inn your faction can
+  use (neutral plus your faction's)?
+- **Never taken away (#63):** agree that a seal stays when Forever adds an inn to a zone
+  you'd completed? The alternative is losing it until you sign the new inn.
+- **Later, not v1 (#63):** worth a follow-up for continent seals, a "home inn" reward for
+  re-signing one inn over many weeks, or a separate badge kind?
 
 ## Waiting on the maintainer in the client
 
@@ -87,8 +113,9 @@ items.
   *SyncSchedule: failed sends keep their gates*); revisit if #12 shows it happens.
 - Delete GitHub's default labels (`bug`, `enhancement`, …), which overlap ours
   (maintainer call: deletion).
-- Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
-  before export v1 is finalized ([export-format.md](export-format.md)).
+- Publish `Data/Inns` (`Inns`, `Zones`, `Continents`), `Data/Phrases` and
+  `Data/Cosmetics` as a generated reference for export consumers before export v1 is
+  finalized ([export-format.md](export-format.md)).
 - CI pins only the top-level rocks; if an upstream release breaks CI, pin dependencies too.
 - `Ledger`'s cap pass at load time is quadratic: a tampered SavedVariables file far over
   the caps (40 000 entries) loads in about 4 s. Peers can't reach this; batch the

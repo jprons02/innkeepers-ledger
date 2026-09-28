@@ -10,6 +10,94 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Collection: places, keys and faction totals
+
+Settled in #63, which built `Collection` and gave `Data/Inns` its shape (still empty until
+#12). Spec: [specs/collection-cosmetics.md §3.1–§3.4](specs/collection-cosmetics.md#31-places-inns-zones-continents).
+- **Places are keyed by integers, never names:** inns by innkeeper NPC ID (what entries,
+  `SyncProtocol` and `Ledger.innFromNpcGUID` already use); zones and continents by the
+  client's own map IDs, read by #12's walk (project integers if map IDs turn out
+  unreadable; the scheme doesn't change). A zone carries its continent, so an inn's
+  continent can't disagree with its zone. Names are English data in v1, like phrases.
+- **Inns, not innkeepers:** one record per inn is the primary; any other innkeeper of the
+  same inn (a faction pair, a replaced NPC) is an `alias` of it, one hop only. An entry
+  at an alias counts for the primary.
+- **Totals are per faction:** an inn is open to a faction if it is neutral or that
+  faction's; totals, zones, continents and `done` count open inns only. An unreadable
+  faction counts every inn (harder, never easier). Another faction's inns never appear.
+- **Own signatures only** count toward progress; other travelers' entries are the
+  crossing-paths layer. A stamp is an inn you've signed (no ID; the export's entries
+  carry them); weekly re-signs add to `count`, never a stamp.
+- **Records are never removed or renumbered after the first release;** a retired inn
+  keeps its record, and a zone keeps its seal.
+- **Where the spec was silent (fail closed):** a seal clash counts every zone record
+  whose `seal` is an in-range integer, kept or not, so an otherwise-bad record clashing
+  with a good zone takes both out; a record with any `alias` key is read as an alias;
+  `invalid` is sorted, so its order doesn't depend on `next`.
+
+*Rejected:*
+- **Zone keys as English names or slugs:** names differ per locale and slugs need a
+  naming step, while map IDs come from the client.
+- **Continent on each inn record:** can disagree with its zone.
+- **Counting innkeepers:** a faction pair would count one inn twice.
+- **Totals over both factions:** contested zones' seals and "every inn" could never be
+  earned.
+- **Counting other travelers' entries:** would make the passport tradeable.
+
+*Reflected in:* `docs/specs/collection-cosmetics.md`; `Collection.lua`; `Data/Inns.lua`;
+`docs/architecture.md` → Modules; `docs/platform-forever.md` → Verification checklist;
+`docs/export-format.md` → Data (`collection`).
+
+### 2026-09-27 — Cosmetics: IDs, derived unlocks that are never taken away, seals on signing
+
+Settled in #63, which built `Cosmetics` and the DRAFT `Data/Cosmetics` catalog (the set,
+names and thresholds are the maintainer's; open question in [status.md](status.md)).
+Spec: [specs/collection-cosmetics.md §3.5–§3.7](specs/collection-cosmetics.md#35-cosmetic-ids).
+- **One ID space, 1..9999:** milestone seals 1..99, zone seals 101..999 (each stored on
+  its zone record, allocated in the order zones are added, never reused), quills
+  1000..1099, inks 1100..1199, 100 and 1200..9999 reserved. Every seal is ≤ 999, the
+  wire's limit; quills and inks never travel. No badge kind in v1.
+- **Rules:** `inns n`, `zones n`, `continent`, `all`, and one generated `zone` rule per
+  zone seal. Thresholds are counts, never percentages; after the first release an ID
+  never changes meaning and a threshold never rises.
+- **Unlocks are derived from your own entries on every call,** each dated by the `t` of
+  the signature that completed the rule. **The ledger's `earned` map is only a floor**
+  (`Sign` records unlocks with `markEarned`): a kept time is honored only for a catalog
+  ID and only if it equals the time of an own entry the call read, and the earlier of
+  derived and kept wins. So a data update that adds an inn never takes a seal away, and
+  every exported time is still a real signature's.
+- **`SEALS` holds every seal the catalog knows,** unlocked or not (a peer's unlocks
+  can't be checked), and nothing but seals. `SyncProtocol` rule 16 is unchanged: an
+  unknown seal skips that entry only.
+- **Signing with a seal:** `canSeal` allows it only if the seal was unlocked by entries
+  already in the ledger, no later than the new entry's time, so the signature that earns
+  a seal can't carry it. It checks a private lookup, not the exported `SEALS`.
+- **Where the spec was silent (fail closed):** `canSeal` returns `false` for a `t` that
+  isn't an integer in `tMin`..`tMax` even when `seal` is `nil`; an atlas without
+  `progress`, `zoneKeys` and `zone` functions, or whose zones misbehave (an error, a
+  seal out of 101..999 or used twice, a bad name, more than 899 zones), binds as an
+  empty atlas; an error inside `unlocked` (possible only with a foreign atlas) returns
+  `{}`; the "read" entries a kept time must match use `progress`'s own filter and
+  `ownMax` bound.
+
+*Rejected:*
+- **Stamps as cosmetics with IDs:** duplicates what entries already say.
+- **Pure derivation with nothing stored:** a data update would take away a seal the
+  player uses, and `Sign` would then refuse it.
+- **Stored unlock state as the only truth:** drifts from the entries and can't be
+  rebuilt for a ledger from before recording existed.
+- **A kept time taken as is:** the own-entry-time check keeps export times tied to real
+  signatures at no cost.
+- **Zone seal ID = map ID** (over 999) **or = 100 + list position** (renumbers on
+  insert).
+- **The catalog as code in `Cosmetics.lua`:** it's content the maintainer edits.
+- **A read-only proxy for `SEALS`:** `SyncProtocol` reads it with `rawget`.
+
+*Reflected in:* `docs/specs/collection-cosmetics.md`; `Cosmetics.lua`;
+`Data/Cosmetics.lua`; `InnkeepersLedger.toc` (`Data\Cosmetics.lua` after
+`Data\Phrases.lua`); `docs/architecture.md` → Modules, Data model, Security model;
+`docs/export-format.md` → Data (`cosmetics`).
+
 ### 2026-09-27 — Phrase grammar, ID scheme and rendering
 
 Settled in #62, which built `Phrase` and the first draft `Data/Phrases`. Spec:

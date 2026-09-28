@@ -10,6 +10,7 @@ Libs\embeds.xml
 
 Data\Inns.lua
 Data\Phrases.lua
+Data\Cosmetics.lua
 
 Ledger.lua
 Phrase.lua

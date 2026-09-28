@@ -10,6 +10,42 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Sync send: timer, clock and hold choices where the spec was silent
+
+Settled while building the `Sync` send path and combat hold (#47, PR #57). The
+security-level review (162 seeds × 1 simulated hour of hostile input) found every
+invariant held; its two robustness findings are fixed as described here.
+- **Only the resume paths release the hold.** A pump that finds us in combat enters it;
+  a pump never leaves it. Only the 3 s check after `PLAYER_REGEN_ENABLED` and the 30 s
+  held re-check do. A pump that bumped the generation while already held would cancel a
+  pending resume for nothing.
+- **A timer counts as live only once `C_Timer.After` has returned**, for the pump timer
+  and the held re-check alike. A pump or re-check timer due more than 5 s ago is treated
+  as lost and replaced on the next request, and a held client's pump re-arms a lost
+  re-check. A timer call that raises then can't leave sync stalled behind a timer that
+  doesn't exist.
+- **Bad clock.** At a roster update with new members, the GROUP channel is set but the
+  member set is kept, so the next update still finds them new (spec §3.5.1 says the set
+  is replaced; this departs from it only while the clock is unreadable). At guild join
+  nothing happens until the next update. At start, the first pump with a good clock
+  runs the group and guild triggers again (a 5 s retry until then).
+- **Every handed-over message gets a debug line** (`sync: sent <kind> <CHANNEL>`), and a
+  failed one `sync: send failed`, with the kind from our own first byte.
+- **Long simulations are tagged `#sim`** (the 40-player raid, an hour in a guild, the
+  10-minute flood). The `busted` job runs them; the `coverage` job skips them, since under
+  luacov they take minutes and cover no pure-module line.
+
+*Rejected:*
+- **Releasing the hold from any pump that finds us out of combat:** it would skip the
+  3 s settle that §3.6 and sync-ledger §8 ask for.
+- **Running the simulations under coverage too:** the local coverage run went from about
+  1.5 to over 5 minutes for no coverage gain.
+
+*Reflected in:* `Sync.lua`; `.github/workflows/ci.yml`; `docs/testing.md`;
+`CONTRIBUTING.md`.
+
+---
+
 ### 2026-09-27 — Sync receive: fail-closed choices where the spec was silent
 
 Settled while building the `Sync` receive path (#46, PR #55). The security-level review

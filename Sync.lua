@@ -146,6 +146,7 @@ function Sync.new(deps)
     recheckGen = 0,        -- the held re-check timer's generation, the same way
     recheckLive = false,
     recheckAt = nil,
+    triggersPending = false, -- the clock was bad at start; the pump runs the triggers
   }, Client)
   -- What the schedule may do: read our share window and a signer's held entries, and send.
   self.io = {
@@ -235,7 +236,8 @@ end
 local fire
 
 -- Schedules the pump timer for `now + delay` under a fresh generation, which makes every
--- older timer stale.
+-- older timer stale. It counts as live only once `After` has returned, so a call that
+-- raises leaves no phantom timer and the next request arms a fresh one.
 function Client:arm(now, delay)
   local after = self.api.After
   if type(after) ~= "function" then
@@ -243,11 +245,12 @@ function Client:arm(now, delay)
   end
   self.timerGen = self.timerGen + 1
   local gen = self.timerGen
-  self.timerLive = true
-  self.timerAt = now ~= nil and now + delay or nil
+  self.timerLive, self.timerAt = false, nil
   after(delay, function()
     self:guard("pump", fire, gen)
   end)
+  self.timerLive = true
+  self.timerAt = now ~= nil and now + delay or nil
 end
 
 -- Asks for a pump at `at` (nil = idle). A live timer due no later than `at` already
@@ -291,8 +294,17 @@ local function pump(self)
     self:arm(nil, BAD_CLOCK_RETRY)
     return
   end
+  if self.triggersPending then
+    -- The clock was bad at start: run the start-time triggers now.
+    self.triggersPending = false
+    self:onGroup(now)
+    self:onGuild(now)
+    self:rebuildGuild(now)
+  end
   if not self.held and self:combatNow() then
     self:hold()
+  elseif self.held then
+    self:armRecheck() -- re-arms a re-check that was lost
   end
   self:requestPump(self.schedule:pump(now, self.io))
 end
@@ -374,11 +386,12 @@ function Client:armRecheck()
   end
   self.recheckGen = self.recheckGen + 1
   local gen = self.recheckGen
-  self.recheckLive = true
-  self.recheckAt = now ~= nil and now + HELD_RECHECK or nil
+  self.recheckLive, self.recheckAt = false, nil
   after(HELD_RECHECK, function()
     self:guard("recheck", recheck, gen)
   end)
+  self.recheckLive = true
+  self.recheckAt = now ~= nil and now + HELD_RECHECK or nil
 end
 
 -- Enters the hold: the schedule sends nothing until a resume check finds us out of combat.
@@ -588,6 +601,10 @@ local function start(self)
   self:onGuild(now)
   if now ~= nil then
     self:rebuildGuild(now)
+  else
+    -- A bad clock at start: the first pump with a good one runs the triggers again.
+    self.triggersPending = true
+    self:requestPump(0)
   end
   return true
 end

@@ -489,6 +489,42 @@ describe("Sync send: combat", function()
     assert.equal(gen + 1, a.client.recheckGen)
   end)
 
+  it("re-arms a held re-check that failed from the next pump", function()
+    local w, a, b = pair(12)
+    roster(a, b)
+    a.impl.After = function() error("boom") end
+    harness.combat(a, true) -- the re-check's timer call raises
+    assert.equal(1, stats(a).errors)
+    assert.is_false(a.client.recheckLive)
+    a.impl.After = function(delay, fn) w:after(delay, fn, a) end
+    a.inCombat = false -- combat ended without an event
+    a.client:poke() -- any incoming message requests a pump like this
+    w:advance(40)
+    assert.is_false(a.client.held)
+    assert.equal(1, #sentBy(w, a, "H"))
+  end)
+
+  it("ignores a re-check timer made stale by a fresh one after the clock went back",
+    function()
+      local w, a = pair(12)
+      harness.combat(a, true)
+      local gen = a.client.recheckGen
+      local offset = 0
+      a.impl.GetServerTime = function() return w.now - offset end
+      offset = 3600
+      harness.combat(a, true) -- the live re-check is now due too far out: replaced
+      assert.equal(gen + 1, a.client.recheckGen)
+      local ran = 0
+      local recheck = a.client.tryResume
+      a.client.tryResume = function(...)
+        ran = ran + 1
+        return recheck(...)
+      end
+      w:advance(31) -- both timers fire; only the fresh one checks
+      assert.equal(1, ran)
+      assert.equal(0, stats(a).errors)
+    end)
+
   it("works without InCombatLockdown or a timer function", function()
     local w, a, b = pair(12)
     a.api.InCombatLockdown = nil
@@ -767,6 +803,20 @@ describe("Sync send: one live timer", function()
       assertBudget(w)
     end)
 
+  it("leaves no phantom timer when the timer call raises: the next request arms again",
+    function()
+      local w, a, b = pair(12)
+      a.impl.After = function() error("boom") end
+      roster(a, b)
+      assert.equal(1, stats(a).errors)
+      assert.is_false(a.client.timerLive)
+      a.impl.After = function(delay, fn) w:after(delay, fn, a) end
+      a.client:windowChanged()
+      assert.equal(1, w:timersOf(a))
+      w:advance(20)
+      assert.equal(1, #sentBy(w, a, "H"))
+    end)
+
   it("treats a pump timer overdue by more than 5 s as lost", function()
     local w, a, b = pair(12)
     a.impl.After = function() end -- this timer never fires
@@ -803,6 +853,40 @@ describe("Sync send: bad clock in the glue pump", function()
       assert.equal(0, stats(a).errors)
     end)
   end
+end)
+
+describe("Sync send: bad clock at start", function()
+  it("runs the group and guild triggers from the first pump with a good clock", function()
+    local w = harness.new()
+    local a = w:add("Aldric", { start = false })
+    local b = w:add("Mira")
+    sign(a, 12)
+    w:setGroup({ a, b })
+    w:setGuild({ a, b })
+    a.impl.GetServerTime = function() return nil end
+    assert.is_true(a.client:start())
+    assert.equal(1, w:timersOf(a)) -- the 5 s retry
+    w:advance(30)
+    assert.same({}, sentBy(w, a))
+    assert.is_nil(a.calls.GuildRoster)
+    a.impl.GetServerTime = function() return w.now end
+    w:advance(25)
+    assert.equal(1, #sentBy(w, a, "H", "PARTY"))
+    assert.equal(1, a.calls.GuildRoster)
+    assert.is_true(a.client.guildOn)
+    w:advance(120)
+    assert.equal(1, #sentBy(w, a, "H", "GUILD"))
+    assert.equal(0, stats(a).errors)
+  end)
+
+  it("WindowChanged with a bad clock asks for nothing and doesn't throw", function()
+    local w, a = pair(12)
+    a.impl.GetServerTime = function() return 0 / 0 end
+    a.client:windowChanged()
+    assert.equal(0, a.client.schedule:snapshot().hellos)
+    assert.same({}, w.timers)
+    assert.equal(0, stats(a).errors)
+  end)
 end)
 
 describe("Sync send: guild", function()

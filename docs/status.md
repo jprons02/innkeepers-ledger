@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-27 (after #54)
+**Updated:** 2026-09-27 (after #54, PR #59)
 
 ## Current state
 
@@ -35,7 +35,8 @@
   none yet.
 - **Releases:** `main` = `dev` as of #24 (2026-09-26). Since then `dev` has docs and CI
   changes (#25–#39) and module logic (`Ledger` #38, `SyncProtocol` #40, `Core` #50,
-  `SyncSchedule` #52, `Sync` receive #55, `Sync` send #57). No tags yet (maintainer gate).
+  `SyncSchedule` #52, `Sync` receive #55, `Sync` send #57, group map #59). No tags yet
+  (maintainer gate).
 - **Direction (2026-09-27):** the inn ledger stays, leaning into a passport feel (stamp
   per inn, seal per zone). A public profile website is a post-v1, separate project the
   AddOn never names ([vision.md](vision.md) → Where it can grow).

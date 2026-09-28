@@ -51,6 +51,10 @@ local function defaults()
   api.UnitName = function(unit)
     if unit == "player" then return "Traveler" end
   end
+  api.UnitFullName = function(unit)
+    if unit == "player" then return "Traveler", "Stubrealm" end
+  end
+  api.UNKNOWNOBJECT = "Unknown"
   api.UnitClass = function() return "Warrior", "WARRIOR", 1 end
   api.UnitRace = function() return "Human", "Human", 1 end
   api.UnitFactionGroup = function() return "Alliance", "Alliance" end

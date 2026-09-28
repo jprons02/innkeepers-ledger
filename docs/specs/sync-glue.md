@@ -10,7 +10,7 @@
 
 **Status:** approved (self-approved 2026-09-27, ticket #42). The one maintainer item, the
 debug toggle wording, is settled: keep it as written (maintainer, 2026-09-27).
-**Implemented** in #44–#47 (#54 still changes §3.4 step 3). Points the code settled
+**Implemented** in #44–#47; #54 replaced §3.4 step 3 with the group map. Points the code settled
 where this spec was silent, and one bad-clock departure from §3.5.1, are in
 [decisions.md](../decisions.md) → *Sync receive: fail-closed choices* and *Sync send:
 timer, clock and hold choices*.
@@ -157,7 +157,8 @@ recomputed at every login (slice 1 §8).
 | `onEntries` (optional) | `nil` in this slice; the UI slice may pass a function called after an ENTRIES result with `added > 0` (inside the handler's `pcall`) |
 | `api` | a table of the client functions below |
 
-`api` fields: `GetServerTime`, `UnitGUID`, `IsInGroup`, `IsInRaid`, `GetNumGroupMembers`,
+`api` fields: `GetServerTime`, `UnitGUID`, `UnitFullName`, `UnitName`,
+`UNKNOWNOBJECT` (the client's placeholder name, a string), `IsInGroup`, `IsInRaid`, `GetNumGroupMembers`,
 `IsInGuild`, `GetNumGuildMembers`, `GetGuildRosterInfo`, `GuildRoster`
 (`C_GuildInfo.GuildRoster`), `GetNormalizedRealmName`, `InCombatLockdown`,
 `issecretvalue` (may be `nil`), `After` (`C_Timer.After`), `RegisterPrefix`
@@ -238,12 +239,12 @@ authentic. Resolution maps it to a GUID and fails closed.
    when it's a non-hidden string of 1..48 bytes (else `full = sender`). One form per
    character keeps a traveler's stored name stable across channels. The UI may hide our
    own realm suffix when it displays names; storage keeps the full form.
-3. **PARTY / RAID:** `guid = UnitGUID(sender)` in `pcall`, with the sender string
-   exactly as the server gave it (`full` is only the stored name). It resolves only for
-   current group members, so a sender who left the group is unresolved.
-   **To be replaced by #54:** a peer string must never reach a unit-token parser, so
-   group senders will resolve through a name → GUID map from our own unit scan
-   (decisions.md → *Group senders resolve through our own unit scan*).
+3. **PARTY / RAID:** `guid = groupMap[full]`, the map below. If there's no entry,
+   rescan the group's names now (the map only, at most once per 10 s; a clock that went
+   back allows one at once) and look again; still no entry → unresolved. A sender who
+   left the group, or whose name our scan can't read, is unresolved. **No peer string is
+   ever passed to a client function:** `sender` is only compared with names our own
+   scan read (decisions.md → *Group senders resolve through our own unit scan*).
 4. **GUILD:** `guid = guildMap[full]`. If there's no entry: unresolved, and request a
    roster refresh (`api.GuildRoster()`, at most once per 60 s). The message is not kept
    or retried: the sender's next HELLO resyncs (decisions.md → *Sender identity is
@@ -253,7 +254,28 @@ authentic. Resolution maps it to a GUID and fails closed.
    (rules 4–5) and drops our own echo.
 6. `sender = { guid = guid, name = full }`. The name is never looked up any other way.
 
-**The guild map** (`name → GUID`, built from the server's roster):
+**The group map** (full name → GUID, built from our own unit scan; decided in #54):
+- Built by the unit scan of [§3.5.1](#351-logical-channels-and-triggers), so at start and
+  on `GROUP_ROSTER_UPDATE`, and by the rescan in step 3. Not in a group → empty. The
+  rescan replaces the map only: the member set and HELLO triggers change only on the
+  roster event.
+- Units: `raid1..raidN` in a raid; `player` and `party1..party(N-1)` in a party, with
+  §3.5.1's `N` (at most 40 units, 41 with `player`).
+- Per unit, each call in `pcall`: `guid = UnitGUID(unit)` and
+  `name, realm = UnitFullName(unit)` (`UnitName(unit)` when `UnitFullName` isn't a
+  function). Skip the unit if `guid`, `name` or `realm` is hidden, `guid` fails
+  `validGUID`, `name` isn't a 1..96-byte string, `name` contains `-`, or `name` is the
+  client's placeholder for a name not loaded yet (`UNKNOWNOBJECT` when it's a string,
+  else `"Unknown"`).
+- **Realm form.** A string `realm` has its spaces and `-` removed (the
+  `GetNormalizedRealmName` form; `UnitName` gives `Area 52` where the sender says
+  `Area52`). If the result is empty or `realm` is `nil`, the unit is on our realm:
+  `key = fullName(name)`, the same completion step 2 gives a bare sender. Otherwise it
+  must be 1..48 bytes and `key = name .. "-" .. realm`; any other `realm` skips the unit.
+  **Verify** (#12) that this matches the sender string's form.
+- A key two units claim is **removed** until the next scan (ambiguous → unresolved).
+- **Our own name is kept**, as the guild map keeps our roster row: our echo resolves to
+  our GUID and `receive` drops it as `self`, quietly. The member set still skips us.
 - Rebuilt on `GUILD_ROSTER_UPDATE`, at most once per 10 s (a later event inside the 10 s
   schedules one trailing rebuild), and at start. `api.GuildRoster()` is requested at start
   when in a guild.
@@ -280,7 +302,7 @@ The glue tells the schedule which channels exist and when a HELLO is wanted:
 
 | Trigger | Glue action |
 |---|---|
-| `GROUP_ROSTER_UPDATE`, and at start | not in a group → `setChannel("GROUP", nil)` and clear the member set. Else `setChannel("GROUP", inRaid and "RAID" or "PARTY")`; scan `raid1..raidN` (in a raid) or `party1..party(N-1)` with `UnitGUID`, skipping hidden, invalid and own GUIDs, where `N` = `GetNumGroupMembers()` as a number capped at 40 (hidden or not a number → 0). The member set is **replaced** by this scan; if the scan holds a GUID the previous set didn't, `requestHello("GROUP", now, 5, 15)`. So someone who leaves and rejoins counts as new, and the set never exceeds 40. "In a group" / "in a raid" / the member count use `IsInGroup` / `IsInRaid` / `GetNumGroupMembers` with `LE_PARTY_CATEGORY_HOME` when that constant exists (never send PARTY into an instance-only group), else with no argument. |
+| `GROUP_ROSTER_UPDATE`, and at start | not in a group → `setChannel("GROUP", nil)` and clear the member set. Else `setChannel("GROUP", inRaid and "RAID" or "PARTY")`; scan `raid1..raidN` (in a raid) or `party1..party(N-1)` with `UnitGUID`, skipping hidden, invalid and own GUIDs, where `N` = `GetNumGroupMembers()` as a number capped at 40 (hidden or not a number → 0). The same scan reads each unit's name and rebuilds the group map ([§3.4](#34-sender-resolution)). The member set is **replaced** by this scan; if the scan holds a GUID the previous set didn't, `requestHello("GROUP", now, 5, 15)`. So someone who leaves and rejoins counts as new, and the set never exceeds 40. "In a group" / "in a raid" / the member count use `IsInGroup` / `IsInRaid` / `GetNumGroupMembers` with `LE_PARTY_CATEGORY_HOME` when that constant exists (never send PARTY into an instance-only group), else with no argument. |
 | `PLAYER_GUILD_UPDATE`, and at start | `IsInGuild()` true and the channel wasn't set → `setChannel("GUILD", "GUILD")`, `requestHello("GUILD", now, 60, 120)`, request the roster. False → `setChannel("GUILD", nil)`, clear the map. |
 | `ns.Sync:WindowChanged()` (called by `Sign` after `addOwn` returns `"added"`) | `requestHello(ch, now, 5, 15)` for each available channel |
 | A GUILD HELLO sent or skipped | the schedule itself sets the next one at `now + rand(1200, 1500)` ([§3.5.3](#353-hello)) |
@@ -570,8 +592,12 @@ budget records) for tests and the debug report.
   remaining ≤ 8 strings are bounded and still valid.
 - **Keying pending items by wire channel:** a party that turns into a raid would drop
   its pending reply, and nothing would ask again until the next HELLO.
-- **Trusting `UnitGUID(sender)` without the channel check, or resolving GUILD senders
-  with `UnitGUID`:** it resolves group members only; guild senders need the roster.
+- **`UnitGUID(sender)` for any channel:** it hands a peer-chosen name to a function that
+  also parses unit tokens (`Target`, `Focus`, …), so a member named like a token would
+  get our target's GUID. Replaced by the group map in #54 (decisions.md → *Group senders
+  resolve through our own unit scan*, which also rejects a token deny-list).
+- **A group-map miss that also rescans the member set:** a peer could then drive HELLO
+  triggers by sending; the rescan touches the map only, and at most once per 10 s.
 - **Retrying an unresolved message after a roster refresh:** settled against (decisions
   2026-09-26); only the map refreshes.
 - **A saved debug setting or an in-memory log buffer:** a saved flag gets forgotten on;
@@ -597,7 +623,8 @@ surface or guards it.
 | A peer controls | Guard | Where |
 |---|---|---|
 | `text` of an addon message | hidden check, then everything in `SyncProtocol.receive` (rules 1–19) | §3.3.3, slice 1 §5.1 |
-| its character name (as `sender`) | hidden check; 1..96-byte string; resolved to a GUID only via the group or the guild roster; `validGUID` on the result; `validName` in `receive` | §3.4 |
+| its character name (as `sender`) | hidden check; 1..96-byte string; only ever compared with names our own group scan or the guild roster gave, never passed to a client function; `validGUID` on the result; `validName` in `receive` | §3.4 |
+| its name as a group unit (server data, but player-chosen; possibly like a unit token) | read only from our own `partyN` / `raidN` / `player` units; hidden, invalid, dashed and not-yet-loaded names skipped; duplicate keys become unresolved; at most 41 units; a miss rescans the map at most once per 10 s | §3.4 |
 | which channel it uses | only PARTY / RAID / GUILD; server-enforced membership | §3.3.3 |
 | HELLO count / digest (churn, floods) | one pending WANT per peer; ≤ 200 pending; `decideWant`'s 2 per 10 minutes; 12 WANTs per 60 s | §3.5.5 |
 | WANT `since` (spam, `0`, `tMin`) | 5 s coalescing; 1 reply per 30 s per channel; any reply over 5 entries gated to 1 per 5 minutes unless our window changed | §3.5.4 |
@@ -613,6 +640,10 @@ Also:
 - **Stale guild map:** a name that moves to another character (a rename) inside the ≤ 10 s
   rebuild window would still resolve to the old GUID. The server controls renames, so a
   peer can't aim this, and the next rebuild fixes it.
+- **Stale group map:** the map follows `GROUP_ROSTER_UPDATE`, and a hit never
+  rescans, so between a change and its event a departed member's name still resolves.
+  Each key's GUID was read from the same unit as its name, so it's still that
+  character's own GUID; the server delivers PARTY / RAID messages only from members.
 - **Read-only ledger:** `Sync` doesn't start (no prefix, no handler, no sends), and
   `receive` would drop anyway (rule 2).
 - **Our sends are bounded whatever peers do:** the budget (30 / 60 / 12 per 60 s, in-flight
@@ -670,8 +701,11 @@ comments ("the combat flag", "the transport"). The README principle about checki
     client on that channel, **including the sender** (addon messages echo on retail);
     delivery order per sender is kept; the send callback runs synchronously by default,
     and a per-client switch defers or fails it;
-  - group and guild membership lists that drive each client's `UnitGUID(name)`,
-    `IsInGroup` / `IsInRaid`, the unit scan and the guild roster;
+  - group and guild membership lists that drive each client's unit scan (`UnitGUID`,
+    `UnitFullName` / `UnitName` on unit tokens), `IsInGroup` / `IsInRaid` and the guild
+    roster; `c.tokens` models unit tokens like `target` (case-insensitive, as the
+    client parses them), and `UnitGUID` of a name models the old lookup, for #54's
+    forgery test;
   - fixture `inns` / `phrases` / `seals` tables (the real `Data` tables are empty);
   - per-client combat flags and the `PLAYER_REGEN_*` events.
   It loads the pure modules through `spec/helpers/load.lua` and `Sync.lua` as a file with
@@ -750,9 +784,18 @@ Receive path, each hostile case by name:
   peer's pending WANT is still bounded and harmless.
 - **hidden-value stand-ins:** `issecretvalue` true for prefix, text, channel and sender
   in turn → `hidden`, `receive` not called; the two stand-in objects as each argument
-  with `issecretvalue` false → no error escapes, nothing stored; `UnitGUID` returning a
-  stand-in or a hidden value → `unresolved`; a hidden `GetNormalizedRealmName` → the
-  sender is used as is.
+  with `issecretvalue` false → no error escapes, nothing stored; the unit scan's
+  `UnitGUID` or `UnitFullName` returning a stand-in or a hidden value → that unit is
+  skipped, its sender `unresolved`; a hidden `GetNormalizedRealmName` → the sender is
+  used as is.
+- **group map (#54):** a member named `Target` / `focus` / `MOUSEOVER` while we target
+  someone else → its entries go under its own GUID, never the target's, and a sender
+  named like a token that no unit carries → `unresolved`; `UnitGUID` is only ever
+  called with `player`, `partyN` or `raidN` (spy); two units with one key → both
+  `unresolved`; `Mira` and `Mira-Stubrealm` → one GUID and one stored name; another
+  realm, with a space or `-` in `UnitName`'s realm, still resolves; placeholder, dashed,
+  hidden and over-long names skipped; a miss rescans the map at most once per 10 s and
+  never sends a HELLO.
 - **channels:** WHISPER, `INSTANCE_CHAT`, CHANNEL, SAY, `nil` → `channel`, nothing sent.
 - **other prefixes:** ignored, no stats, no debug line.
 - **our own echo:** counted as `self`, no debug line.
@@ -859,7 +902,7 @@ Designed within retail's behavior; each is on the #12 checklist in
 | Hidden senders outside combat | normal strings | the hidden check drops everything; sync can't work there |
 | `CHAT_MSG_ADDON` sender format | `Name-Realm` (maybe a two-part name with a space) | `fullName` changes |
 | `GetNormalizedRealmName()` on a mega-realm | a string | `fullName` uses the sender as is |
-| `UnitGUID(name)` for group members | works with the raw sender string | PARTY / RAID resolution changes (test the full form too) |
+| `UnitFullName(partyN)` (#54) | the name plus the realm in the sender's form once spaces and `-` are removed, `nil` or empty for our realm; `UNKNOWNOBJECT` until a name loads | the group map's key changes; until then group senders are unresolved (fails closed) |
 | Home vs instance groups | `LE_PARTY_CATEGORY_HOME` exists; instance-only groups aren't sent to | the group check changes |
 | `GetGuildRosterInfo` GUID | 17th return, a player GUID | the guild map changes |
 | `GUILD_ROSTER_UPDATE` / `C_GuildInfo.GuildRoster()` | as retail | the refresh changes |

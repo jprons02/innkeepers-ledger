@@ -19,7 +19,9 @@
 -- InCombatLockdown, and `H.combat(c, on)` sets it and fires the PLAYER_REGEN_* event.
 -- The group functions record their argument in `c.groupArgs` (LE_PARTY_CATEGORY_HOME is
 -- `H.HOME` in every client's api) and otherwise ignore it. Timers remember their client
--- (`timer.owner`).
+-- (`timer.owner`). `UnitFullName` / `UnitName` answer "player", "partyN" and "raidN";
+-- `c.tokens` makes UnitGUID answer unit tokens like "target" (any case), and UnitGUID of
+-- a member's name still answers, so a test can show what the old name lookup did.
 local load = require("helpers.load")
 
 local H = {}
@@ -49,7 +51,8 @@ function H.entry(i, now)
 end
 
 local API_NAMES = {
-  "GetServerTime", "UnitGUID", "IsInGroup", "IsInRaid", "GetNumGroupMembers", "IsInGuild",
+  "GetServerTime", "UnitGUID", "UnitFullName", "UnitName", "IsInGroup", "IsInRaid",
+  "GetNumGroupMembers", "IsInGuild",
   "GetNumGuildMembers", "GetGuildRosterInfo", "GuildRoster", "GetNormalizedRealmName",
   "InCombatLockdown", "issecretvalue", "After", "RegisterPrefix", "send", "random",
 }
@@ -188,19 +191,20 @@ local function defaults(w, c)
     return contains(w.guild.members, c)
   end
   impl.GetServerTime = function() return w.now end
-  impl.UnitGUID = function(unit)
+  -- The member behind "player", "raidN" or "partyN", or nil.
+  local function unitMember(unit)
     if unit == "player" then
-      return c.guid
+      return c
     end
-    if not inGroup() then
+    if type(unit) ~= "string" or not inGroup() then
       return nil
     end
     local members = w.group.members
-    local n = type(unit) == "string" and tonumber(unit:match("^raid(%d+)$") or "")
+    local n = tonumber(unit:match("^raid(%d+)$") or "")
     if n then
-      return w.group.raid and members[n] and members[n].guid or nil
+      return w.group.raid and members[n] or nil
     end
-    n = type(unit) == "string" and tonumber(unit:match("^party(%d+)$") or "")
+    n = tonumber(unit:match("^party(%d+)$") or "")
     if n then
       local others = {}
       for _, m in ipairs(members) do
@@ -208,14 +212,51 @@ local function defaults(w, c)
           others[#others + 1] = m
         end
       end
-      return others[n] and others[n].guid or nil
+      return others[n]
     end
-    for _, m in ipairs(members) do
+    return nil
+  end
+  impl.UnitGUID = function(unit)
+    local member = unitMember(unit)
+    if member then
+      return member.guid
+    end
+    -- Unit tokens, case-insensitive as the client parses them (c.tokens: "target" -> GUID).
+    local token = type(unit) == "string" and c.tokens[unit:lower()]
+    if token then
+      return token
+    end
+    if not inGroup() then
+      return nil
+    end
+    -- A group member's name: the lookup #54 removed from Sync (kept to test against it).
+    for _, m in ipairs(w.group.members) do
       if unit == m.name or unit == m.full then
         return m.guid
       end
     end
     return nil
+  end
+  -- Name and realm, the realm nil for our own realm except for "player" (retail).
+  impl.UnitFullName = function(unit)
+    local m = unitMember(unit)
+    if not m then
+      return nil
+    end
+    local realm = m.full:match("%-(.+)$")
+    if unit ~= "player" and realm == w.realm then
+      realm = nil
+    end
+    return m.name, realm
+  end
+  -- Name and realm, the realm nil for our own realm.
+  impl.UnitName = function(unit)
+    local m = unitMember(unit)
+    if not m then
+      return nil
+    end
+    local realm = m.full:match("%-(.+)$")
+    return m.name, realm ~= w.realm and realm or nil
   end
   local function record(name, ...)
     c.groupArgs[name] = { n = select("#", ...), ... }
@@ -284,6 +325,7 @@ function World:add(name, opts)
     sendDelay = 1,
     inCombat = false,
     groupArgs = {}, -- group function name -> { n = argument count, ... }
+    tokens = {},    -- unit tokens UnitGUID answers: lower-case token -> GUID
   }
   local ns = {}
   load.file("Ledger.lua", ns, load.pure_env())
@@ -312,6 +354,7 @@ function World:add(name, opts)
     end
   end
   c.api.LE_PARTY_CATEGORY_HOME = H.HOME
+  c.api.UNKNOWNOBJECT = "Unknown"
 
   local deps = {
     ledger = c.ledger, inns = H.INNS, phrases = H.PHRASES, seals = H.SEALS,

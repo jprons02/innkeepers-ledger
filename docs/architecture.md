@@ -120,10 +120,12 @@ AddOn. `SyncProtocol` validates everything before anything reaches `Ledger`:
   (Decision: [decisions.md](decisions.md).) Addon messages carry only the sender's
   *name*, so `Sync` resolves name → GUID per channel and passes the result to
   `SyncProtocol` as an argument:
-  - **PARTY / RAID:** `UnitGUID(sender)`. Only resolves for current group members.
-    **Changing in #54:** a peer string must never reach a unit-token parser, so this
-    becomes a name → GUID map from our own `partyN` / `raidN` scan (decision:
-    *Group senders resolve through our own unit scan*).
+  - **PARTY / RAID:** a name → GUID map built from our own `player` / `partyN` /
+    `raidN` scan, so a peer string never reaches a client function (a character named
+    like a unit token can't borrow our target's GUID). Only current group members
+    resolve; a miss rescans the map at most once per 10 s (decisions: *Group senders
+    resolve through our own unit scan*, *Group map details*; spec
+    [sync-glue.md §3.4](specs/sync-glue.md#34-sender-resolution)).
   - **GUILD:** a name → GUID map built from the guild roster and refreshed on roster
     updates **(verify: the roster exposes member GUIDs in Forever)**.
   - **Any other channel (whisper, a future global channel):** not accepted in v1.

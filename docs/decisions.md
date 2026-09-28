@@ -10,6 +10,42 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-27 — Group map details: realm form, our own name, rescan on a miss
+
+Settled in #54, which built the group map that *Group senders resolve through our own
+unit scan* (below) called for. Spec: [specs/sync-glue.md §3.4](specs/sync-glue.md#34-sender-resolution).
+- **Names come from `UnitFullName(unit)`,** falling back to `UnitName(unit)` only when
+  `UnitFullName` isn't a function. The realm is normalized the way
+  `GetNormalizedRealmName` does it (spaces and `-` removed); `nil` or empty means our
+  realm, and the key is completed with our realm exactly as a bare sender is. Whether
+  this matches the sender string is on the #12 checklist; if it doesn't, group senders
+  are unresolved (fails closed), never misattributed.
+- **Skipped units:** hidden or invalid GUID, hidden or non-string name, over 96 bytes,
+  a name containing `-` (character names can't), the client's `UNKNOWNOBJECT`
+  placeholder, and a realm that's hidden, not a string, or over 48 bytes once
+  normalized. A key two units claim is removed, as in the guild map.
+- **Our own name is in the map** (`player` in a party; our `raidN` in a raid), like our
+  row in the guild map, so our echo is dropped by `receive` as `self` without a debug
+  line. The member set still leaves us out.
+- **A miss rescans the map once, then looks again,** at most once per 10 s (a clock that
+  went back allows one; a hidden clock none). It covers a member whose name hadn't
+  loaded at the roster event. The rescan replaces the map only, never the member set,
+  so a peer's messages can't drive HELLO triggers. This resolves the current message
+  with fresh data; it isn't a retry of a dropped one (*Sender identity is resolved per
+  channel*).
+
+*Rejected:*
+- **Using the bare `UnitName` realm as is:** it keeps spaces (`Area 52`) that the sender
+  string drops, so cross-realm members would never resolve.
+- **Leaving our own name out, as the member set does:** every echo would count and log
+  as `unresolved`.
+- **No rescan on a miss:** a member whose name loaded after the roster event couldn't
+  sync (not even answer our HELLO) until the next roster change.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.4, §3.5.1, §3.9, §5.1, §6, §8;
+`docs/architecture.md` → Security model; `docs/platform-forever.md` → Verification
+checklist.
+
 ### 2026-09-27 — Sync send: timer, clock and hold choices where the spec was silent
 
 Settled while building the `Sync` send path and combat hold (#47, PR #57). The

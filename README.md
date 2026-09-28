@@ -37,6 +37,10 @@ without needing a moderator.
   never reads what happens in a fight: no damage, no targets, no logs.
 - Your data stays in your game's SavedVariables. The AddOn has no network access; sync
   happens only in-game, between players who are online together.
+- What sync shares: your own newest signatures (up to 40), each with its inn, the date
+  and time you signed, your phrase and your seal. It goes to your group and your guild,
+  so guildmates who use the AddOn can see where and when you signed. Nothing else about
+  you is sent: no location, chat, gear or play time beyond those signatures.
 
 ## Docs
 
@@ -54,6 +58,7 @@ without needing a moderator.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and ideas go in GitHub Issues.
+Security problems go through private reporting instead: see [SECURITY.md](SECURITY.md).
 
 ## License
 

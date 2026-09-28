@@ -175,6 +175,10 @@ Build time and edit-box limits in the client are unverified
 - Opting in is per export; nothing remembers it. Without it, no other player's GUID or
   name appears anywhere in the string.
 - There's nothing secret in an export, but treat it as personal data.
+- **Consumers that publish an export** (a public page, a shared list) show other
+  travelers only as counts: how many travelers, how many of their signatures, per inn or
+  in total. Never their names, GUIDs, signing times or phrases. The exporter opted in;
+  the travelers named in the string didn't.
 
 ## Trust
 

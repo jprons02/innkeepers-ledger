@@ -54,6 +54,13 @@ lists.
   hearthstone.
 - **Account and group actions:** invites, group and guild membership, CVars,
   reload/logout, store, items, trade, turning other AddOns on or off.
+- **General-purpose decoders:** AceSerializer's `Deserialize` and LibDeflate's
+  `Decompress…` and `DecodeFor…` functions. Allowed nowhere: nothing we ship reads an
+  export string or any other serialized or compressed data, so a crafted string can't
+  reach an unbounded inflate or a float-yielding reader
+  ([libraries.md → Findings](libraries.md#findings-that-shape-our-design) 2 and 3). The
+  export's test-only decoder lives in `spec/`. Added in #64
+  ([specs/export.md §5](specs/export.md#5-security-notes)).
 - **Addon messages and channels:** sending, prefix registration, `CHAT_MSG_ADDON` and its
   variants, ChatThrottleLib, AceComm, joining or leaving chat channels. Allowed only in
   `Sync.lua`, plus `Libs/embeds.xml` so it can load ChatThrottleLib.
@@ -111,6 +118,7 @@ launch the session does this on its own. A finding that needs a maintainer decis
 9. **Policy:** no new external references, links, paid or gated features; in-game
    wording follows [addon-policy.md](addon-policy.md).
 10. **Export:** the export string gained no data beyond the player's own ledger, and
+    `travelers` appears only when the player opts in;
     [export-format.md](export-format.md) matches the code.
 11. **Public repo hygiene:** no secrets, personal information, private notes or other
     projects in the diff, including docs and tickets.

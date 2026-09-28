@@ -52,8 +52,15 @@ Proportional, not ceremonial:
   catalog of [specs/collection-cosmetics.md §6](specs/collection-cosmetics.md#6-test-plan),
   the two hidden-value stand-ins, a raw snapshot (nothing written) and a seeded shuffle,
   shared by `spec/collection_spec.lua` and `spec/cosmetics_spec.lua`.
+- **Export helpers** ([specs/export.md §3.8](specs/export.md#38-the-test-only-decoder)):
+  `spec/helpers/export_libs.lua` loads the real vendored LibStub, AceSerializer-3.0 and
+  LibDeflate into a private environment (standard library names only; no `LibStub`
+  global leaks), with a codec built as `Core` builds it. `spec/helpers/export_decode.lua`
+  is the test-only decoder (strict base64, raw inflate, deserialize, size caps) and
+  `schemaOk`, the v1 schema check that every export test runs on every build result and
+  every decoded string. No decoder ships; `scripts/check-apis.sh` keeps it that way.
 - **Long simulations are tagged `#sim`** (the 40-player raid, an hour in a guild, the
-  10-minute flood). `busted` runs them (about 10 s); the coverage run skips them with
+  10-minute flood, the large export size rows). `busted` runs them (about 10 s); the coverage run skips them with
   `--exclude-tags=sim`, since under luacov they take minutes and cover no pure-module
   line the module specs don't.
 - **Peer data is hostile in tests.** For every rule in the security model, cover

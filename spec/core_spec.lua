@@ -680,3 +680,157 @@ describe("the debug log", function()
     assert.truthy(wow.chat[2]:find("version dev", 1, true))
   end)
 end)
+
+-- docs/specs/export.md 3.7 and 6.7: Core:ExportString, decoded with the libraries the loaded
+-- AddOn registered, through the test-only decoder.
+describe("Core:ExportString", function()
+  local dec = require("helpers.export_decode")
+  local TRAVELER = "Player-1-00000002"
+  local OWN = {
+    { inn = 1234, t = NOW - 600, phrase = { 1, 2 } },
+    { inn = 5678, t = NOW - 60, phrase = { 3 }, seal = 1 },
+  }
+
+  -- Logs in with two own entries and one traveler; returns ns.
+  local function withLedger(opts)
+    local ns = login(opts)
+    for _, e in ipairs(OWN) do
+      assert.equal("added", ns.ledger:addOwn(e))
+    end
+    assert.equal("added", ns.ledger:addForeign(TRAVELER, "Mira",
+      { inn = 1234, t = NOW - 300, phrase = { 4 } }, NOW - 200))
+    return ns
+  end
+
+  local function decode(s)
+    local LibStub = _G.LibStub
+    local data, reason = dec.decode(s, {
+      serializer = LibStub("AceSerializer-3.0"), deflate = LibStub("LibDeflate"),
+    })
+    assert(data, "decode failed: " .. tostring(reason))
+    assert(dec.schemaOk(data))
+    return data
+  end
+
+  after_each(wow.uninstall)
+
+  it("exports the ledger: own entries, the owner, no travelers", function()
+    local ns = withLedger()
+    local s, reason = ns.Core:ExportString()
+    assert.is_string(s, reason)
+    local data = decode(s)
+    assert.equal(GUID, data.me.guid)
+    assert.equal("Traveler", data.me.name)
+    assert.equal("forever", data.flavor)
+    assert.equal("dev", data.addon)
+    assert.equal(wow.now, data.exported)
+    assert.same(ns.ledger:own(), data.entries)
+    assert.same(OWN, data.entries)
+    assert.equal("Alliance", data.collection.faction)
+    assert.is_nil(data.travelers)
+  end)
+
+  it("reports the packaged version", function()
+    local ns = withLedger()
+    wow.metadata.Version = "1.2.3"
+    assert.equal("1.2.3", decode(ns.Core:ExportString()).addon)
+  end)
+
+  it("includes travelers only for exactly true", function()
+    local ns = withLedger()
+    local data = decode(ns.Core:ExportString(true))
+    assert.equal(1, #data.travelers)
+    assert.equal(TRAVELER, data.travelers[1].guid)
+    assert.equal("Mira", data.travelers[1].name)
+    assert.equal(NOW - 200, data.travelers[1].met)
+    assert.same({ { inn = 1234, t = NOW - 300, phrase = { 4 } } }, data.travelers[1].entries)
+    for _, v in ipairs({ "yes", 1, {}, false }) do
+      assert.is_nil(decode(ns.Core:ExportString(v)).travelers)
+    end
+  end)
+
+  it("leaves faction out when UnitFactionGroup raises, is hidden or isn't a string", function()
+    local hiddenFaction = secret()
+    local cases = {
+      { UnitFactionGroup = function() error("boom") end },
+      { UnitFactionGroup = function() return hiddenFaction end,
+        issecretvalue = function(v) return rawequal(v, hiddenFaction) end },
+      { issecretvalue = function(v) return v == "Alliance" end },
+      { UnitFactionGroup = function() return 7 end },
+      { UnitFactionGroup = "junk" },
+    }
+    for _, case in ipairs(cases) do
+      local ns = withLedger()
+      for name, value in pairs(case) do
+        _G[name] = value
+      end
+      local data = decode(ns.Core:ExportString())
+      assert.is_nil(data.collection.faction)
+      assert.same(OWN, data.entries)
+      wow.uninstall()
+    end
+  end)
+
+  it("refuses with exported when the clock is hidden or unreadable", function()
+    local hiddenNow = secret()
+    local cases = {
+      { issecretvalue = function(v) return v == NOW end },
+      { GetServerTime = function() return hiddenNow end,
+        issecretvalue = function(v) return rawequal(v, hiddenNow) end },
+      { GetServerTime = function() error("boom") end },
+      { GetServerTime = function() return NOW + 0.5 end },
+    }
+    for _, case in ipairs(cases) do
+      local ns = withLedger()
+      for name, value in pairs(case) do
+        _G[name] = value
+      end
+      assert.same({ nil, "exported" }, { ns.Core:ExportString() })
+      wow.uninstall()
+    end
+  end)
+
+  it("exports a read-only ledger (a newer schema) with its entries", function()
+    local ns = login({ db = { global = { ledgers = { [GUID] = {
+      schema = 99, me = {}, own = deepcopy(OWN), travelers = {}, earned = {}, quarantine = {},
+    } } } } })
+    assert.is_true(ns.ledger.readOnly)
+    assert.same(OWN, decode(ns.Core:ExportString()).entries)
+  end)
+
+  it("gives no_ledger when the GUID was never readable", function()
+    local ns = login({ overrides = { UnitGUID = function() return nil end } })
+    wow.advance(10)
+    assert.is_nil(ns.ledger)
+    assert.same({ nil, "no_ledger" }, { ns.Core:ExportString() })
+  end)
+
+  it("gives libs when AceSerializer or LibDeflate is missing", function()
+    for _, name in ipairs({ "AceSerializer-3.0", "LibDeflate" }) do
+      local ns = withLedger()
+      _G.LibStub.libs[name] = nil
+      assert.same({ nil, "libs" }, { ns.Core:ExportString() })
+      wow.uninstall()
+    end
+  end)
+
+  it("gives error when something inside raises", function()
+    local ns = withLedger()
+    ns.Collection.progress = function() error("boom") end
+    assert.same({ nil, "error" }, { ns.Core:ExportString() })
+  end)
+
+  it("prints, sends and writes nothing", function()
+    local ns = withLedger()
+    wow.advance(30)
+    local chat, sent = #wow.chat, #wow.sent
+    local before = deepcopy(_G.InnkeepersLedgerDB)
+    assert.is_string(ns.Core:ExportString(true))
+    assert.is_string(ns.Core:ExportString())
+    assert.is_string(ns.Core:ExportString("yes"))
+    assert.equal(chat, #wow.chat)
+    assert.equal(sent, #wow.sent)
+    assert.same({}, wow.errors)
+    assert.same(before, _G.InnkeepersLedgerDB)
+  end)
+end)

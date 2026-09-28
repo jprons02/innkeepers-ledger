@@ -32,7 +32,9 @@ without needing a moderator.
 
 - Free, forever. No paid features, no ads, no links to outside products. This follows
   [Blizzard's AddOn policy](docs/addon-policy.md).
-- No combat data. This is a social AddOn and doesn't touch anything combat-related.
+- No combat data. This is a social AddOn. The only combat-related thing it checks is
+  *whether* you're in combat, so it can hold ledger sharing until the fight ends. It
+  never reads what happens in a fight: no damage, no targets, no logs.
 - Your data stays in your game's SavedVariables. The AddOn has no network access; sync
   happens only in-game, between players who are online together.
 

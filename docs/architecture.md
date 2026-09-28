@@ -1,7 +1,8 @@
 # Architecture
 
 > **Summary:** how the AddOn is built: modules (pure vs glue), signing flow, data model,
-> sync protocol, the security model for peer data, export, game flavors, testing posture.
+> sync protocol, the security model for peer data, export, game flavors. Testing lives in
+> [testing.md](testing.md).
 > **Read when:** writing or reviewing any code, especially sync, validation, storage caps
 > or a new module.
 
@@ -24,16 +25,18 @@ vs **client glue** (events, frames, API calls).
 | Module | Kind | Responsibility |
 |---|---|---|
 | `Core` | glue | AceAddon setup, AceDB SavedVariables, slash command, wiring |
-| `Data/Inns` | data | Innkeeper NPC ID → inn record (inn name, zone, continent). One table per game flavor. |
+| `Data/Inns` | data | Innkeeper NPC ID → inn record (name, zone, faction) or alias of one; zones and continents keyed by the client's map IDs, each zone with its seal ID ([spec](specs/collection-cosmetics.md#31-places-inns-zones-continents)). One table per game flavor. |
 | `Data/Phrases` | data | Phrase templates + word lists, each with a stable numeric ID |
+| `Data/Cosmetics` | data | The cosmetic catalog: milestone seals, quills and inks, each with a stable numeric ID and its unlock rule ([spec](specs/collection-cosmetics.md#35-cosmetic-ids)) |
 | `Sign` | glue | Detects an innkeeper interaction, offers "Sign the ledger", creates the entry |
 | `Ledger` | pure | The entry store: add, dedupe, query by inn/signer, prune, storage caps |
-| `Phrase` | pure | Builds, renders and validates phrase IDs → text |
-| `Collection` | pure | Progress math: signed/total by continent and zone, unlock thresholds |
-| `Cosmetics` | pure | Maps collection progress → unlocked quills/inks/seals |
+| `Phrase` | pure | Builds, renders and validates phrase IDs → text ([spec](specs/phrase.md)) |
+| `Collection` | pure | Progress over your own signatures: signed/total by continent and zone, per inn ([spec](specs/collection-cosmetics.md)) |
+| `Cosmetics` | pure | The catalog, unlocked quills/inks/seals and when each was earned, `SEALS` for peer validation, the seal check on signing ([spec](specs/collection-cosmetics.md)) |
 | `SyncProtocol` | pure | Own fixed-format message codec, digest comparison, **all validation** |
-| `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers |
-| `Export` | pure | Serialize + compress + encode the ledger per [export-format.md](export-format.md) |
+| `SyncSchedule` | pure | What `Sync` sends and when: send budget, HELLO / WANT / reply gates, pending queues, combat hold state, the pump ([spec](specs/sync-glue.md#35-send-path-syncschedule)) |
+| `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers, the pump that drives `SyncSchedule`, the combat hold ([spec](specs/sync-glue.md)) |
+| `Export` | pure | Builds the v1 export table, then serialize + compress + base64 per [export-format.md](export-format.md) ([spec](specs/export.md)) |
 | `UI/Book` | glue | The parchment book: pages per inn, collection view, cosmetics |
 
 Pure modules receive anything they'd get from the client (time, GUIDs, inn data) as
@@ -59,30 +62,31 @@ arguments, so tests don't need a WoW stub. That includes libraries: `Export` can
 
 ```
 Entry {
-  v        : schema version (int)
   inn      : innkeeper NPC ID (int)         -- identifies the inn
-  signer   : player GUID (string)           -- "Player-<realm>-<id>"
-  name     : character name at signing (string, validated)
   t        : server time of signing, GetServerTime() (int)
   phrase   : array of phrase/word IDs (ints)
-  seal     : cosmetic ID used when signing (int, optional)
+  seal     : seal ID from Cosmetics.SEALS used when signing (int 1..999, optional)
 }
+-- held per signer: signer = player GUID (identity), name = display only
 ```
 
-- **Stored vs sent:** this is the stored shape. On the wire, `signer` and `name` are
-  never sent; the receiver fills them in from the resolved sender (see Sync protocol).
-- **Identity/dedupe key:** `(signer, inn, t)`.
-- **Own vs others:** own entries are the ones where `signer == UnitGUID("player")`.
-- **Storage caps:** caps on foreign entries in total, per signer, and per inn. When a cap
-  is hit, evict the oldest entries first. Own entries are never evicted. Numbers are
-  set in the first spec; SavedVariables bloat is a real risk.
+- **Stored vs sent:** entries are stored per signer GUID (the traveler record holds the
+  name), and the schema version lives on the ledger, not on each entry. On the wire,
+  `signer` and `name` are never sent; the receiver fills them in from the resolved sender.
+- **Identity/dedupe key:** `(signer, inn, t)`. Own entries are the ledger owner's.
+- **Storage caps:** foreign entries capped in total, per signer and per inn, oldest
+  evicted first; own entries never evicted. Numbers, SavedVariables shape and migration:
+  [specs/sync-ledger.md](specs/sync-ledger.md) §4.
 
 ## Sync protocol (SyncProtocol + Sync)
 
 Transport: addon messages, prefix `InnLedger` (≤16 chars). Channels: `PARTY`/`RAID` and
 `GUILD`; the global opt-in channel is designed later.
 
-- **Sending:** through ChatThrottleLib, which keeps us under the server's rate limits.
+- **Sending:** through ChatThrottleLib at `BULK`, which keeps us under the server's rate
+  limits, within `SyncSchedule`'s send budget (30 messages / 60 entries in any 60 s).
+  Nothing is sent during combat: `Sync` is the one file allowed to read *whether* we're in
+  combat, never combat data ([specs/sync-glue.md](specs/sync-glue.md) §3.5–3.7).
 - **Receiving:** `Sync` registers the prefix itself and handles `CHAT_MSG_ADDON`
   directly. It does **not** receive through AceComm, which reassembles multi-part
   messages with no size limit before we could reject them
@@ -96,16 +100,16 @@ Transport: addon messages, prefix `InnLedger` (≤16 chars). Channels: `PARTY`/`
   peer data. Entries are tiny, so compression buys nothing.
 - **Signer and name aren't sent.** Under the own-signature rule they are always the
   sender, so the receiver fills them in from the resolved sender (below). The wire entry
-  carries only `v`, `inn`, `t`, `phrase` and `seal`.
+  carries only `inn`, `t`, `phrase` and `seal`; the message header carries the version.
 
-Sketch (the first spec finalizes it):
+Three messages (grammar, digest, byte counts and rate limits:
+[specs/sync-ledger.md](specs/sync-ledger.md) §3 and §5):
 
-1. **HELLO** — on group join/roster change, or periodically for guild: send a compact
-   digest of *your own* entries (count + hash).
-2. **WANT** — a peer whose digest for you differs asks for your entries (optionally
-   "since t").
-3. **ENTRIES** — reply with your own entries only, one or more per message, each message
-   complete on its own.
+1. **HELLO** — on group join/roster change, or periodically for guild: count + digest
+   of *your own* newest entries.
+2. **WANT** — a peer whose digest for you differs asks for your entries since a time.
+3. **ENTRIES** — broadcast reply with your own entries only, up to 5 per message, each
+   message complete on its own.
 
 ### Security model — the riskiest part of the AddOn
 
@@ -117,7 +121,12 @@ AddOn. `SyncProtocol` validates everything before anything reaches `Ledger`:
   (Decision: [decisions.md](decisions.md).) Addon messages carry only the sender's
   *name*, so `Sync` resolves name → GUID per channel and passes the result to
   `SyncProtocol` as an argument:
-  - **PARTY / RAID:** `UnitGUID(sender)`. Only resolves for current group members.
+  - **PARTY / RAID:** a name → GUID map built from our own `player` / `partyN` /
+    `raidN` scan, so a peer string never reaches a client function (a character named
+    like a unit token can't borrow our target's GUID). Only current group members
+    resolve; a miss rescans the map at most once per 10 s (decisions: *Group senders
+    resolve through our own unit scan*, *Group map details*; spec
+    [sync-glue.md §3.4](specs/sync-glue.md#34-sender-resolution)).
   - **GUILD:** a name → GUID map built from the guild roster and refreshed on roster
     updates **(verify: the roster exposes member GUIDs in Forever)**.
   - **Any other channel (whisper, a future global channel):** not accepted in v1.
@@ -132,14 +141,16 @@ AddOn. `SyncProtocol` validates everything before anything reaches `Ledger`:
 - **Numbers:** every numeric field must be a **finite integer within its range** (reject
   `NaN`, `inf`, hex, decimals, signs where not allowed). `NaN` fails every comparison, so
   range checks alone don't catch it.
-- **Known IDs only:** `inn` must exist in `Data/Inns`, and every phrase/word ID must
-  exist in `Data/Phrases`. Canned phrases make this a lookup table, not a text filter.
+- **Known IDs only:** `inn` must exist in `Data/Inns`, every phrase/word ID must
+  exist in `Data/Phrases`, and a `seal` must be a key of `Cosmetics.SEALS` (every seal
+  the catalog knows, unlocked or not). Canned phrases make this a lookup table, not a
+  text filter.
 - **Name:** length-capped and matched against the character name pattern (no `|`, so no
   UI escape codes); it's rendered only as text, never interpreted.
 - **Time sanity:** reject timestamps in the future (small tolerance) or before the
-  game's launch.
-- **Rate limits:** per-sender messages per minute and entries per batch. Drop anything
-  over the limit silently.
+  Forever beta began.
+- **Rate limits:** per-sender messages and entries per minute, plus a global ceiling.
+  Drop anything over the limit silently. (All numbers: the slice-1 spec.)
 - **Fail closed and quiet:** malformed input is dropped with no error pop-ups and no
   chat output. Only a debug log, when enabled. Parsing runs inside `pcall`.
 - **Threat model:** other players are untrusted. The player's own installed AddOns are
@@ -152,10 +163,17 @@ How these rules are checked (CI and the release review):
 
 ## Export
 
-See [export-format.md](export-format.md). `Export` is pure: AceSerializer + LibDeflate
-`CompressDeflate` + our own standard base64, all on our own outgoing data. The UI shows the string in
-a copyable edit box. Exporting other travelers' entries is **opt-in** (they're other
-people's names), and the default exports only your own signatures and collection.
+See [export-format.md](export-format.md) (v1) and [specs/export.md](specs/export.md).
+Pipeline: `Export.build` (validated, fresh data table) → AceSerializer `Serialize` →
+LibDeflate `CompressDeflate` (raw DEFLATE) → our own standard base64 → `!IL1!…`, all on
+our own outgoing data. `Export` is pure: the glue passes the serializer and compressor
+in. **`Core:ExportString(includeTravelers)` is the one glue entry** the Share window and
+`/ledger share` will call (both arrive with the UI slice; `/ledger` handles only `debug`
+today); it prints, sends and writes nothing. The UI shows the string in a
+copyable edit box. Exporting other travelers' entries is **opt-in** per export (only
+`includeTravelers == true`; they're other people's names), and the default exports only
+your own signatures and collection. **No decoder or import ships;** the forbidden-API
+check enforces it ([security-checklist.md](security-checklist.md#the-forbidden-api-check)).
 
 ## Game flavors
 
@@ -166,34 +184,6 @@ data, not from retail or Classic databases.
 
 ## Testing posture
 
-Proportional, not ceremonial:
-
-- **Test hard (busted, test-as-you-go):** `SyncProtocol` validation (every rule above
-  with malicious-input cases), `Ledger` dedupe/caps/eviction, `Collection` math,
-  `Phrase` validation, `Export` encode/decode round-trip.
-- **Stubbed WoW API.** Pure modules take client values as arguments; any glue exercised
-  in tests goes through a small stub layer of the WoW API, so `busted` runs outside the
-  game.
-- **Module pattern.** Every file starts `local _, ns = ...` and assigns `ns.<Module>`
-  (data goes under `ns.Data`). `spec/helpers/load.lua` runs a file with a fresh `ns`, as
-  the client does. Pure modules load in a strict plain-Lua environment that errors on
-  any other global, which catches access at load time; `.luacheckrc` gives pure and
-  data files only those same plain-Lua names, which catches it inside functions too
-  (`_G`, `os`, `io` and every WoW global included). The helper also holds the module
-  lists (`PURE`, `DATA`, `GLUE`; specs check them against the TOC and `.luacheckrc`)
-  and can load the whole AddOn in TOC order (libraries included).
-- **The stub** (`spec/helpers/wow_stub.lua`): `install(overrides)` / `uninstall()`
-  (restores `_G`), `fire(event, ...)`, `slash("/cmd")`, plus recorded chat output, sent
-  addon messages, queued timers and errors the libraries catch. It supplies the client's
-  `xpcall`, which passes extra arguments to the function; stock Lua 5.1's drops them,
-  and Ace3 then calls `OnInitialize` without `self` and swallows the error.
-- **Peer data is hostile in tests.** For every rule in the security model, cover
-  malformed, oversized and multi-part messages (dropped unread), relayed (third-party),
-  replayed and forged-signer input, unknown inn/phrase IDs, `NaN`/`inf`/hex/decimal
-  numbers, out-of-range timestamps, and floods over the rate limit.
-- **Lint:** `luacheck` clean.
-- **Test by hand in the client:** signing flow, gossip integration, UI, real
-  addon messages between two accounts/characters. These go on the in-client batch in
-  [status.md](status.md) rather than blocking other work.
-- **CI:** the policy guard runs on every push and PR. `luacheck` + `busted` join it
-  once the first Lua lands (kickoff step 3, #9), on the same triggers.
+Moved to [testing.md](testing.md): what gets tested hard, the module pattern and strict
+environment, the WoW stub, hostile-peer-data tests, fuzzing, coverage floors and the
+in-client batch.

@@ -1,0 +1,15 @@
+-- Coverage config (luacov). Only our pure modules are measured: they hold the logic the
+-- tests must prove, and scripts/check-coverage.sh enforces a floor for each of them.
+return {
+  statsfile = "luacov.stats.out",
+  reportfile = "luacov.report.out",
+  include = {
+    "Phrase$",
+    "Ledger$",
+    "Collection$",
+    "Cosmetics$",
+    "SyncProtocol$",
+    "SyncSchedule$",
+    "Export$",
+  },
+}

@@ -5,94 +5,102 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-26
+**Updated:** 2026-09-28 (context save after slice 3; Phase 1 released to `main`)
 
 ## Current state
 
-- Docs (vision, decisions, architecture, platform, policy, prior art, export draft): ✅
-- Context map + conventions (`CLAUDE.md`), branch flow (`dev` → `main`), branch
-  protection on both branches: ✅
-- Agent team (`.claude/agents/`): ✅ planner, implementer, reviewer
-- CI: ✅ policy guard; ✅ `ci.yml` with `luacheck`, `busted` (Lua 5.1), `libs-manifest`
-  (#9) and `forbidden-apis` (#22). All five jobs run on every push and PR and are
-  required checks on `main` and `dev`. [kickoff.md](kickoff.md) step 3: ✅
-- Security: ✅ forbidden-API guard in CI; every release PR gets a security review
-  against [security-checklist.md](security-checklist.md) (#22)
-- Kickoff step 1 (orient): ✅ reported. Step 2 (scaffold): ✅ (#8). Steps 3+: ⬜
-- AddOn scaffold: ✅ TOC (placeholder interface number), `Libs/embeds.xml`, every module
-  as an empty stub on the shared `ns`, `Core` with AceDB + `/ledger` (prints the
-  version), WoW API stub + loader helpers, `.busted`, `.luacheckrc`, `.pkgmeta`. The
-  whole AddOn loads under the stub in `busted`. Module logic: ⬜ none yet
-- Client verification ([platform-forever.md](platform-forever.md) checklist): ⬜ no
-  Forever client yet
-- Libraries: ✅ reviewed and vendored into `Libs/` with a checksum manifest and
-  `scripts/check-libs.sh` ([libraries.md](libraries.md)); ✅ check runs in CI and also
-  pins the manifest to the review doc's hash list (#9)
-- Tickets: ✅ issue forms, labels, `v1 launch` milestone; queue below
-- Local toolchain: ✅ Lua 5.1 + busted 2.3.0 + luacheck 1.2.0 (setup in
-  [CONTRIBUTING.md](../CONTRIBUTING.md))
+- **Phase 1 of [kickoff.md](kickoff.md) is done:** every pure module and the sync glue
+  exist, are tested (pure modules at 100% coverage) and passed security-level reviews.
+  - Slice 1 (#10): `Ledger`, `SyncProtocol`; spec [specs/sync-ledger.md](specs/sync-ledger.md).
+  - Slice 2 (#41): `Core` opens the ledger, `SyncSchedule`, `Sync` send/receive, combat
+    hold, group senders resolved through our own unit scan; spec
+    [specs/sync-glue.md](specs/sync-glue.md). Two players' AddOns trade signatures; the
+    40-player raid simulation stays under every rate limit.
+  - Slice 3 (#61): `Phrase` + a DRAFT `Data/Phrases` ([specs/phrase.md](specs/phrase.md));
+    `Collection` + `Cosmetics` + a DRAFT `Data/Cosmetics`, and the `Data/Inns` shape
+    ([specs/collection-cosmetics.md](specs/collection-cosmetics.md)); `Export` +
+    `Core:ExportString`, export string **v1** ([specs/export.md](specs/export.md),
+    [export-format.md](export-format.md)).
+- **Not built:** `Sign` and `UI/Book`. Both are glue that needs the client. Their
+  contracts are in each spec's §8 (e.g. `Sign` calls `ns.Sync:WindowChanged()` after
+  `addOwn` returns `"added"`, checks `ns.Cosmetics.canSeal`, records unlocks with
+  `markEarned`).
+- **Data:** `Data/Inns` is empty until #12. Phrase and cosmetic sets are DRAFTs whose IDs
+  change freely until the first public release.
+- **CI:** seven required checks on `main` and `dev`; every one also runs locally
+  ([CONTRIBUTING.md](../CONTRIBUTING.md#development-setup)). Release PRs get a security
+  review ([security-checklist.md](security-checklist.md)).
+- **Releases:** `main` = `dev` as of the Phase 1 release PR (2026-09-28). No tags or
+  published builds (maintainer gate).
+- **Client verification** ([platform-forever.md](platform-forever.md)): ⬜ no Forever
+  client yet.
 
 ## Next step
 
-Work the ticket queue in order (each ticket says what to read):
-
-1. ~~#7 Vendor the reviewed libraries~~ ✅ done (#15)
-2. ~~#8 Scaffold the AddOn~~ ✅ done (#17)
-3. ~~#9 luacheck + busted + manifest checks in CI~~ ✅ done; ~~#22 security checks~~ ✅ done
-4. #10 Slice 1 parent → #11 write the spec and file the implementation tickets (next)
-
-In-client work is #12 (needs a Forever client and the maintainer).
+Everything left needs someone at a keyboard in a game client:
+- **Phase 2, Forever client (#12):** the verification checklist, then `Data/Inns` per
+  [collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices),
+  then `Sign` and `UI/Book` (Share window per
+  [export.md §8](specs/export.md#8-contract-for-later-slices)). File their tickets once
+  #12 answers the gossip and frame questions.
+- **Phase 1.5 (optional), retail:** gossip/NPC-ID detection, `IsResting()`, addon-message
+  round-trips, recorded as "retail-observed" in [platform-forever.md](platform-forever.md).
 
 ## Client access plan
 
 - **Beta window:** 2026-09-17 → **2026-10-21**. Launch: **2026-11-04**.
-- **Default route: the free beta opt-in** on the official Forever site. Invites go out in
-  waves and aren't guaranteed.
-- **Paid route (maintainer's call only):** the higher-tier pre-purchase editions include
-  beta access. Buying one is never done on the project's behalf; it happens only if the
-  maintainer names that purchase.
-- **Retail as a stand-in:** Forever reportedly uses the retail-style API, so generic
-  mechanics (gossip events, `UnitGUID("npc")` parsing, `IsResting()`, addon-message round-trips,
-  instance messaging) can be prototyped on retail. Results are only indicative until
-  confirmed on Forever. The innkeeper list and TOC interface number can't be substituted.
-
-**Branches of the plan:**
-- **Beta access by ~2026-10-03:** run Phase 2 during the beta and aim to release at launch.
-- **No beta access:** finish Phase 1 plus retail prototyping before launch, run Phase 2 on
-  launch day, and release **~1–2 weeks after launch**.
+- **Default route:** the free beta opt-in (invites in waves). The paid pre-purchase route
+  is the maintainer's call only, never bought for the project.
+- **Beta access by ~2026-10-03:** Phase 2 during the beta, release at launch. **No beta
+  access:** retail prototyping now, Phase 2 on launch day, release ~1–2 weeks after.
 
 ## Open questions (maintainer to decide)
 
-- **Beta access:** not opted in as of 2026-09-26. The free opt-in costs nothing and
-  invites go out in waves, so opting in soon improves the odds. Decides which plan
-  branch applies (by ~2026-10-03); without access, plan for the no-beta branch.
-- **AddOn list blurb (low priority):** the TOC `## Notes` line reuses the README's
-  wording ("Talk to an innkeeper, sign the ledger, and fill a book of every inn you've
-  rested at."). Keep it or give a replacement.
+None block work; drafts ship and get retuned ([decisions.md](decisions.md) →
+*Maintainer-gated content ships as a DRAFT*).
+- **Beta access (#1, #2), time-sensitive:** not opted in as of 2026-09-28. Free; decides
+  the plan branch by ~2026-10-03.
+- **Phrase wording (#62):** the DRAFT in
+  [phrase.md §9](specs/phrase.md#9-draft-phrase-set-draft): ship or redirect? Keep the
+  alcohol words ("a mug of ale", "spiced cider")? Keep "the murlocs" or stay generic?
+- **Cosmetic catalog (#63):** the DRAFT in
+  [collection-cosmetics.md §9](specs/collection-cosmetics.md#9-draft-catalog-draft):
+  set, names, thresholds (retuned after #12 counts inns). Also: "every inn" = every inn
+  your faction can use? Keep a zone seal when a patch adds an inn to that zone? Later:
+  continent seals, a "home inn" reward, a badge kind?
+- **Export (#64):** add `me.region` (Forever names are unique only per region)? Ever
+  want an import or backup restore ([export.md → Open questions](specs/export.md#open-questions-maintainer))?
 
-Settled 2026-09-26: sender identity per channel (see
-[decisions.md](decisions.md) and [architecture.md → Security model](architecture.md)).
+## Waiting on the maintainer in the client
 
-## Waiting on the maintainer in the client (batch)
-
-Tracked in #12. These need someone at the keyboard in a Forever client. Everything else
-proceeds without them. Full list: [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
-
-- TOC interface number (the TOC holds a marked placeholder, `120000`); AddOn loads
-- Innkeeper gossip: `GOSSIP_SHOW` + NPC ID from `UnitGUID("npc")`; option injection works
-- `IsResting()` inside inns; sitting detection, if any
-- Addon messages PARTY / RAID / GUILD between two characters, including inside an
-  instance; message size and rate limits; embedded libraries load
-- Player GUID and name format on the mega-realm; sender name → GUID resolution (group
-  via `UnitGUID`, guild roster exposes GUIDs)
-- Walk every inn to collect innkeeper NPC IDs (`Data/Inns`)
+Batched in #12; the list is
+[platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
 
 ## Follow-ups
 
+- **Revisit if #12 shows it:** forward server-clock jumps in `SyncSchedule`; hidden
+  addon traffic from other AddOns counted as `hidden` drops; group-map rescan budget
+  (#54 review); a dropped `C_Timer.After`; export build time, edit-box capacity and the
+  ~5 MB AceSerializer keeps after an opted-in export.
+- **Code tidy (low):** `isInt` / name allow-lists are copied across `Collection`,
+  `Cosmetics` and `Export` (share one if they start to drift); `Phrase` could assert
+  `Ledger.LIMITS` numbers at load and require a space before `{w}` in templates (#62
+  review nits).
+- Publish `Data/Inns`, `Data/Phrases` and `Data/Cosmetics` as a generated reference for
+  export consumers; needs #12's inn data.
+- **Before the first tag (packager setup):** name tags plainly (`vX.Y.Z`), since the
+  packaged `## Version` must match `[A-Za-z0-9._+-]{1,32}` or every export refuses
+  (security-checklist item 13); add a CI step that checks it when the packager workflow
+  lands. Answer the phrase and catalog questions first: IDs freeze at the first public
+  release.
+- Export golden string (`GOLDEN_F`): regenerate if a library or interpreter change breaks
+  it while its decode still matches, and say so in the PR.
+- `Ledger`'s load-time cap pass is quadratic on a tampered file (40 000 entries ≈ 4 s);
+  batch evictions if it ever matters.
+- Harness: a ChatThrottleLib-callback option for `"defer"` mode would make the raid run
+  more realistic.
+- CI pins only top-level rocks; pin dependencies if an upstream release breaks CI.
+- Delete GitHub's default labels (maintainer call: deletion).
+- `decisions.md` is ~1 000 lines: early October, move September entries to
+  `docs/archive/decisions-2026-09.md` with an index line.
 - Move [kickoff.md](kickoff.md) to `docs/archive/` once v1 ships.
-- Delete GitHub's default labels (`bug`, `enhancement`, …), which overlap ours
-  (maintainer call: deletion).
-- Publish `Data/Inns` / `Data/Phrases` as a generated reference for export consumers
-  ([export-format.md](export-format.md)), before export v1 is finalized.
-- CI pins only the top-level rocks (busted, luacheck); their dependencies float. If an
-  upstream release breaks CI, pin those as well.

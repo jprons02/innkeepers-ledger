@@ -1,0 +1,139 @@
+-- Fixtures for the Collection and Cosmetics specs (docs/specs/collection-cosmetics.md,
+-- section 6): places F, own entries E, catalog C, the hidden-value stand-ins, a raw
+-- snapshot to show nothing was written, and a seeded shuffle. Each call builds fresh tables.
+local M = {}
+
+M.T = 1790000000
+
+-- Places F: inns, zones, continents.
+function M.places()
+  return {
+    [5001] = { name = "Vale Inn", zone = 10 },
+    [5002] = { name = "Hill Inn", zone = 10, faction = "Alliance" },
+    [5003] = { alias = 5001 },
+    [5101] = { name = "Marsh Inn", zone = 11, faction = "Alliance" },
+    [5201] = { name = "Dune Inn", zone = 20 },
+    [5202] = { name = "Oasis Inn", zone = 20, faction = "Horde" },
+    [5301] = { name = "Ridge Inn", zone = 21, faction = "Horde" },
+  }, {
+    [10] = { name = "Vale", continent = 1, seal = 101 },
+    [11] = { name = "Marsh", continent = 1, seal = 102 },
+    [20] = { name = "Dunes", continent = 2, seal = 103 },
+    [21] = { name = "Ridge", continent = 2, seal = 104 },
+  }, {
+    [1] = { name = "East" },
+    [2] = { name = "West" },
+  }
+end
+
+-- Own entries E: e1..e7.
+function M.entries()
+  local T = M.T
+  local function e(inn, t)
+    return { inn = inn, t = t, phrase = { 1 } }
+  end
+  return {
+    e(5001, T),          -- e1
+    e(5201, T + 100),    -- e2
+    e(5003, T + 200),    -- e3, the alias of 5001
+    e(5002, T + 300),    -- e4
+    e(5101, T + 400),    -- e5
+    e(9999, T + 500),    -- e6, not in the data
+    e(5001, T + 604800), -- e7, a week later
+  }
+end
+
+-- Catalog C.
+function M.catalog()
+  return {
+    [1] = { kind = "seal", name = "First seal", rule = { kind = "inns", n = 2 } },
+    [2] = { kind = "seal", name = "Last seal", rule = { kind = "all" } },
+    [1001] = { kind = "quill", name = "Long quill", rule = { kind = "inns", n = 3 } },
+    [1101] = { kind = "ink", name = "Blue ink", rule = { kind = "zones", n = 2 } },
+    [1102] = { kind = "ink", name = "Red ink", rule = { kind = "continent" } },
+  }
+end
+
+local function raise()
+  error("hidden value touched")
+end
+
+M.HOSTILE_EVENTS = {
+  "__index", "__newindex", "__len", "__eq", "__lt", "__le", "__concat", "__tostring",
+  "__call", "__unm", "__add",
+}
+
+-- The two hidden-value stand-ins (sync-ledger.md 5.2).
+function M.hostileTable()
+  local mt = {}
+  for _, ev in ipairs(M.HOSTILE_EVENTS) do
+    mt[ev] = raise
+  end
+  return setmetatable({}, mt)
+end
+
+function M.hostileProxy()
+  local u = newproxy(true)
+  local mt = getmetatable(u)
+  for _, ev in ipairs(M.HOSTILE_EVENTS) do
+    mt[ev] = raise
+  end
+  return u
+end
+
+-- A raw snapshot of t (NaN-aware, `depth` levels), to show nothing was written.
+function M.snapshot(t, depth)
+  depth = depth or 3
+  if type(t) ~= "table" or depth == 0 then
+    return { value = t }
+  end
+  local out = { ref = t, pairs = {} }
+  for k, v in next, t do
+    out.pairs[#out.pairs + 1] = { k = k, v = M.snapshot(v, depth - 1) }
+  end
+  return out
+end
+
+local function sameValue(a, b)
+  return rawequal(a, b) or (a ~= a and b ~= b)
+end
+
+function M.sameSnapshot(a, b)
+  if a.pairs == nil or b.pairs == nil then
+    return a.pairs == b.pairs and sameValue(a.value, b.value)
+  end
+  if not rawequal(a.ref, b.ref) or #a.pairs ~= #b.pairs then
+    return false
+  end
+  for i = 1, #a.pairs do
+    local x, y = a.pairs[i], b.pairs[i]
+    if not sameValue(x.k, y.k) or not M.sameSnapshot(x.v, y.v) then
+      return false
+    end
+  end
+  return true
+end
+
+-- A shuffled copy of an array, from a seed (Park-Miller; exact in doubles).
+function M.shuffled(arr, seed)
+  local out = {}
+  for i = 1, #arr do
+    out[i] = arr[i]
+  end
+  for i = #out, 2, -1 do
+    seed = seed * 16807 % 2147483647
+    local j = 1 + seed % i
+    out[i], out[j] = out[j], out[i]
+  end
+  return out
+end
+
+function M.reversed(arr)
+  local out = {}
+  for i = #arr, 1, -1 do
+    out[#out + 1] = arr[i]
+  end
+  return out
+end
+
+return M

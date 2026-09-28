@@ -20,6 +20,8 @@ All are required checks on `main` and `dev` (`CLAUDE.md` → Branch flow).
 | `forbidden-apis` | forbidden APIs in shipped code (below) |
 | `luacheck` | stray globals, including any global in pure modules |
 | `busted` | regressions, including the hostile-peer-data specs |
+| `coverage` | untested lines in pure modules: 95% floor for `Ledger`, `SyncProtocol` and `SyncSchedule`, 90% for the rest, no `luacov:` opt-outs (`scripts/check-coverage.sh`) |
+| `docs-links` | broken relative links in the docs and docs missing from the context map (`scripts/check-links.sh`) |
 
 GitHub secret scanning with push protection is on for the repo.
 
@@ -33,8 +35,15 @@ lists.
 - **Dynamic code:** `loadstring`, `load`, `setfenv`, `RunScript`, `ConsoleExec`, …
 - **Global lookup by name:** `_G`, `getglobal`, `setglobal`. This closes the easy way
   around the grep (`_G["Run" .. "Script"]`).
-- **Combat data:** combat log, health/power/aura/threat and in-combat state
+- **Combat data:** combat log, health/power/aura/threat, `UnitAffectingCombat`
   ([addon-policy.md → Combat restrictions](addon-policy.md#combat-restrictions-midnight-2026-01-28)).
+  Allowed nowhere.
+- **Combat state:** `InCombatLockdown`, `PLAYER_REGEN_DISABLED`, `PLAYER_REGEN_ENABLED`.
+  Allowed only in `Sync.lua`, which reads *whether* we're in combat to hold sends during
+  fights and nothing more ([decisions.md](decisions.md), 2026-09-27 — Sync may read
+  combat state, and players are told;
+  [specs/sync-glue.md §5.2](specs/sync-glue.md#52-the-forbidden-apis-change)). Added in
+  #47 as its own rule so the combat-data rule stays closed.
 - **Chat and social sending:** say/whisper/Battle.net/community messages, mail, friends
   and ignore lists, `/who`.
 - **Hooks:** `hooksecurefunc`, `HookScript`, chat message filters, …
@@ -45,6 +54,14 @@ lists.
   hearthstone.
 - **Account and group actions:** invites, group and guild membership, CVars,
   reload/logout, store, items, trade, turning other AddOns on or off.
+- **General-purpose decoders:** AceSerializer's `Deserialize` and LibDeflate's
+  `Decompress…`, `DecodeFor…` and `CreateCodec` (its codec decodes) functions. Allowed
+  nowhere: nothing we ship reads an
+  export string or any other serialized or compressed data, so a crafted string can't
+  reach an unbounded inflate or a float-yielding reader
+  ([libraries.md → Findings](libraries.md#findings-that-shape-our-design) 2 and 3). The
+  export's test-only decoder lives in `spec/`. Added in #64
+  ([specs/export.md §5](specs/export.md#5-security-notes)).
 - **Addon messages and channels:** sending, prefix registration, `CHAT_MSG_ADDON` and its
   variants, ChatThrottleLib, AceComm, joining or leaving chat channels. Allowed only in
   `Sync.lua`, plus `Libs/embeds.xml` so it can load ChatThrottleLib.
@@ -65,10 +82,6 @@ overwritten. Release review item 1 covers those.
 - **Hooks in `Sign.lua`:** injecting the gossip option will likely need
   `hooksecurefunc`/`HookScript` on the gossip frame. Add an allow-list entry with a
   decision entry. The alternative, overwriting the frame's methods, taints it.
-- **Combat state in `Sync.lua`:** holding sends during encounters might need
-  `InCombatLockdown` or the `PLAYER_REGEN_*` events. That reads a combat *state* flag,
-  not combat data, but "never read combat data" is a maintainer rule, so ask before
-  allowing it.
 
 ## Release review (every `dev → main` PR)
 
@@ -106,8 +119,12 @@ launch the session does this on its own. A finding that needs a maintainer decis
 9. **Policy:** no new external references, links, paid or gated features; in-game
    wording follows [addon-policy.md](addon-policy.md).
 10. **Export:** the export string gained no data beyond the player's own ledger, and
+    `travelers` appears only when the player opts in;
     [export-format.md](export-format.md) matches the code.
 11. **Public repo hygiene:** no secrets, personal information, private notes or other
     projects in the diff, including docs and tickets.
 12. **Workflows:** read-only token, `persist-credentials: false`, actions pinned by SHA,
     no `pull_request_target`, no new third-party actions.
+13. **Packaged version:** the version the packager writes into the TOC (`## Version`)
+    matches `[A-Za-z0-9._+-]{1,32}`. Anything else (a space, a `/`, 33 bytes) makes every
+    export refuse with `"addon"` ([specs/export.md §3.5](specs/export.md#35-build-rules)).

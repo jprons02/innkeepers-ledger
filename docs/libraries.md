@@ -15,9 +15,9 @@
 | AceEvent-3.0 | 4 | game event registration | Ace3 Release-r1403 |
 | AceDB-3.0 | 33 | SavedVariables with defaults and profiles | Ace3 Release-r1403 |
 | AceConsole-3.0 | 7 | slash command | Ace3 Release-r1403 |
-| AceSerializer-3.0 | 5 | **export only** (our own outgoing data) | Ace3 Release-r1403 |
+| AceSerializer-3.0 | 5 | **export only** (our own outgoing data): `Serialize` is the only call in shipped code; `Deserialize` runs only in tests | Ace3 Release-r1403 |
 | ChatThrottleLib | 32 | rate-limited **sending** of addon messages | Ace3 Release-r1403 (`AceComm-3.0/ChatThrottleLib.lua`) |
-| LibDeflate | 1.0.2 | **export only**: `CompressDeflate` | luarocks.org `libdeflate-1.0.2-1.src.rock` |
+| LibDeflate | 1.0.2 | **export only**: `CompressDeflate` is the only call in shipped code; `DecompressDeflate` runs only in tests | luarocks.org `libdeflate-1.0.2-1.src.rock` |
 
 Not used: AceComm-3.0 (see *Findings* 1), AceGUI/AceConfig (UI is custom frames),
 AceTimer (the client's `C_Timer` suffices), AceHook, AceLocale, AceBucket, AceTab,
@@ -91,9 +91,13 @@ account-affecting APIs, combat APIs, hooks and URLs; ran hostile inputs on Lua 5
 2. **AceSerializer returns `inf`, `-inf`, `NaN`, hex numbers and floats**, plus duplicate
    keys (last wins) and extra top-level values. `NaN` fails every comparison, so a naive
    "not in the future" check passes it. → Sync uses its own fixed-format codec; any
-   numeric field must be a finite integer in range.
+   numeric field must be a finite integer in range. No shipped file may name
+   `Deserialize`: the *general-purpose decoders* rule in `scripts/check-apis.sh`
+   ([security-checklist.md](security-checklist.md#the-forbidden-api-check)).
 3. **LibDeflate has no output limit.** A 27 KB payload inflated to 20 MB (722:1) in
-   0.7 s. → Sync is never compressed, and nothing decompresses peer data in v1.
+   0.7 s. → Sync is never compressed, and nothing decompresses peer data in v1. No
+   shipped file may name any `Decompress…` or `DecodeFor…` function (the same rule); the
+   export's test-only decoder lives in `spec/helpers/export_decode.lua`.
 4. **Newest copy wins at runtime.** LibStub loads the highest version of each library
    across all installed AddOns, so another AddOn's newer copy may replace ours. →
    Security-relevant parsing lives in our own modules, never in a shared library.

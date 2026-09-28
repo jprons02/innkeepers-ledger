@@ -29,8 +29,12 @@ unverified · ❓ unknown
   about a minute grants rested status, buffs, vendors and repairs. ❓ Whether you can
   bind a hearthstone at a camp (reported as not confirmed). ❓ How camps show up to the
   API (object GUIDs, events). Relevant for post-v1.
-- ✅ **Hardcore ruleset exists.** ❓ What the client exposes about other characters'
-  deaths.
+- ✅ **Hardcore ruleset announced, but not at launch** ("soon" after, no date).
+  ❓ What the client exposes about other characters' deaths.
+- ⚠️ **Names:** reported as two-part (a surname is mandatory) and unique across the
+  region. Fan-site report of a developer Q&A; confirm in the client.
+- ✅ **Recent Allies** (Blizzard's built-in list of players you grouped with) ships in
+  Forever and colors their names.
 
 ## AddOns and the API
 
@@ -52,6 +56,15 @@ unverified · ❓ unknown
 - ❓ **Gossip frame integration.** How to add a "Sign the ledger" option to (or next to)
   the innkeeper's gossip menu.
 - ❓ **Sitting detection.** Whether any API reports that the player is sitting.
+- ⚠️ **Hidden ("secret") values.** Fan sites report that Forever carries Midnight's
+  secret values beyond combat: unit and creature names can arrive hidden, `CHAT_MSG_*`
+  senders can arrive hidden under chat lockdown, and an addon message with a hidden
+  argument is silently not sent. If true outside combat, it affects reading the
+  innkeeper's NPC ID and resolving who sent a sync message. Unverified; top of the
+  in-client list.
+- ❓ **Addon messages on custom channels.** Retail allows `SendAddonMessage` to
+  `"CHANNEL"`; Classic has blocked it since 1.13.3 (2019). Which one Forever follows
+  decides whether an "inn common room" with strangers is possible (post-v1).
 
 ## Verification checklist (needs a Forever client: beta until 2026-10-21, or launch 2026-11-04)
 
@@ -62,13 +75,53 @@ unverified · ❓ unknown
 - [ ] `IsResting()` true inside inns
 - [ ] Embedded libraries (see [libraries.md](libraries.md)) load without errors
 - [ ] Addon message PARTY / RAID / GUILD round-trip between two characters
-- [ ] Addon messages inside an instance / during an encounter
+- [ ] Addon messages inside an instance / during an encounter, and which chat type
+      instance groups use (`PARTY`/`RAID` or `INSTANCE_CHAT`)
 - [ ] Addon message size limit (255 bytes on retail) and send rate limits (what
       ChatThrottleLib assumes)
-- [ ] Player GUID and name format on the mega-realm
-- [ ] Addon-message sender name resolves to a GUID: `UnitGUID(sender)` for group
-      members; guild roster exposes member GUIDs
-- [ ] Collect innkeeper NPC IDs for every inn (the `Data/Inns` table)
+- [ ] Hidden values outside combat: does `UnitGUID("npc")` at an innkeeper, and the
+      sender of `CHAT_MSG_ADDON`, arrive as a normal value?
+- [ ] Addon messages to a custom channel (`"CHANNEL"`): allowed or blocked?
+- [ ] Player GUID and name format on the mega-realm (two-part names?)
+- [ ] Weekly reset: `C_DateAndTime.GetSecondsUntilWeeklyReset()` works, and the reset
+      day and time per region (for the fallback table)
+- [ ] Addon-message sender name resolves to a GUID: through our own unit scan for group
+      members (see the #54 item); guild roster exposes member GUIDs
+- [ ] Sync glue ([specs/sync-glue.md §8](specs/sync-glue.md#8-unverified-client-facts-this-spec-relies-on)):
+      the `CHAT_MSG_ADDON` sender string's form (realm suffix? a space in two-part
+      names?); `GetNormalizedRealmName()` on a
+      mega-realm; `GetGuildRosterInfo`'s GUID is its 17th return; `GUILD_ROSTER_UPDATE`
+      and `C_GuildInfo.GuildRoster()` behave as on retail; `UnitGUID("player")` and the
+      weekly-reset API are readable at `PLAYER_LOGIN`; what
+      `RegisterAddonMessagePrefix` returns; `InCombatLockdown` and the
+      `PLAYER_REGEN_*` events behave as on retail; ChatThrottleLib's send callback
+      reports `didSend`; `LE_PARTY_CATEGORY_HOME` exists and separates home groups from
+      instance-only ones
+- [ ] Group sender names (#54): does `CHAT_MSG_ADDON` ever give a bare name without
+      `-Realm`? Can a character be named like a unit token (`Target`, `Focus`,
+      `Mouseover`)? Does `UnitFullName("partyN")`'s name plus realm (spaces and `-`
+      removed; `nil` or empty meaning our realm) match the sender string exactly, for
+      our realm and a connected one? Does `UnitFullName("player")` return our realm?
+      Is `UNKNOWNOBJECT` what a not-yet-loaded member's name reads as, and does
+      `GROUP_ROSTER_UPDATE` fire again once it loads? (Spec
+      [§3.4 → The group map](specs/sync-glue.md#34-sender-resolution).)
+- [ ] Collect every inn for the `Data/Inns` table (#12), per innkeeper: the NPC ID; the
+      inn's English name; the zone's map ID and English name; the continent's map ID
+      and English name; the innkeeper's faction (`"Alliance"`, `"Horde"`, or neutral if
+      both can use it); whether another innkeeper serves the same inn (an alias). Zone
+      seals are numbered 101, 102, … in the order zones are added
+      ([specs/collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices))
+- [ ] Map IDs readable at each inn (`C_Map.GetBestMapForUnit("player")`, then the
+      `C_Map.GetMapInfo(id).parentMapID` chain up to the first *Zone*- and
+      *Continent*-type maps); a capital city is its own zone
+- [ ] The player's faction token (`UnitFactionGroup("player")`: English and
+      locale-independent; hidden or not?) and each innkeeper's faction (which faction
+      can talk to them)
+- [ ] Export ([specs/export.md §3.10](specs/export.md#310-size-budget)): an edit box
+      holds, shows and copies a ~250 KB string (and how long `SetText` takes); how long
+      an opted-in export of a ledger at the foreign cap takes to build (busted: 0.22 s
+      for 3 000 travelers); memory held after an opted-in export (AceSerializer's
+      module-level `serializeTbl` keeps ~5 MB after a 3 000-traveler export)
 - [ ] Sitting detection, if any
 
 ## Sources

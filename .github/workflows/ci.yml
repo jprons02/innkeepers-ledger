@@ -49,6 +49,35 @@ jobs:
           busted --version
           busted
 
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install Lua 5.1, busted and luacov
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q lua5.1 liblua5.1-0-dev luarocks
+          sudo luarocks --lua-version=5.1 install busted 2.3.0-1
+          sudo luarocks --lua-version=5.1 install luacov 0.17.0-1
+      - name: Coverage floors for pure modules
+        run: |
+          # The long #sim runs add minutes under luacov and no pure-module lines; the
+          # busted job runs them.
+          busted --coverage --exclude-tags=sim
+          luacov
+          sh scripts/check-coverage.sh
+
+  docs-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check doc links and the context map
+        run: sh scripts/check-links.sh
+
   libs-manifest:
     runs-on: ubuntu-latest
     steps:

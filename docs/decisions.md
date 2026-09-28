@@ -10,6 +10,781 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-28 — Maintainer-gated content ships as a DRAFT and doesn't block merge
+
+Slice 3 (#61) needed content that is the maintainer's call under `CLAUDE.md`'s gates:
+phrase wording (#62) and the cosmetic catalog, names and thresholds (#63). Each ticket
+shipped a complete, reviewed DRAFT (marked DRAFT in the data file and the spec's §9),
+merged it once tests and review passed, and put the questions in `docs/status.md` →
+Open questions. This works because IDs change freely until the first public release, so
+a redirect costs a data edit, not a migration. It stops being safe at the first release:
+from then on an ID's meaning is frozen ([specs/phrase.md §3.1](specs/phrase.md#31-data-shape-and-id-scheme)).
+Content-safety rules are not gated this way: a draft that breaks
+[addon-policy.md](addon-policy.md) is fixed before merge (as #62's review did with two
+innkeeper templates).
+
+*Rejected:*
+- **Blocking the build on the maintainer's wording:** stalls every later slice (sync
+  rejects every entry until phrases exist) for a choice that's cheap to change later.
+- **Placeholder text ("phrase 1"):** nothing real to react to, and tests would pass on
+  data that can't ship.
+
+*Reflected in:* `docs/status.md` → Open questions; `docs/specs/phrase.md` §9;
+`docs/specs/collection-cosmetics.md` §9.
+
+### 2026-09-28 — Export v1: what the draft left open
+
+Settled in #64, which built `Export` and `Core:ExportString` and pinned the export string
+as **v1** ([export-format.md](export-format.md)). Spec: [specs/export.md](specs/export.md).
+From here on export fields are only added; anything else bumps the major (`!IL2!`).
+- **Changes from draft v0:** `travelers` is grouped per traveler (`{ guid, name, met,
+  entries }`, mirroring the store) and traveler entries keep their `seal`; `me.name` is
+  optional; `v` equals the envelope's major; every array order and uniqueness rule is
+  pinned (entries `(t, inn)`, cosmetics `(t, id)`, travelers `met` descending then GUID
+  bytes); optional means absent, never `nil`; integers only (no floats, booleans or
+  `nil` in the serialized text); `addon` is 1..32 bytes of `A-Z a-z 0-9 . _ + -`;
+  `flavor` is `"forever"` in v1; the limits and `too_large`.
+- **No decoder or import ships.** The export is one-way (share, render, keep a copy).
+  A new forbidden-API rule, *general-purpose decoders* (`Deserialize`, LibDeflate's
+  `Decompress…` and `DecodeFor…`), is allowed in no shipped file; the reference decoder
+  lives in `spec/` only. (`scripts/check-apis.sh` asks for a decision entry on rule
+  changes: this is it.)
+- **Limits, refused rather than truncated:** 10 000 own entries, 1 200 cosmetics, 1 000
+  zones or continents, the ledger's foreign caps (3 000 travelers and traveler entries,
+  40 per traveler), and a 4 MiB serialized backstop. No honest ledger reaches them.
+  Measured: a 300-signature ledger exports to about 12 KB; opted in at the foreign cap,
+  about 165 KB.
+- **Travelers opt in per export, by `true` only:** `Core:ExportString(includeTravelers)`
+  passes other travelers' records only when `includeTravelers` is exactly `true`
+  (`rawequal`); nothing remembers the choice. Without it, no other player's GUID or name
+  is anywhere in the string (a test walks every decoded key and value).
+- **Where the spec was silent (fail closed):** a zone whose `continent` isn't a kept
+  `byContinent` key is left out; `collection.done` with `signed ~= total` (or `total`
+  0) refuses with `collection`, as does a `byContinent`/`byZone` that isn't a table;
+  every required-field reason is checked before any item is read; a traveler record's
+  entries are read (and counted) only once its GUID, name and `met` pass; a map item's
+  `done` without `signed == total >= 1` leaves that item out (the review pinned the rule
+  in export-format.md's map rows); a negative zero count is written as `0`.
+
+*Rejected:*
+- **Shipping a decoder or an import:** pasted strings would be untrusted input;
+  LibDeflate has no output limit (722:1 shown) and AceSerializer yields `NaN`, `inf` and
+  floats. v1 has no use for it.
+- **The draft's flat `travelers` list:** repeats a GUID and a name per entry.
+- **Truncating an export over the limits:** a string silently missing stamps is worse
+  than a clear refusal.
+- **Our own deterministic serializer (sorted keys) or JSON:** AceSerializer was chosen and
+  reviewed for export, and byte equality isn't a consumer need.
+- **`Export` calling `Collection`, `Cosmetics` or the ledger itself:** plain inputs keep
+  it a small, fully testable shaper; the glue owns the calls.
+- **LibDeflate `EncodeForPrint`, zlib framing:** already decided (standard base64, raw
+  DEFLATE).
+- **Line-wrapped base64:** edit boxes and pastes mangle newlines.
+- **Comparing export strings for the "changed since you last shared" nudge:** bytes
+  aren't stable across clients; the nudge compares data.
+- **Remembering the travelers opt-in:** the format says per export.
+- **A fixed compression level (9):** very slow in pure Lua for no format gain.
+
+*Reflected in:* `docs/specs/export.md`; `Export.lua`; `Core.lua` (`ExportString`);
+`scripts/check-apis.sh`; `.luacheckrc` (`UnitFactionGroup`); `docs/export-format.md`
+(v1); `docs/architecture.md` → Modules, Export; `docs/libraries.md`;
+`docs/security-checklist.md`; `docs/testing.md`; `docs/platform-forever.md` →
+Verification checklist.
+
+### 2026-09-27 — Collection: places, keys and faction totals
+
+Settled in #63, which built `Collection` and gave `Data/Inns` its shape (still empty until
+#12). Spec: [specs/collection-cosmetics.md §3.1–§3.4](specs/collection-cosmetics.md#31-places-inns-zones-continents).
+- **Places are keyed by integers, never names:** inns by innkeeper NPC ID (what entries,
+  `SyncProtocol` and `Ledger.innFromNpcGUID` already use); zones and continents by the
+  client's own map IDs, read by #12's walk (project integers if map IDs turn out
+  unreadable; the scheme doesn't change). A zone carries its continent, so an inn's
+  continent can't disagree with its zone. Names are English data in v1, like phrases.
+- **Inns, not innkeepers:** one record per inn is the primary; any other innkeeper of the
+  same inn (a faction pair, a replaced NPC) is an `alias` of it, one hop only. An entry
+  at an alias counts for the primary.
+- **Totals are per faction:** an inn is open to a faction if it is neutral or that
+  faction's; totals, zones, continents and `done` count open inns only. An unreadable
+  faction counts every inn (harder, never easier). Another faction's inns never appear.
+- **Own signatures only** count toward progress; other travelers' entries are the
+  crossing-paths layer. A stamp is an inn you've signed (no ID; the export's entries
+  carry them); weekly re-signs add to `count`, never a stamp.
+- **Records are never removed or renumbered after the first release;** a retired inn
+  keeps its record, and a zone keeps its seal.
+- **Where the spec was silent (fail closed):** a seal clash counts every zone record
+  whose `seal` is an in-range integer, kept or not, so an otherwise-bad record clashing
+  with a good zone takes both out; a record with any `alias` key is read as an alias;
+  `invalid` is sorted, so its order doesn't depend on `next`.
+
+*Rejected:*
+- **Zone keys as English names or slugs:** names differ per locale and slugs need a
+  naming step, while map IDs come from the client.
+- **Continent on each inn record:** can disagree with its zone.
+- **Counting innkeepers:** a faction pair would count one inn twice.
+- **Totals over both factions:** contested zones' seals and "every inn" could never be
+  earned.
+- **Counting other travelers' entries:** would make the passport tradeable.
+
+*Reflected in:* `docs/specs/collection-cosmetics.md`; `Collection.lua`; `Data/Inns.lua`;
+`docs/architecture.md` → Modules; `docs/platform-forever.md` → Verification checklist;
+`docs/export-format.md` → Data (`collection`).
+
+### 2026-09-27 — Cosmetics: IDs, derived unlocks that are never taken away, seals on signing
+
+Settled in #63, which built `Cosmetics` and the DRAFT `Data/Cosmetics` catalog (the set,
+names and thresholds are the maintainer's; open question in [status.md](status.md)).
+Spec: [specs/collection-cosmetics.md §3.5–§3.7](specs/collection-cosmetics.md#35-cosmetic-ids).
+- **One ID space, 1..9999:** milestone seals 1..99, zone seals 101..999 (each stored on
+  its zone record, allocated in the order zones are added, never reused), quills
+  1000..1099, inks 1100..1199, 100 and 1200..9999 reserved. Every seal is ≤ 999, the
+  wire's limit; quills and inks never travel. No badge kind in v1.
+- **Rules:** `inns n`, `zones n`, `continent`, `all`, and one generated `zone` rule per
+  zone seal. Thresholds are counts, never percentages; after the first release an ID
+  never changes meaning and a threshold never rises.
+- **Unlocks are derived from your own entries on every call,** each dated by the `t` of
+  the signature that completed the rule. **The ledger's `earned` map is only a floor**
+  (`Sign` records unlocks with `markEarned`): a kept time is honored only for a catalog
+  ID and only if it equals the time of an own entry the call read, and the earlier of
+  derived and kept wins. So a data update that adds an inn never takes a seal away, and
+  every exported time is still a real signature's.
+- **`SEALS` holds every seal the catalog knows,** unlocked or not (a peer's unlocks
+  can't be checked), and nothing but seals. `SyncProtocol` rule 16 is unchanged: an
+  unknown seal skips that entry only.
+- **Signing with a seal:** `canSeal` allows it only if the seal was unlocked by entries
+  already in the ledger, no later than the new entry's time, so the signature that earns
+  a seal can't carry it. It checks a private lookup, not the exported `SEALS`.
+- **Where the spec was silent (fail closed):** `canSeal` returns `false` for a `t` that
+  isn't an integer in `tMin`..`tMax` even when `seal` is `nil`; an atlas without
+  `progress`, `zoneKeys` and `zone` functions, or whose zones misbehave (an error, a
+  seal out of 101..999 or used twice, a bad name, more than 899 zones), binds as an
+  empty atlas; an error inside `unlocked` (possible only with a foreign atlas) returns
+  `{}`; the "read" entries a kept time must match use `progress`'s own filter and
+  `ownMax` bound.
+
+*Rejected:*
+- **Stamps as cosmetics with IDs:** duplicates what entries already say.
+- **Pure derivation with nothing stored:** a data update would take away a seal the
+  player uses, and `Sign` would then refuse it.
+- **Stored unlock state as the only truth:** drifts from the entries and can't be
+  rebuilt for a ledger from before recording existed.
+- **A kept time taken as is:** the own-entry-time check keeps export times tied to real
+  signatures at no cost.
+- **Zone seal ID = map ID** (over 999) **or = 100 + list position** (renumbers on
+  insert).
+- **The catalog as code in `Cosmetics.lua`:** it's content the maintainer edits.
+- **A read-only proxy for `SEALS`:** `SyncProtocol` reads it with `rawget`.
+
+*Reflected in:* `docs/specs/collection-cosmetics.md`; `Cosmetics.lua`;
+`Data/Cosmetics.lua`; `InnkeepersLedger.toc` (`Data\Cosmetics.lua` after
+`Data\Phrases.lua`); `docs/architecture.md` → Modules, Data model, Security model;
+`docs/export-format.md` → Data (`cosmetics`).
+
+### 2026-09-27 — Phrase grammar, ID scheme and rendering
+
+Settled in #62, which built `Phrase` and the first draft `Data/Phrases`. Spec:
+[specs/phrase.md §3](specs/phrase.md#3-approach). The wording of the draft set is still
+the maintainer's (open question in [status.md](status.md)); nothing here waits on it.
+- **One ID space, keyed directly by number:** templates 1..499, conjunctions 500..599,
+  words 1000..9999, 600..999 reserved. Each value is a record (`kind`, `text`, and `cat`
+  for a word). Words take blocks of 100 per category (category `k`: `900 + 100k` ..);
+  the record's `cat` is what counts. `SyncProtocol`'s one-table lookup and `Sync`'s
+  wiring stay unchanged.
+- **Grammar:** a clause is a slotted template plus one word, or a slotless template; a
+  phrase is one clause or two joined by a conjunction. Exactly six shapes (`t`, `TW`,
+  `tCt`, `tCTW`, `TWCt`, `TWCTW`) fill the five wire slots. Any word fits any slot.
+  After the first release the grammar may only grow, never shrink.
+- **Rendering:** the slot `{w}` is replaced with plain `find` + `sub`, never `gsub`; no
+  case changes and no added punctuation (conjunctions are sentence openers ending in
+  `...`). Record limits bound any rendering at 156 bytes, under `renderBytes` 160. These
+  rules and the IDs freeze at the first release.
+- **Validation:** `Phrase.validIds` is the `phraseOk` hook: raw `next`/`rawget` only,
+  stops counting past 5 keys, never writes, returns exactly `true`/`false`. `bind`
+  excludes a bad record (named in `invalid`, a CI test keeps it empty) instead of
+  raising, and missing data binds an empty set that rejects everything.
+- **Where the spec was silent (fail closed):** at most 90 categories are read (one block
+  of 100 IDs each; more is named in `invalid`); `compose` returns `nil` for any sixth
+  non-`nil` argument; `invalid` prints only numeric keys and names any other key by its
+  type, so no data string is echoed; the exported `SLOT`/`LIMITS`/`RANGES`/`SHAPES` are
+  copies, so changing them can't loosen the grammar.
+
+*Rejected:*
+- **Separate tables per kind, each numbered from 1:** needs `Sync` and `sync-glue.md`
+  changes, and IDs of different kinds could collide.
+- **Kind from the ID range only, with bare-string values:** no home for a word's
+  category or a later "retired" flag.
+- **Typed slots:** more data to keep consistent and a weaker content argument; still
+  possible for new templates later.
+- **Lowercasing the second clause after a connector:** needs per-template case rules.
+- **Storing or sending rendered text:** reopens free text and costs wire bytes.
+- **Checking the grammar inside `SyncProtocol`,** or **raising in `bind` on a bad
+  record** (a data typo would take the AddOn down in the client).
+
+*Reflected in:* `docs/specs/phrase.md`; `Phrase.lua`; `Data/Phrases.lua`;
+`InnkeepersLedger.toc` (`Phrase.lua` after `Ledger.lua`); `docs/export-format.md` →
+phrase IDs; `docs/architecture.md` → Modules.
+
+### 2026-09-27 — Phrase content rules
+
+Settled in #62. Entries spread peer to peer with no moderator, and the draft allows
+about 19 million two-clause phrases, so safety comes from rules on the parts that make
+every combination inoffensive ([specs/phrase.md §3.6](specs/phrase.md#36-content-rules-why-no-combination-is-offensive);
+[addon-policy.md](addon-policy.md) Rule 6).
+- **Words:** no person or body (no body parts, even in idioms; nothing worn); no
+  identity group (race, class, faction, gender, nationality, religion); nothing
+  intimacy-adjacent (no bed or bath words, no food with a slang meaning); no violence,
+  death, weapons or drugs; no proper nouns (Warcraft creature kinds as common nouns are
+  allowed for now); each a lowercase noun phrase that reads as an object in every
+  template.
+- **Templates:** warm or neutral, never negative about the slot; no verbs of desire,
+  touch or intimacy; the slot is an object, never a verb's subject; the only person
+  named is the reader. The first draft's "Thank the innkeeper for {w}" and "Ask the
+  innkeeper about {w}" were dropped in review: with "good company" in the slot they read
+  as a tavern euphemism.
+- **Conjunctions** carry no content.
+- **Enforcement:** a reviewer reads the whole set against the rules, and a tripwire test
+  fails CI if any template, conjunction or word contains a deny-listed word. A failing
+  word is changed, or the list is amended with a reason in the PR.
+
+*Rejected:*
+- **Negative or warning templates** ("Be wary of {w}"): with any word in the slot they
+  can be aimed at something, and the book is meant to be warm.
+- **Free text, or free text through a filter:** settled against (*Canned phrases, not
+  free text*, [archive](archive/decisions-2026-09.md)).
+- **Reading every combination:** far too many; rules on the parts cover them all.
+
+*Reflected in:* `docs/specs/phrase.md` §3.6, §9; `spec/phrase_spec.lua` (the tripwire);
+`Data/Phrases.lua`.
+
+### 2026-09-27 — Group map details: realm form, our own name, rescan on a miss
+
+Settled in #54, which built the group map that *Group senders resolve through our own
+unit scan* (below) called for. Spec: [specs/sync-glue.md §3.4](specs/sync-glue.md#34-sender-resolution).
+- **Names come from `UnitFullName(unit)`,** falling back to `UnitName(unit)` only when
+  `UnitFullName` isn't a function. The realm is normalized the way
+  `GetNormalizedRealmName` does it (spaces and `-` removed); `nil` or empty means our
+  realm, and the key is completed with our realm exactly as a bare sender is. Whether
+  this matches the sender string is on the #12 checklist; if it doesn't, group senders
+  are unresolved (fails closed), never misattributed.
+- **Skipped units:** hidden or invalid GUID, hidden or non-string name, over 96 bytes,
+  a name containing `-` (character names can't), the client's `UNKNOWNOBJECT`
+  placeholder, and a realm that's hidden, not a string, or over 48 bytes once
+  normalized. A key two units claim is removed, as in the guild map.
+- **Our own name is in the map** (`player` in a party; our `raidN` in a raid), like our
+  row in the guild map, so our echo is dropped by `receive` as `self` without a debug
+  line. The member set still leaves us out.
+- **A miss rescans the map once, then looks again,** at most once per 10 s (a clock that
+  went back allows one; a hidden clock none). It covers a member whose name hadn't
+  loaded at the roster event. The rescan replaces the map only, never the member set,
+  so a peer's messages can't drive HELLO triggers. This resolves the current message
+  with fresh data; it isn't a retry of a dropped one (*Sender identity is resolved per
+  channel*).
+
+*Rejected:*
+- **Using the bare `UnitName` realm as is:** it keeps spaces (`Area 52`) that the sender
+  string drops, so cross-realm members would never resolve.
+- **Leaving our own name out, as the member set does:** every echo would count and log
+  as `unresolved`.
+- **No rescan on a miss:** a member whose name loaded after the roster event couldn't
+  sync (not even answer our HELLO) until the next roster change.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.4, §3.5.1, §3.9, §5.1, §6, §8;
+`docs/architecture.md` → Security model; `docs/platform-forever.md` → Verification
+checklist.
+
+### 2026-09-27 — Sync send: timer, clock and hold choices where the spec was silent
+
+Settled while building the `Sync` send path and combat hold (#47, PR #57). The
+security-level review (162 seeds × 1 simulated hour of hostile input) found every
+invariant held; its two robustness findings are fixed as described here.
+- **Only the resume paths release the hold.** A pump that finds us in combat enters it;
+  a pump never leaves it. Only the 3 s check after `PLAYER_REGEN_ENABLED` and the 30 s
+  held re-check do. A pump that bumped the generation while already held would cancel a
+  pending resume for nothing.
+- **A timer counts as live only once `C_Timer.After` has returned**, for the pump timer
+  and the held re-check alike. A pump or re-check timer due more than 5 s ago is treated
+  as lost and replaced on the next request, and a held client's pump re-arms a lost
+  re-check. A timer call that raises then can't leave sync stalled behind a timer that
+  doesn't exist.
+- **Bad clock.** At a roster update with new members, the GROUP channel is set but the
+  member set is kept, so the next update still finds them new (spec §3.5.1 says the set
+  is replaced; this departs from it only while the clock is unreadable). At guild join
+  nothing happens until the next update. At start, the first pump with a good clock
+  runs the group and guild triggers again (a 5 s retry until then).
+- **Every handed-over message gets a debug line** (`sync: sent <kind> <CHANNEL>`), and a
+  failed one `sync: send failed`, with the kind from our own first byte.
+- **Long simulations are tagged `#sim`** (the 40-player raid, an hour in a guild, the
+  10-minute flood). The `busted` job runs them; the `coverage` job skips them, since under
+  luacov they take minutes and cover no pure-module line.
+
+*Rejected:*
+- **Releasing the hold from any pump that finds us out of combat:** it would skip the
+  3 s settle that §3.6 and sync-ledger §8 ask for.
+- **Running the simulations under coverage too:** the local coverage run went from about
+  1.5 to over 5 minutes for no coverage gain.
+
+*Reflected in:* `Sync.lua`; `.github/workflows/ci.yml`; `docs/testing.md`;
+`CONTRIBUTING.md`.
+
+---
+
+### 2026-09-27 — Sync receive: fail-closed choices where the spec was silent
+
+Settled while building the `Sync` receive path (#46, PR #55). The security-level review
+checked each and found them sound.
+- **An `issecretvalue` that raises counts as hidden**, as in `Core`. A hidden
+  `IsInGuild` counts as not in a guild. A `GUILD_ROSTER_UPDATE` while the clock is
+  unreadable is skipped (the next update or the trailing rebuild catches up).
+- **Leaving the guild resets the roster-request gate**, so a quick rejoin asks for the
+  roster at once. **An immediate map rebuild cancels a pending trailing one**
+  (generation bump), so a lost timer can't block later trailing rebuilds.
+- **`api.Enum` is an optional client input** (for the prefix-result enum), so the
+  instance never reads `_G`; without it only `true` and `0` are accepted.
+- **Accepted messages get a debug line too** (`sync: got <kind> <CHANNEL> <guid>`, plus
+  the ENTRIES counts). Reason and kind codes that aren't plain lower-case words are
+  written `unknown`, in stats and in debug lines.
+- **Hidden values are checked before the prefix**, as spec §3.3.3 orders it. So another
+  AddOn's hidden traffic counts under `dropped.hidden` and gets a debug line. Kept
+  literal for now; see *Rejected*.
+
+*Rejected:*
+- **Checking the prefix before the other three arguments' hidden checks** (hidden
+  prefix first, then compare it, then the rest): it keeps other AddOns' hidden traffic
+  out of the counters and log, but it changes the spec's order and only matters if the
+  client hides senders broadly, in which case sync can't work anyway (spec §8). Revisit
+  if #12 shows hidden senders.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.3.1 (`Enum`); `Sync.lua`; `docs/status.md`
+→ Follow-ups.
+
+### 2026-09-27 — Group senders resolve through our own unit scan, never `UnitGUID(sender)`
+
+Found in #46's security review. The `Sync` glue spec resolved PARTY / RAID senders with
+`UnitGUID(sender)`, passing a peer-chosen name to a function that also takes unit
+tokens. If the client ever gives a bare sender name and a character can be named like a
+token (`Target`, `Focus`, `Mouseover`, `Softfriend`, …), `UnitGUID` returns whoever *we*
+are targeting, and that member's entries would be stored under another player's GUID
+(shown in the harness with modelled tokens). Both facts are unverified, but the rule is
+that a peer string never decides which GUID it gets. So group senders will resolve the
+way guild senders already do: a name → GUID map built from our own `partyN` / `raidN`
+scan (§3.5.1's scan), with hidden, invalid, own and ambiguous names left out. #54 updates
+the spec and builds it; it must land before the first release. #46 shipped the spec as
+written, since nothing is released and #47 builds the scan the fix needs.
+
+*Rejected:*
+- **A deny-list of unit-token names:** the token list grows with the client and has
+  compound forms (`targettarget`, `focustarget`, …); missing one is a forgery.
+- **Passing the `Name-Realm` form to `UnitGUID`:** it still hands a peer string to a
+  token parser, and whether the full form resolves is itself unverified.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.4 step 3 (a note until #54);
+`docs/platform-forever.md` → Verification checklist; ticket #54.
+
+### 2026-09-27 — SyncSchedule: failed sends keep their gates; forward clock jumps wait for #12
+
+Settled while building `SyncSchedule` (#45, PR #52), where the `Sync` glue spec was
+silent. The security-level review checked each rule against the spec and found none a
+deviation.
+- **A failed send keeps its gate stamps** (`lastHello`, `lastReply`, `lastLarge`). Its
+  budget record and in-flight entry are removed and the item is dropped, as the spec
+  says, but the gate stays closed, so a transport that keeps refusing can't be retried
+  in a loop. A failed GUILD HELLO still schedules the next periodic one. Only `io.send`
+  returning exactly `false` is a failure; anything else counts as handed over (errs
+  toward the rate limits).
+- **Leaving a channel keeps its gate stamps** (`setChannel(ch, nil)` drops only the
+  pending items), so leaving and rejoining a group can't bypass a gate.
+- **Server time jumping forward is not clamped in v1.** Backward jumps are (spec
+  §3.5.2). A forward jump ages budget records early; fuzzing with forward jumps saw up
+  to 48 messages in one real minute. Realm time jumping forward is unlikely, so this
+  waits for #12 to show whether it happens.
+
+*Rejected:*
+- **Rolling back the gate stamps on a failed send:** a transport that fails every time
+  would then be retried on every pump.
+- **Capping how far a forward jump can age records now:** it adds state and tests for a
+  case no one has seen in the client.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.5.6 step 3; `docs/status.md` → Follow-ups.
+
+### 2026-09-27 — Debug toggle wording: keep it as written
+
+The maintainer kept the debug-log wording from the `Sync` glue spec: the command
+`/ledger debug`, the lines `Debug log on.` / `Debug log off.`, and plain `sync: …` lines.
+It's developer-facing and off by default, and changing it later is a one-line edit.
+Closes the open question in the *Debug log* entry below.
+
+*Rejected:* writing in-character ledger phrasing for it now (it's a troubleshooting
+tool, not something players are meant to find).
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.8; ticket #44.
+
+### 2026-09-27 — Sync glue: a pure send schedule, logical channels and a gated large reply
+
+Settled in the `Sync` glue spec (#42). The send side's timing rules (send budget,
+HELLO / WANT / reply gates, pending queues, the combat hold) live in a new **pure**
+module, `SyncSchedule`, with a **95% coverage floor** like the rest of the sync boundary.
+`Sync.lua` is the thin glue around it, built as an instance with injected client
+functions so tests can run two or forty clients in one Lua state. Also:
+- **Logical channels:** gates and pending items are per `GROUP` (PARTY or RAID on the
+  wire) and `GUILD`, so a party that becomes a raid keeps its pending reply.
+- **The send budget counts at hand-off to ChatThrottleLib, with at most 2 messages in
+  flight** (released by the send callback, or after 30 s). On the wire that bounds any
+  60 s to 32 messages and 70 entries, under the receiver's 40 and 80.
+- **Any reply of more than one message (over 5 entries) is gated** to one per channel per
+  5 minutes unless our window changed. This is stricter than slice 1 §8, which gated only
+  `since = 0`: a hostile peer could have asked with `since = tMin` for a full reply every
+  30 s. A gated ask is deferred, not dropped.
+- **`decideWant` runs only when a WANT can actually go out**, so a peer's two asks per 10
+  minutes are spent on real sends and suppression sees the latest state.
+- **No HELLO from an empty share window.** A new own signature (`Sync:WindowChanged()`,
+  called by `Sign`) sends a HELLO on each channel after 5–15 s.
+- **`Core` opens the ledger at `PLAYER_LOGIN`**, retrying an unreadable GUID 5 times over
+  10 s, and never uses a hidden GUID as a table key; the ledger lives at `ns.ledger`.
+- **One live pump timer:** a generation-checked timer at most 5 s ahead, and send
+  callbacks request a pump (never run one), so timers can't pile up and a queued send
+  doesn't stall the in-flight cap. Found in the spec review.
+- **The combat names get their own `forbidden-apis` rule** (`combat state`, allowed in
+  `Sync.lua`) instead of widening the `combat data` rule, which stays closed everywhere.
+
+*Rejected:*
+- **The send logic inside `Sync.lua`:** no coverage floor, no strict environment, and the
+  traffic model depends on exactly this logic.
+- **Scheduling inside `SyncProtocol`:** it's the validation boundary; state machines
+  there grow what the security review has to re-read.
+- **One timer per pending item:** hundreds in a big guild, and ordering across timers is
+  hard to test. One pump with a computed wake time instead.
+- **Budget counted on send callbacks only:** a lost callback would freeze sending.
+- **Deciding a WANT when its jitter timer fires:** the decision goes stale behind the
+  budget or a fight, and spends an ask on a WANT that may never go out.
+- **Widening the `combat data` allow-list for `Sync.lua`:** it would admit the combat log,
+  health and auras too.
+
+*Reflected in:* `docs/specs/sync-glue.md`; tickets under #41.
+
+### 2026-09-27 — Guild HELLO interval
+
+The first guild HELLO goes 60–120 s after login (or after joining a guild), then one every
+**20–25 minutes** (1 200 s plus a random 0–300 s, so guildmates don't line up), on top of
+the HELLO after each new own signature. Each is still subject to the 1-per-60-s gate and
+the send budget, and nothing is sent from an empty window.
+
+A guild's news travels through the signature-triggered HELLO within seconds; the periodic
+one only serves guildmates who logged in since. At 1 000 online members that's about 45
+HELLOs a minute at each receiver, far under the 1 200 global limit.
+
+*Rejected:*
+- **Every 5 minutes:** about 200 HELLOs a minute in a 1 000-member guild, for news that
+  isn't urgent.
+- **Only at login:** a guildmate who logs in later wouldn't hear from anyone until the
+  next login or signature.
+- **A HELLO whenever a guildmate comes online:** roster events fire constantly and would
+  make every online member answer every login.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.5.
+
+### 2026-09-27 — Debug log: off by default, session only, no peer strings
+
+`/ledger debug` turns a debug log on or off for the session; the setting is never saved.
+Turning it on prints one report line (the ledger state and sync counters). While it's on,
+lines go to the chat frame, at most 5 per 10 s, with a count of the lines skipped. A line
+holds only our own words and reason codes, numbers, a channel name from our own set, and a
+sender GUID after it passed validation: never a name, message text or error text. The
+toggle wording is a placeholder until the maintainer gives a direction.
+
+*Rejected:*
+- **A saved setting:** it gets forgotten on, and prints for weeks.
+- **An in-memory log buffer:** it would hold peer-derived data that nobody reads.
+- **Printing every drop:** a raid would flood the chat frame.
+
+*Reflected in:* `docs/specs/sync-glue.md` §3.8; `docs/status.md` → Open questions.
+
+### 2026-09-27 — Ledger orders by bytes, keeps sorted indexes, and tightens two inputs
+
+Built in #30 (PR #38). Three choices the spec left open or that came out of review:
+- **Signer GUIDs compare byte by byte** in the eviction order `(t, signer, inn)` and in
+  `travelers()`. Lua 5.1's string `<` uses `strcoll`, so its order follows the C
+  locale. Some locales rank distinct strings equal, which would let a binary-search
+  removal take the wrong entry and leave an index stale.
+- **Foreign entries live in sorted indexes** (all foreign, and per inn, both in
+  eviction order). Each add or eviction costs a binary search plus one array shift. A
+  full 3 000-entry store takes a 10 000-entry flood in well under a second.
+- **`addForeign` takes `now` only in `tMin..tMax`**, the range normalize accepts for
+  `met`, so a bad clock can't plant a `met` that resets on every load. **Only an
+  `"added"` entry renames a traveler**; a `"dropped"` one changes nothing.
+
+*Rejected:*
+- **String `<` for signers:** simpler, but its result depends on the client's collation.
+- **Linear scans for the oldest entry:** about 20 M comparisons for the 10 000-entry
+  flood.
+- **Renaming on any accepted-looking add, including `"dropped"`:** it changes what's
+  stored while reporting that nothing was.
+- **Batching the load-time cap pass now:** a tampered file far over the caps (40 000
+  entries) loads in about 4 s because each eviction shifts large arrays. Peers can't
+  cause this and honest data stays under 3 000 entries, so it's a follow-up in
+  `status.md`, not a v1 need.
+
+*Reflected in:* `Ledger.lua`; `docs/specs/sync-ledger.md` §4.3–§4.5 (which also records
+the smaller clarifications: `loadReport` fields, `canSign` and `markEarned` on bad input,
+non-table own entries, the post-migration shape check).
+
+### 2026-09-27 — Coverage floors on pure modules, a doc-link check, and local test runs
+
+Two required CI jobs join the others. `coverage` runs `busted --coverage` and luacov
+0.17.0, then `scripts/check-coverage.sh` enforces line-coverage floors: **95%** for
+`Ledger` and `SyncProtocol` (the peer-data boundary) and **90%** for the other pure
+modules. It fails closed: a missing report, a module missing from it, or a `luacov:`
+opt-out comment fails the job. `docs-links` runs `scripts/check-links.sh`: every relative
+link in the docs resolves, and every doc under `docs/` has a context-map row. The local
+toolchain turned out to work once it's on `PATH`, so sessions run every check locally
+before pushing, with CI as confirmation rather than the only test run. The maintainer
+asked for this.
+
+*Rejected:*
+- **100% floors:** defensive branches that can't happen after validation would have to be
+  deleted or contrived into tests; 95% leaves room without hiding whole paths.
+- **Coverage of glue modules:** glue calls the client; it's checked in the client, and
+  its stubbed parts would inflate the numbers.
+- **Folding coverage into the `busted` job:** the required checks would be less specific
+  (same reason as the separate CI jobs in the 2026-09-26 CI entry).
+- **Allowing `luacov: disable` with review:** an opt-out in the security modules is
+  exactly what the floor exists to stop.
+- **Checking `#anchor` fragments in doc links:** GitHub's heading slugs are hard to
+  reproduce exactly in `sh`; broken files are the common failure.
+
+*Reflected in:* `.github/workflows/ci.yml`; `.luacov`; `scripts/check-coverage.sh`;
+`scripts/check-links.sh`; `CONTRIBUTING.md` → Development setup;
+`docs/security-checklist.md`; `CLAUDE.md` → Testing; branch protection.
+
+### 2026-09-27 — Re-signing follows the game's weekly reset (supersedes the Friday 10:00 UTC entry below)
+
+A character may still sign each inn once per week, but the signing week now turns over
+at **the game's own weekly reset** for the player's region, not Friday 10:00 UTC. The
+maintainer chose this. The glue reads the reset from the client
+(`C_DateAndTime.GetSecondsUntilWeeklyReset`, with a per-region fallback table), and
+`Ledger` takes it as an argument, so no region's time is hard-coded. The rule still
+applies to incoming signatures. Details: `docs/specs/sync-ledger.md` §4.4, §8.
+
+The region concern in the entry below doesn't hold: Forever is realmless per region,
+and players from different regions never group or share a guild, so they never sync.
+Everyone who syncs shares one reset.
+
+*Rejected:*
+- **Friday 10:00 UTC** (the entry below): a second weekly rhythm players would have to
+  learn, next to the reset they already plan around.
+- **Hard-coding each region's reset time:** Blizzard can move it, and Forever's times
+  are unverified; the client already knows.
+
+*Reflected in:* `docs/specs/sync-ledger.md`; `docs/platform-forever.md` → Verification
+checklist; ticket #30.
+
+### 2026-09-27 — Re-signing an inn: once per week, resetting Friday 10:00 UTC
+
+A character may sign each inn once per signing week. Weeks start every **Friday at
+10:00 UTC** (the maintainer chose weekly; the session picked the reset time within that).
+The ledger enforces the rule for incoming signatures too: a traveler's second signature
+at the same inn in the same week is rejected. Signing a different inn in the same week
+is fine. Details: `docs/specs/sync-ledger.md` §3.1 (`weekAnchor`), §4.4.
+
+*Rejected:*
+- **Once per day** (the first proposal): repeat visits would fill a traveler's 40-entry
+  share window with one inn, and own entries (never evicted) would grow fast.
+- **WoW's own weekly reset:** it differs by region (Tuesday 15:00 UTC in the US,
+  Wednesday 07:00 UTC in Europe), so two players could disagree about which week a
+  signature is in. A fixed UTC time is the same for everyone and is plain arithmetic on
+  server time.
+- **A rolling 7 days since the last signature:** harder to explain in the UI than "the
+  ledger turns a page every Friday".
+- **Limiting only our own signing:** a modified client could still fill all 40 of its
+  slots at one inn; checking incoming signatures too costs one lookup.
+
+*Reflected in:* `docs/specs/sync-ledger.md`; tickets #30, #31.
+
+### 2026-09-27 — Peer-data rate limits and time window
+
+Received, per resolved sender GUID in fixed 60-second windows: 40 messages and 80
+entries. Across all senders: 1 200 admitted messages. At most 1 000 senders are tracked;
+when the table is full after pruning, new senders are dropped. Sent, by our own `Sync`:
+at most 30 messages and 60 entries in any 60 s, 1 HELLO per channel per minute, 12
+WANTs per minute, and one full reply per channel per 5 minutes (a later one is deferred,
+not dropped). Timestamps must fall
+between 2026-09-17 00:00 UTC (the Forever beta start) and now + 300 s. The numbers are
+checked against a written traffic model (a 40-player raid syncing from scratch stays
+under every limit). Details: `docs/specs/sync-ledger.md` §3.1, §5.3, §8.
+
+*Rejected:*
+- **The launch date (2026-11-04) as the earliest time:** entries signed during the beta
+  would fail, so the AddOn couldn't be tested there. Backdating by seven weeks gains a
+  forger nothing.
+- **A token bucket:** smoother, but a fixed window is simpler to test exactly, and the
+  double burst at a window edge is still small.
+- **No global ceiling:** a crowd of modified clients could each stay under the
+  per-sender limit.
+- **The first draft's 30 / 600 limits:** they left WANT traffic out, so honest raid
+  traffic would have been dropped (found in the spec review).
+
+*Reflected in:* `docs/specs/sync-ledger.md`; `docs/architecture.md` → Security model.
+
+### 2026-09-27 — Ledger storage: caps, eviction and SavedVariables shape
+
+Foreign entries are capped at **40 per signer** (equal to the share window), **150 per
+inn** and **3 000 in total** (about 400 KB of SavedVariables). Over a cap, the oldest
+entry by `(t, signer, inn)` goes, so the store always holds the newest. Own entries are
+never evicted. Ledgers live in `InnkeepersLedgerDB.global.ledgers[<character GUID>]`
+with a ledger-level `schema` field (the per-entry `v` is gone), entries grouped per
+traveler, and the time each cosmetic was earned. A ledger whose schema is newer than the
+AddOn, or unreadable, opens read-only and is never rewritten. Details:
+`docs/specs/sync-ledger.md` §4.
+
+*Rejected:*
+- **AceDB's per-character namespace:** it's keyed by name, and names can change; the
+  GUID is the identity.
+- **Evicting by receive time:** replaying old entries would keep them alive; signing
+  time is what the book shows.
+- **A flat list with signer and name on every entry:** repeats the GUID and name up to
+  40 times per traveler.
+- **Larger caps (10 000+):** multi-megabyte SavedVariables for a guild-heavy player,
+  with little gain on the book's pages.
+- **Wiping or rewriting unreadable saved data:** it would destroy a player's ledger after
+  a downgrade.
+- **Migrating in place:** a migration that fails halfway would leave half-migrated
+  data; migrations run on a copy that is written back only on success.
+
+*Reflected in:* `docs/specs/sync-ledger.md` §4; `docs/architecture.md` → Data model.
+
+### 2026-09-27 — Sync wire format v1 and digest
+
+Three ASCII messages, `H1:<count>:<digest>`, `W1:<target GUID>:<since>` and
+`E1:<entry>;…` with up to 5 entries of `inn,t,p.p.p,seal`, in decimal with exactly one
+spelling per number; every message fits in 255 bytes (worst case 242). ENTRIES are
+broadcast so one reply serves every asker. The digest is a polynomial hash
+`h = (h * 257 + byte) % 2147483647` over the canonical text of the sender's newest 40
+own entries, which is exact in Lua 5.1 without a `bit` library. A peer is asked at most
+twice per 10 minutes whatever its digest does, and a WANT seen on the same channel for the
+same peer suppresses ours (the broadcast reply covers us). A syntax error drops the
+whole message, while an unknown inn, phrase or seal skips only that entry. Messages
+echoed back from ourselves are dropped. Details: `docs/specs/sync-ledger.md` §3, §5.1.
+
+*Rejected:*
+- **CRC32 / FNV:** need bitwise operations that busted's Lua 5.1 lacks, so the tests
+  wouldn't run the shipped code.
+- **Count + newest time as the digest:** misses a lost message in the middle.
+- **Base36 or binary numbers:** one more entry per message, but a harder parser to audit.
+- **A version on every entry:** the header already carries it.
+- **Replying by whisper:** whispers aren't an accepted channel in v1.
+- **Dropping a whole message for one unknown ID:** a peer with newer inn data would lose
+  its valid entries too.
+- **Capping WANTs per (peer, digest):** a peer churning its digest could make a whole
+  raid broadcast WANTs nonstop (found in the spec review).
+
+*Reflected in:* `docs/specs/sync-ledger.md`; `docs/architecture.md` → Sync protocol.
+
+### 2026-09-27 — AddOn list blurb names both halves of the AddOn
+
+The TOC `## Notes` line (the tooltip in the in-game AddOns list) reads "Sign the ledger
+at every inn you rest in, and collect the signatures of travelers you meet along the
+way." The maintainer took this recommendation.
+
+*Rejected:*
+- **Reusing the README's line** ("Talk to an innkeeper, sign the ledger, and fill a book
+  of every inn you've rested at."): it describes only the inn collection and leaves out
+  travelers crossing paths, which is what sets the AddOn apart.
+
+*Reflected in:* `InnkeepersLedger.toc`.
+
+### 2026-09-27 — Profile site trust: showcase only, no profile key in the v1 export
+
+Exports can't be proven genuine: the code is public, there's no network, and the player
+controls both the string and SavedVariables. So the site **shows collections off and
+never ranks them**, which removes the reward for faking. Trust work lives on the site,
+after launch:
+- **Sanity checks:** only real inns; no times before launch or in the future;
+  cosmetics earned after the entries behind them; no impossible travel; a re-upload
+  keeps earlier stamps.
+- **Ownership:** a login at first Publish, and "Log in with Battle.net" if Blizzard's
+  API covers Forever characters (unchecked).
+- **A report button.**
+- **Later, "witnessed" stamps:** a future export carries fingerprints of entries
+  received through sync (no names), so the site can mark a stamp that another
+  uploader's ledger also holds.
+
+The v1 export stays as specified. New fields can be added later without breaking old
+strings.
+
+*Rejected:*
+- **Leaderboards:** they reward forging, and nothing can stop it.
+- **A profile key in the v1 export:** the Share window would need a "keep this private"
+  warning, anyone shown the string could take over the profile, and a site login gives
+  the same protection with no AddOn change.
+
+*Reflected in:* `docs/export-format.md` → Trust.
+
+### 2026-09-27 — Profile website: after v1, a separate project, reached by one paste
+
+A website with public player profiles (passport stamps, zone seals, earned badges) is a
+post-v1 direction. The goal is that players go out of their way to share. The flow is
+the export string: **Share** in the ledger shows the string preselected, the player
+copies it, pastes it into the site, sees a preview and publishes. Pasting again later
+updates the profile. WoW players already do this daily with WeakAuras and
+SimulationCraft strings, so it isn't a scary step. v1 only needs the Share button and an
+export that carries stamps, seals and badges with the time each was earned
+([export-format.md](export-format.md)). The site itself is its own project, not part of
+this repo.
+
+The maintainer ruled that **neither the AddOn nor its download pages (CurseForge, Wago)
+name or link the site**, so the policy rule in [addon-policy.md](addon-policy.md) stands
+unchanged. Players find the site through the site itself and word of mouth. Profiles
+show only the uploader's own signatures, never the travelers they met. How far the site
+should trust uploads is still being discussed ([status.md](status.md)).
+
+*Rejected:*
+- **A companion desktop app that uploads automatically:** an install, Windows
+  "unknown publisher" warnings unless a code-signing certificate is bought every year,
+  and a second product to maintain.
+- **Dragging the SavedVariables file onto the site:** players would have to find a
+  folder buried in the WoW install.
+- **An in-game prompt to upload:** it would name an outside site (Rule 4).
+- **Mentioning the site on the download pages:** the maintainer said no.
+- **Building the site before launch:** it would put the 2026-11-04 date at risk, and a
+  versioned export means launch-day strings still work later.
+
+*Reflected in:* `docs/vision.md` → Where it can grow; `docs/export-format.md`.
+
+### 2026-09-27 — Keep the inn ledger after a pivot review
+
+The maintainer considered changing the concept. Research on 2026-09-27 found every
+alternative already taken on Forever or elsewhere, while nothing on Forever collects or
+signs inns ([prior-art.md](prior-art.md) → The Forever landscape). The ledger stays;
+v1 leans harder into the collection feeling like a passport (a stamp per inn, a seal per
+zone).
+
+*Rejected:*
+- **Player memory ("familiar faces"):** Blizzard's Recent Allies ships in Forever, and
+  iWillRemember already runs there.
+- **An automatic character chronicle:** Forever Journal launched 2026-09-24, from an
+  author shipping a Forever AddOn almost daily.
+- **A Hardcore memorial wall:** Deathlog, Hardcore and a Forever-native memorial exist,
+  and Forever has no Hardcore ruleset at launch.
+- **Campfire stories:** 13 camping AddOns appeared in the first 10 days of the beta.
+- **An "inn common room" with strangers over a hidden channel:** Blizzard blocked
+  addon messages to custom channels in Classic in 2019. Whether Forever allows them is
+  on the in-client checklist; if it does, this is a post-v1 candidate.
+
+### 2026-09-27 — Sync may read combat state, and players are told
+
+`Sync` may use `InCombatLockdown` and the `PLAYER_REGEN_*` events to hold sends until a
+fight ends. That's a yes/no state flag; combat *data* (damage, targets, logs) stays
+off-limits. Because "reads combat" sounds alarming, the README's principles say exactly
+what is checked and why. The `forbidden-apis` allow-list for `Sync.lua` widens only
+when the sync implementation lands, citing this entry.
+
+*Rejected:*
+- **Sending during fights:** extra traffic while players least want it, and Midnight-era
+  rules may block addon messages in encounters anyway.
+- **Not telling players:** the check is harmless, but a silent one looks like a hidden
+  combat reader to anyone reading the code.
+
+*Reflected in:* `README.md` → Principles; `docs/security-checklist.md` → Expected future
+exceptions.
+
 ### 2026-09-26 — Security checks: forbidden-API guard on every PR, review before every release
 
 A required CI job (`forbidden-apis`, `scripts/check-apis.sh`) greps shipped code for

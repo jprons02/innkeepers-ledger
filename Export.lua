@@ -209,13 +209,20 @@ local function entries(arr, max, budget)
   return out
 end
 
--- { signed, total } read raw from a progress-shaped table, or nil if they fail.
+-- signed, total read raw from a progress-shaped table, or nil if they fail. `+ 0` turns
+-- a negative zero into 0, which the serializer would otherwise write as "-0".
 local function counts(v)
   local signed, total = rawget(v, "signed"), rawget(v, "total")
   if isInt(signed, 0, INN_MAX) and isInt(total, 0, INN_MAX) and signed <= total then
-    return signed, total
+    return signed + 0, total + 0
   end
   return nil
+end
+
+-- `done` is absent, or a time when signed == total >= 1 (spec 4.1, for the whole
+-- collection and for each map item alike).
+local function doneOk(done, signed, total)
+  return done == nil or (isTime(done) and signed == total and total >= 1)
 end
 
 -- A map of { signed, total, done? [, continent] } items, or nil if it holds too many.
@@ -230,7 +237,7 @@ local function progressMap(map, continents)
     if isInt(k, 1, MAP_KEY_MAX) and type(v) == "table" then
       local signed, total = counts(v)
       local done = rawget(v, "done")
-      local ok = signed ~= nil and (done == nil or isTime(done))
+      local ok = signed ~= nil and doneOk(done, signed, total)
       local continent
       if ok and continents then
         continent = rawget(v, "continent")
@@ -254,7 +261,7 @@ local function collectionOk(p)
   local faction, done = rawget(p, "faction"), rawget(p, "done")
   return signed ~= nil
     and (faction == nil or (type(faction) == "string" and FACTIONS[faction] == true))
-    and (done == nil or (isTime(done) and signed == total and total >= 1))
+    and doneOk(done, signed, total)
     and type(rawget(p, "byContinent")) == "table" and type(rawget(p, "byZone")) == "table"
 end
 

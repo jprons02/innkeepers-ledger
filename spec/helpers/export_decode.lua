@@ -218,9 +218,12 @@ end
 local COUNT_FIELDS = { signed = true, total = true, done = false }
 local ZONE_FIELDS = { signed = true, total = true, continent = true, done = false }
 
+-- Counts are plain non-negative integers (a negative zero would read "-0"), and `done`
+-- is present only when signed == total >= 1.
 local function countsOk(v)
   return isInt(v.signed, 0, 9999999) and isInt(v.total, 0, 9999999) and v.signed <= v.total
-    and (v.done == nil or isTime(v.done))
+    and 1 / v.signed > 0 and 1 / v.total > 0
+    and (v.done == nil or (isTime(v.done) and v.signed == v.total and v.total >= 1))
 end
 
 local COLLECTION = {
@@ -233,9 +236,6 @@ local function collectionOk(c)
     return false
   end
   if c.faction ~= nil and c.faction ~= "Alliance" and c.faction ~= "Horde" then
-    return false
-  end
-  if c.done ~= nil and not (c.signed == c.total and c.total >= 1) then
     return false
   end
   if type(c.byContinent) ~= "table" or getmetatable(c.byContinent) ~= nil

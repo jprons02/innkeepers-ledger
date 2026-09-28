@@ -27,6 +27,10 @@ local LIMITS = Ledger.LIMITS
 local LIBS = exportLibs.new()
 local CODEC = LIBS.codec
 
+-- A negative zero, made at run time (a `-0` literal may fold into the constant 0).
+local ZERO = 0
+local NEG_ZERO = -ZERO
+
 local REASONS = {
   input = true, flavor = true, exported = true, addon = true, me = true, collection = true,
   entries = true, cosmetics = true, travelers = true, too_large = true,
@@ -634,6 +638,9 @@ describe("Export.build (6.2)", function()
         { key = 30, value = { signed = 1, total = 1, continent = 1.5 } },
         { key = 30, value = { signed = 1, total = 1, continent = 1, done = T + 0.5 } },
         { key = 30, value = { signed = 0 / 0, total = 1, continent = 1 } },
+        -- done only when signed == total >= 1 (spec 4.1).
+        { key = 30, value = { signed = 1, total = 2, continent = 1, done = T } },
+        { key = 30, value = { signed = 0, total = 0, continent = 1, done = T } },
         -- A continent that isn't a kept byContinent key (spec 4.1).
         { key = 30, value = { signed = 1, total = 1, continent = 2 } },
         { key = 30, value = "x" },
@@ -652,6 +659,8 @@ describe("Export.build (6.2)", function()
         { key = 3, value = { signed = 2, total = 1 } },
         { key = 3, value = { signed = 1, total = 1, done = T + 0.5 } },
         { key = 3, value = { signed = 1 } },
+        { key = 3, value = { signed = 1, total = 2, done = T } },
+        { key = 3, value = { signed = 0, total = 0, done = T } },
         { key = 3, value = "x" },
         { key = 3, value = fx.hostileProxy() },
       }
@@ -660,6 +669,15 @@ describe("Export.build (6.2)", function()
         input.progress.byContinent[case.key] = case.value or { signed = 1, total = 1 }
         assert.same(EXPECTED_F().collection, buildOk(input).collection)
       end
+    end)
+
+    it("keeps a map item whose done comes with signed == total >= 1", function()
+      local input = F()
+      input.progress.byZone[30] = { signed = 2, total = 2, continent = 1, done = T }
+      input.progress.byContinent[3] = { signed = 1, total = 1, done = T + 5 }
+      local c = buildOk(input).collection
+      assert.same({ signed = 2, total = 2, continent = 1, done = T }, c.byZone[30])
+      assert.same({ signed = 1, total = 1, done = T + 5 }, c.byContinent[3])
     end)
 
     it("zones of a continent that was left out go with it", function()
@@ -793,6 +811,23 @@ describe("Export.build (6.2)", function()
     end)
   end)
 
+  it("writes a negative zero count as 0 (never -0)", function()
+    assert.equal(-math.huge, 1 / NEG_ZERO)
+    local input = F()
+    input.progress.signed, input.progress.total = NEG_ZERO, 3
+    input.progress.byZone[10].signed = NEG_ZERO
+    input.progress.byContinent[5] = { signed = NEG_ZERO, total = NEG_ZERO }
+    input.progress.byZone[50] = { signed = NEG_ZERO, total = 1, continent = 5 }
+    local c = buildOk(input).collection
+    for _, v in ipairs({ c.signed, c.byZone[10].signed, c.byContinent[5].signed,
+      c.byContinent[5].total, c.byZone[50].signed }) do
+      assert.equal(math.huge, 1 / v)
+    end
+    local spy = spyCodec()
+    exportOk(input, spy.codec)
+    assert.is_nil(spy.serialized:find("^N-", 1, true))
+  end)
+
   describe("purity and safety", function()
     it("never writes an input; no output table is an input table or appears twice", function()
       local input = FT()
@@ -869,6 +904,47 @@ describe("Export.build (6.2)", function()
       input.own[4] = input
       assert.equal(2, #buildOk(input).entries)
     end)
+  end)
+end)
+
+-- ---------------------------------------------------------------------------
+-- The test-only schema check itself (spec 3.8): it must refuse what build must never write.
+
+describe("schemaOk", function()
+  local function breaks(mutate)
+    local data = EXPECTED_F_T()
+    mutate(data)
+    return not dec.schemaOk(data)
+  end
+
+  it("passes EXPECTED_F and EXPECTED_F_T", function()
+    assert.is_true(dec.schemaOk(EXPECTED_F()))
+    assert.is_true(dec.schemaOk(EXPECTED_F_T()))
+  end)
+
+  it("refuses done without signed == total >= 1, at the top and in each map", function()
+    assert.is_true(breaks(function(d) d.collection.done = T end))
+    assert.is_true(breaks(function(d) d.collection.byZone[10].done = T end))
+    assert.is_true(breaks(function(d) d.collection.byContinent[1].done = T end))
+    assert.is_true(breaks(function(d)
+      d.collection.byContinent[2] = { signed = 0, total = 0, done = T }
+    end))
+    assert.is_false(breaks(function(d)
+      d.collection.byContinent[2] = { signed = 4, total = 4, done = T }
+    end))
+  end)
+
+  it("refuses a negative zero count", function()
+    assert.is_true(breaks(function(d) d.collection.signed = NEG_ZERO end))
+    assert.is_true(breaks(function(d) d.collection.byZone[20].total = NEG_ZERO end))
+  end)
+
+  it("refuses an extra key, a bad order and a traveler that is the owner", function()
+    assert.is_true(breaks(function(d) d.extra = 1 end))
+    assert.is_true(breaks(function(d)
+      d.entries[1], d.entries[2] = d.entries[2], d.entries[1]
+    end))
+    assert.is_true(breaks(function(d) d.travelers[1].guid = ME end))
   end)
 end)
 

@@ -55,7 +55,8 @@ lists.
 - **Account and group actions:** invites, group and guild membership, CVars,
   reload/logout, store, items, trade, turning other AddOns on or off.
 - **General-purpose decoders:** AceSerializer's `Deserialize` and LibDeflate's
-  `Decompress…` and `DecodeFor…` functions. Allowed nowhere: nothing we ship reads an
+  `Decompress…`, `DecodeFor…` and `CreateCodec` (its codec decodes) functions. Allowed
+  nowhere: nothing we ship reads an
   export string or any other serialized or compressed data, so a crafted string can't
   reach an unbounded inflate or a float-yielding reader
   ([libraries.md → Findings](libraries.md#findings-that-shape-our-design) 2 and 3). The
@@ -124,3 +125,6 @@ launch the session does this on its own. A finding that needs a maintainer decis
     projects in the diff, including docs and tickets.
 12. **Workflows:** read-only token, `persist-credentials: false`, actions pinned by SHA,
     no `pull_request_target`, no new third-party actions.
+13. **Packaged version:** the version the packager writes into the TOC (`## Version`)
+    matches `[A-Za-z0-9._+-]{1,32}`. Anything else (a space, a `/`, 33 bytes) makes every
+    export refuse with `"addon"` ([specs/export.md §3.5](specs/export.md#35-build-rules)).

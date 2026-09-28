@@ -40,7 +40,9 @@ From here on export fields are only added; anything else bumps the major (`!IL2!
   `byContinent` key is left out; `collection.done` with `signed ~= total` (or `total`
   0) refuses with `collection`, as does a `byContinent`/`byZone` that isn't a table;
   every required-field reason is checked before any item is read; a traveler record's
-  entries are read (and counted) only once its GUID, name and `met` pass.
+  entries are read (and counted) only once its GUID, name and `met` pass; a map item's
+  `done` without `signed == total >= 1` leaves that item out (the review pinned the rule
+  in export-format.md's map rows); a negative zero count is written as `0`.
 
 *Rejected:*
 - **Shipping a decoder or an import:** pasted strings would be untrusted input;

@@ -388,8 +388,8 @@ present with a `nil` value. No key outside this table appears in v1.
 | `collection.faction` | string, optional | `"Alliance"` / `"Horde"` | faction counted; absent: unreadable, every inn counted | `UnitFactionGroup("player")` |
 | `collection.signed`, `.total` | integer | 0..9 999 999, `signed <= total` | open inns signed / all open inns | progress |
 | `collection.done` | time, optional | present only when `signed == total >= 1` | when the last open inn was first signed | progress |
-| `collection.byContinent` | table (map) | integer key 1..999 999 (the client's continent map ID) → `{ signed, total, done? }` | continents with at least one open inn | progress |
-| `collection.byZone` | table (map) | integer key 1..999 999 (zone map ID) → `{ signed, total, continent, done? }` | zones with at least one open inn; `continent` is a `byContinent` key | progress |
+| `collection.byContinent` | table (map) | integer key 1..999 999 (the client's continent map ID) → `{ signed, total, done? }`; `signed`/`total` ranges as `collection.signed`/`.total`; `done` a time, present only when `signed == total >= 1` | continents with at least one open inn | progress |
+| `collection.byZone` | table (map) | integer key 1..999 999 (zone map ID) → `{ signed, total, continent, done? }`; `signed`/`total` ranges as `collection.signed`/`.total`; `done` a time, present only when `signed == total >= 1` | zones with at least one open inn; `continent` is a `byContinent` key | progress |
 | `cosmetics` | array | `{ id = 1..9 999, t = time }`, `(t, id)` ascending, `id` unique | unlocked quills, inks and seals and when each was earned | `Cosmetics.unlocked(own, faction, ledger:earned())` |
 | `entries` | array | entry (below), `(t, inn)` ascending, `(inn, t)` unique | your own signatures; each inn's first is its stamp | `ledger:own()` |
 | `travelers` | array, optional | present only when opted in (may be empty); `met` descending, then `guid` byte order; `guid` unique, never `me.guid` | travelers whose signatures you hold | `ledger:travelers()` |
@@ -732,6 +732,13 @@ Where this spec was silent, the build took the fail-closed reading. Each is also
 - **`collection.done` present with `signed ~= total` or `total < 1` → `"collection"`**
   (§4.1's "present only when"; §3.5 said only "present and invalid").
 - **`byContinent` or `byZone` not a table → `"collection"`** (both are required in §4.1).
+- **Map items follow the top level's rule** (review of #64): a `byContinent` or `byZone`
+  item whose `done` comes without `signed == total >= 1` is left out, and the two map
+  rows of §4.1 now pin it (as `Collection.progress` already guarantees:
+  [collection-cosmetics.md §3.3](collection-cosmetics.md#33-progress)).
+- **A negative zero count is written as 0:** `build` adds `0` to `signed` and `total`,
+  since AceSerializer would write `-0` as `^N-0`, which isn't plain decimal digits.
+  `schemaOk` refuses a negative zero.
 - **Reason order:** every required top-level check runs first, in §3.5's order; only then
   are items read, so `"too_large"` never hides a required-field reason.
 - **Traveler entries are read (and count toward the 3 000) only for a record whose

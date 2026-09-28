@@ -62,19 +62,38 @@ present with a `nil` value. No key outside this table appears in v1.
 | `exported` | integer | time | when the string was made | `GetServerTime()` |
 | `addon` | string | 1..32 bytes of `A-Z a-z 0-9 . _ + -`; `"dev"` unpackaged | the AddOn version that wrote it | Core's `version()` |
 | `me` | table | `{ guid, name? }` | the character | |
-| `me.guid` | string | `Player-<digits>-<hex>`, ≤ 40 bytes | identity | `ledger:ownerGUID()` |
-| `me.name` | string, optional | `Ledger.validName` (2..96 bytes, letters, UTF-8, one space, optional `-Realm`) | display name at export | Core's `ownerName()` |
+| `me.guid` | string | a GUID ([Names and GUIDs](#names-and-guids)) | identity | `ledger:ownerGUID()` |
+| `me.name` | string, optional | a name ([Names and GUIDs](#names-and-guids)) | display name at export | Core's `ownerName()` |
 | `collection` | table | `{ faction?, signed, total, done?, byContinent, byZone }` | progress over **your own** signatures, inns open to your faction | `Collection.progress(own, faction)` minus `inns`, `unknown`, `truncated` |
 | `collection.faction` | string, optional | `"Alliance"` / `"Horde"` | faction counted; absent: unreadable, every inn counted | `UnitFactionGroup("player")` |
 | `collection.signed`, `.total` | integer | 0..9 999 999, `signed <= total` | open inns signed / all open inns | progress |
 | `collection.done` | time, optional | present only when `signed == total >= 1` | when the last open inn was first signed | progress |
-| `collection.byContinent` | table (map) | integer key 1..999 999 (the client's continent map ID) → `{ signed, total, done? }` | continents with at least one open inn | progress |
-| `collection.byZone` | table (map) | integer key 1..999 999 (zone map ID) → `{ signed, total, continent, done? }` | zones with at least one open inn; `continent` is a `byContinent` key | progress |
+| `collection.byContinent` | table (map) | integer key 1..999 999 (the client's continent map ID) → `{ signed, total, done? }`; `signed`/`total` ranges as `collection.signed`/`.total`; `done` a time, present only when `signed == total >= 1` | continents with at least one open inn | progress |
+| `collection.byZone` | table (map) | integer key 1..999 999 (zone map ID) → `{ signed, total, continent, done? }`; `signed`/`total` ranges as `collection.signed`/`.total`; `done` a time, present only when `signed == total >= 1` | zones with at least one open inn; `continent` is a `byContinent` key | progress |
 | `cosmetics` | array | `{ id = 1..9 999, t = time }`, `(t, id)` ascending, `id` unique | unlocked quills, inks and seals and when each was earned | `Cosmetics.unlocked(own, faction, ledger:earned())` |
 | `entries` | array | entry (below), `(t, inn)` ascending, `(inn, t)` unique | your own signatures; each inn's first is its stamp | `ledger:own()` |
 | `travelers` | array, optional | present only when opted in (may be empty); `met` descending, then `guid` byte order; `guid` unique, never `me.guid` | travelers whose signatures you hold | `ledger:travelers()` |
 | `travelers[i]` | table | `{ guid, name, met = time, entries }`; `guid`/`name` as `me.guid`/`me.name` (`name` required); `entries` 1..40 entries, `(t, inn)` ascending, `(inn, t)` unique | one traveler and **their own** signatures | `ledger:signerEntries(guid)` |
 | entry | table | `{ inn = 1..9 999 999, t = time, phrase = { 1..5 IDs, each 1..9 999 }, seal = 1..999 (optional) }` | one signature | |
+
+### Names and GUIDs
+
+These are the AddOn's own rules (`Ledger.validGUID`, `Ledger.validName`), spelled out so a
+consumer can check them without reading Lua. Traveler GUIDs and names follow the same
+rules. "Letter" means a byte `A-Z`, `a-z` or 128–255 (UTF-8), and every byte count is in
+bytes, not characters.
+
+- **GUID:** `Player-`, one or more digits `0-9`, `-`, one or more hex digits
+  (`0-9 A-F a-f`); at most 40 bytes in all.
+- **Name:** 2..96 bytes in all, with no control byte (0–31, 127) and no `|`. It splits
+  at its **first** `-` into a character name and an optional realm:
+  - **Character name:** one word of 2..48 letters, or two words joined by one space, the
+    first 2..48 letters and the second 1..48 letters. No `-`, digits or other bytes.
+  - **Realm** (only after a `-`): 1..48 bytes of letters, digits `0-9`, `'` and `-`,
+    not ending in `-` (so `Zoë-Azjol-Nerub` is the name `Zoë` on the realm
+    `Azjol-Nerub`).
+
+### Notes
 
 - An entry's `inn` is an innkeeper NPC ID from `Data/Inns`, possibly an **alias** of the
   inn's primary record ([specs/collection-cosmetics.md §3.1](specs/collection-cosmetics.md#31-places-inns-zones-continents)).

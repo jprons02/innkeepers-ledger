@@ -790,6 +790,45 @@ describe("Core:ExportString", function()
     end
   end)
 
+  it("keeps a planted traveler out of its own default export (walks every string)", function()
+    local PLANTED, NAME = "Player-1-00000009", "Planted"
+    local ns = login({ db = { global = { ledgers = { [GUID] = {
+      schema = 1,
+      me = { name = "Traveler" },
+      own = { deepcopy(OWN[1]),
+        { inn = 1, t = NOW - 30, phrase = { 1 }, signer = PLANTED, name = NAME } },
+      travelers = { [PLANTED] = { name = NAME, met = NOW - 100,
+        entries = { { inn = 1234, t = NOW - 300, phrase = { 4 } } } } },
+      earned = { [PLANTED] = NOW, [1] = NOW - 600 },
+      quarantine = { { signer = PLANTED, name = NAME } },
+    } } } } })
+    local function strings(v, out)
+      if type(v) == "string" then
+        out[#out + 1] = v
+      elseif type(v) == "table" then
+        for k, x in pairs(v) do
+          strings(k, out)
+          strings(x, out)
+        end
+      end
+      return out
+    end
+    for _, str in ipairs({ ns.Core:ExportString(false), ns.Core:ExportString() }) do
+      local data = decode(str)
+      assert.is_nil(data.travelers)
+      for _, s in ipairs(strings(data, {})) do
+        assert.is_nil(s:find(PLANTED, 1, true), s)
+        assert.is_nil(s:find(NAME, 1, true), s)
+      end
+    end
+    -- The plant is real: opting in exports it.
+    local found = {}
+    for _, s in ipairs(strings(decode(ns.Core:ExportString(true)), {})) do
+      found[s] = true
+    end
+    assert.is_true(found[PLANTED] and found[NAME])
+  end)
+
   it("exports a read-only ledger (a newer schema) with its entries", function()
     local ns = login({ db = { global = { ledgers = { [GUID] = {
       schema = 99, me = {}, own = deepcopy(OWN), travelers = {}, earned = {}, quarantine = {},

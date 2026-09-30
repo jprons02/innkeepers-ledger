@@ -100,10 +100,11 @@ describe("InnkeepersLedger.toc", function()
     assert.same({}, vendored)
   end)
 
-  it("declares the SavedVariables and keeps the interface placeholder visible", function()
+  it("declares the SavedVariables and the Forever interface number", function()
     local toc = io.open(load.TOC, "rb"):read("*a")
     assert.truthy(toc:find("\n## SavedVariables: InnkeepersLedgerDB", 1, true))
-    assert.truthy(toc:find("PLACEHOLDER interface number", 1, true))
+    -- Read in the Forever beta client (docs/platform-forever.md).
+    assert.truthy(toc:find("\n## Interface: 16001\r?\n"))
   end)
 end)
 

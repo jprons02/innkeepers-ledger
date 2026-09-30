@@ -10,6 +10,43 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-30 — Forever beta results: modern API, two-part names, zones without continents
+
+The first in-client run (#12, beta build 1.60.1.70124) settled most platform questions;
+the facts live in [platform-forever.md](platform-forever.md). What they decide:
+
+- **Target the modern API; the TOC says `## Interface: 16001`.** The beta installs as a
+  "classic" product but runs the retail/Midnight API (`WOW_PROJECT_ID` 1), so the
+  retail-style design stands. The TOC placeholder is gone, and its test now checks the
+  real number.
+- **Two-part names break sender keys, so sync is fixed in #75.** The surname fills the
+  realm slot of `UnitName`/`UnitFullName`, and addon-message senders arrive as
+  `"First Surname"` with no realm. The group map keys units as `"First-Surname"`, so
+  group senders never resolve (fail-closed, as designed, so it's not a security hole),
+  and the ledger's owner name keeps only the first name. The security model doesn't
+  change, only how names are keyed.
+- **The collection must allow a zone with no Continent above it (#76).** Zephras Isle
+  hangs directly off the Azeroth world map, which breaks `collection-cosmetics.md` §3.1's
+  "first Continent-type ancestor" rule.
+- **Inn data comes from play.** Forever's world is new (new zones, NPC IDs from 251 000
+  up), so neither Classic nor retail inn lists carry over. The probe logs every NPC the
+  maintainer talks to, and `Data/Inns` fills in from those logs during the beta.
+- **Sync keeps its 255-byte cap and self-contained messages.** The client truncates
+  longer messages silently and reports success, and a burst of whispers arrived out of
+  order. `SyncProtocol` already caps at 255 and never relies on ordering or multi-part
+  messages; this confirms the design.
+- **Custom-channel addon messages work,** so a post-v1 "inn common room" stays possible.
+  It's still out of v1 scope.
+
+*Rejected:*
+- **Building for the Classic API because of the product name:** the client reports
+  mainline, and its API is retail's.
+- **Keeping a realm suffix as the canonical sender form "because retail does":** Forever
+  senders carry none. #75 picks one key form from the observed facts.
+
+*Reflected in:* `docs/platform-forever.md`, `InnkeepersLedger.toc`, `docs/status.md`,
+#75, #76.
+
 ### 2026-09-28 — Account email settings stay as they are
 
 This supersedes one clause of *Security audit: repository hardening* below ("Account

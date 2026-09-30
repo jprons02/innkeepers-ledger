@@ -1,0 +1,6 @@
+## Interface: 16001
+## Title: ILProbe (throwaway)
+## Notes: Innkeeper's Ledger platform probe for issue #12. Throwaway; never released.
+## SavedVariables: ILProbeDB
+
+Probe.lua

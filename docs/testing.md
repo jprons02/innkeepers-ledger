@@ -78,6 +78,17 @@ Proportional, not ceremonial:
 - **Test by hand in the client:** signing flow, gossip integration, UI, real
   addon messages between two accounts/characters. These go on the in-client batch in
   [status.md](status.md) rather than blocking other work.
+- **The in-client probe (#12):** a throwaway AddOn, `!ILProbe`, on branch
+  `spike/12-probe`, never merged. `sh spike/probe/install.sh "<client folder>"` copies
+  it, plus the working-tree AddOn with the TOC's interface number, into the client's
+  `Interface/AddOns`. A new AddOn folder needs a full client restart. In game, `/ilp`
+  runs every automatic check; talking to any NPC records its GUID, gossip and map chain;
+  every addon message, rest-state change and Lua error is logged too. `/reload` or
+  logging out writes the log to
+  `WTF/Account/<account>/SavedVariables/!ILProbe.lua`, which a session reads straight
+  from disk. Extend the probe on that branch when a new client question comes up; the
+  results go into [platform-forever.md](platform-forever.md), never the raw log (it holds
+  the character's name).
 - **CI:** every check runs on every push and PR, and each has a local command
   ([CONTRIBUTING.md → Development setup](../CONTRIBUTING.md#development-setup)). Pure
   modules have coverage floors (95% for `Ledger`, `SyncProtocol`, `SyncSchedule`; 90% the rest).

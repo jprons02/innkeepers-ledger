@@ -17,9 +17,9 @@
     specs [phrase.md](specs/phrase.md), [collection-cosmetics.md](specs/collection-cosmetics.md),
     [export.md](specs/export.md).
 - **Phase 2 has started (#12).** The maintainer is in the Forever beta (#1, #2 closed:
-  beta route). The first in-client run (2026-09-30) used a throwaway probe AddOn (branch
-  `spike/12-probe`, never merged; `/ilp` records to SavedVariables, and
-  `spike/probe/install.sh` installs it). Results: [platform-forever.md](platform-forever.md).
+  beta route). The first in-client run (2026-09-30) used the throwaway probe AddOn
+  ([testing.md → The in-client probe](testing.md#testing-posture)). Results:
+  [platform-forever.md](platform-forever.md).
   - ✅ Modern retail/Midnight API; TOC `16001`; the AddOn and libraries load; no hidden
     values outside combat; NPC IDs readable from `UnitGUID("npc")`; a button on the
     gossip frame works; custom-channel addon messages allowed; 255-byte cap (longer
@@ -38,7 +38,8 @@
 
 ## Next step
 
-- **#75** (ready, no client needed): two-part names in `Core` and `Sync`.
+- **#75** (ready, no client needed): two-part names in `Core` and `Sync`. Start here:
+  party sync is a core feature and is dead on Forever until this lands.
 - **#76** (ready, no client needed): zones without a continent in `Collection`.
 - **In the client (maintainer, as you play):** keep ILProbe enabled. Talk to every
   innkeeper you pass (the probe logs NPC ID, map chain, faction and gossip options) and
@@ -48,8 +49,8 @@
 
 - **In the beta** (2026-09-30), which runs until **2026-10-21**. Launch: **2026-11-04**.
   Plan: Phase 2 during the beta, release at launch.
-- The beta client is `World of Warcraft\_classic_beta_`; the probe's log is
-  `WTF\Account\<account>\SavedVariables\!ILProbe.lua`.
+- The beta client is installed at `World of Warcraft\_classic_beta_`. The probe is
+  installed there and enabled.
 
 ## Open questions (maintainer to decide)
 

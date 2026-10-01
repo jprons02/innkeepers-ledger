@@ -520,7 +520,7 @@ describe("Sync receive: other prefixes", function()
     inject(me, nil, text, "PARTY", mira.full)
     assertQuiet(me)
     assert.equal(0, recv.n)
-    assert.same({ "sync: on" }, me.lines)
+    assert.same({ "sync: on", "sync: names realm" }, me.lines)
   end)
 end)
 
@@ -1669,7 +1669,8 @@ describe("ns.Sync:Start (the real client)", function()
     wow.chat = {}
     wow.slash("/ledger debug")
     assert.truthy(wow.chat[2]:find("ledger: open; sync: received 0, dropped 0, added 0, dup 0, "
-      .. "rejected 0, evicted 0, sent 0, sendFailed 0, errors 0", 1, true), wow.chat[2])
+      .. "rejected 0, evicted 0, sent 0, sendFailed 0, errors 0; names realm", 1, true),
+      wow.chat[2])
   end)
 
   it("receives CHAT_MSG_ADDON; with the real, empty data every entry is rejected", function()

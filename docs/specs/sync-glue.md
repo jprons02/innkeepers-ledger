@@ -109,13 +109,16 @@ at `PLAYER_LOGIN`) calls `Core:OpenLedger()`:
    (`ns.ledger = nil`), `Sync` never starts, and the debug report says
    `ledger: no GUID`. **The GUID is checked before it is used as a table key**, so a
    hidden value never indexes SavedVariables.
-2. **Owner name.** `name, second = UnitName("player")`, in `pcall`. A hidden or
-   non-string `name` becomes `nil`; `Ledger.new` then leaves `me` empty (slice 1 §4.3).
-   On a two-part client (Forever, #75) the name is `name .. " " .. surname`, where
-   `surname = Sync.surname(second, GetNormalizedRealmName())` ([§3.4](#34-sender-resolution));
-   a hidden `second` or realm, or no surname, leaves `name` alone (retail's `second` is
-   `nil` for the player). A result that fails `validName` is dropped as before. The name
-   is display only and never blocks opening.
+2. **Owner name.** `name = Sync.readOwnName(api, hidden)`, the same read and rule that
+   decide `Sync`'s name form ([§3.4](#34-sender-resolution), #80), so the two agree
+   whenever both read the same values (the name is read at login; `Sync` may decide
+   later, if the realm or slot was unreadable then). It reads `name, second = UnitFullName("player")` (`UnitName` when
+   `UnitFullName` isn't a function) and `GetNormalizedRealmName()`, each in `pcall`; a
+   hidden value counts as `nil`. A non-string `name` becomes `nil`; `Ledger.new` then
+   leaves `me` empty (slice 1 §4.3). On a two-part client (Forever, #75) the name is
+   `name .. " " .. second`; a hidden or unreadable `second` or realm, or a slot that
+   isn't a surname (our realm, retail), leaves `name` alone. A result that fails
+   `validName` is dropped as before. The name is display only and never blocks opening.
 3. **Weekly anchor** (slice 1 §8 → Weekly reset source):
    - `secs = C_DateAndTime.GetSecondsUntilWeeklyReset()`, called in `pcall`, only if
      `C_DateAndTime` is a table and that field a function.
@@ -189,9 +192,11 @@ only.
    everything is validated anyway). Anything else → sync off for the session, debug
    `sync: off (prefix)`.
 3. `held = combatNow()` (§3.6) → `schedule:setHeld(held)`.
-4. Run the group and guild handlers once (§3.5.1) so a `/reload` inside a group or guild
+4. Decide the name form if our player unit and realm can be read (`client:twoPart()`,
+   §3.4), so the report and the decision line say it even when solo.
+5. Run the group and guild handlers once (§3.5.1) so a `/reload` inside a group or guild
    starts syncing without waiting for an event.
-5. Only `ns.Sync:Start()` (the real path) creates the frame and registers the events:
+6. Only `ns.Sync:Start()` (the real path) creates the frame and registers the events:
    `CHAT_MSG_ADDON`, `GROUP_ROSTER_UPDATE`, `GUILD_ROSTER_UPDATE`, `PLAYER_GUILD_UPDATE`,
    `PLAYER_REGEN_DISABLED`, `PLAYER_REGEN_ENABLED`. Every handler calls
    `client:onEvent(event, ...)`. Tests call `onEvent` directly.
@@ -258,10 +263,18 @@ the realm. The client tells the two apart **from its own player unit only**, nev
 a peer string: `Sync.surname(second, realm)` is `second` (the 2nd return of
 `UnitFullName("player")`, `UnitName` as the fallback) when it's a non-empty string of at
 most 48 bytes with no whitespace or `-` that differs from `realm`, else `nil`. Retail's
-slot holds our realm (or `nil`), so it's `nil` there. The answer is decided once, the
-first time `realm` and a non-empty, non-hidden string `second` are both readable, and
+slot holds our realm (or `nil`), so it's `nil` there. **One read, one rule** (#80):
+`Sync.readOwnName(api, isHidden)` reads our player unit and realm (hidden values count as
+`nil`) and passes them to the pure `Sync.ownName(name, second, realm)`, which returns the
+display name and the form: `true` (two-part), `false` (realm) or `nil` (undecided: no
+1..48-byte realm, or no non-empty string in the slot). `Core`'s owner name (§3.2 step 2)
+and the decision here both come from it. The answer is decided once, at start (§3.3.2,
+so a solo player is decided too) or the first time after that both are readable, and
 kept for the session; until then the client follows the realm rules, under which a
-two-part sender never matches (fails closed). Deciding "two-part" empties the group and
+two-part sender never matches (fails closed). Deciding prints one debug line,
+`sync: names two-part` or `sync: names realm` (§3.8), and `Sync:NameForm()` reports it
+as `two-part`, `realm` or `undecided` (`undecided` too with no client). Deciding
+"two-part" empties the group and
 guild maps (built in the realm form until then) and clears the rescan and roster gates,
 so the two forms never mix: the next group miss rescans at once, and the next guild
 miss requests the roster at once (then at most once per 60 s, as usual).
@@ -594,7 +607,15 @@ budget records) for tests and the debug report.
   `open`, with the non-zero `loadReport` counts, or `no GUID`, `open failed`, `not open
   yet` while the GUID retry runs) and the `stats` totals. `Core` reads the real client's
   counters at `ns.Sync.stats` (the `Sync` receive ticket exposes them there) and sums each
-  table of counters; with no `stats` it prints `sync: no stats`.
+  table of counters; with no `stats` it prints `sync: no stats`. It ends with the name
+  form, `names two-part`, `names realm` or `names undecided` (from `ns.Sync:NameForm()`;
+  an error or any other answer prints `undecided`), so a failed party test shows at once
+  whether the client read its names the wrong way (#80, [§3.4](#34-sender-resolution)).
+  For example: `ledger: open; sync: received 0, …, errors 0; names two-part`.
+- **The name-form decision** prints `sync: names two-part` or `sync: names realm` once,
+  when it's made. Like every line it prints only while the log is on (a decision at
+  login, before `/ledger debug`, prints nothing; the report shows it) and counts against
+  the limit below.
 - **While on:** `Core:Debug(line)` prints through `Core:Print`. At most 5 lines per 10 s;
   lines over that are counted, and the next printed line starts with `(<n> skipped)`.
   Nothing is buffered.
@@ -807,7 +828,11 @@ comments ("the combat flag", "the transport"). The README principle about checki
 - Hidden or non-string name → opened with `me = {}`; a renamed character → `me.name`
   updated. Forever names → `me.name` is `"First Surname"`; our realm (spaced or not) in
   the slot, no readable realm, or a hidden slot or realm → the first name alone; a
-  composed name failing the name rule → `me = {}`.
+  composed name failing the name rule → `me = {}`. `UnitFullName` is read first,
+  `UnitName` only when it's missing (name stubs set both, or a case tests nothing).
+- The report ends with `names realm` (default stub), `names two-part`
+  (`wow.foreverNames()`), or `names undecided` (no realm, a hidden slot, a read-only
+  ledger, no client, `NameForm` raising).
 - Anchor: from the API (and rounded: `secs` ending in `:29` and `:31` seconds); API
   missing, erroring, returning `nil`, a string, `NaN`, `-1`, `604 861` or a hidden value →
   the fallback; region 1 and an unknown region → the US row.
@@ -851,7 +876,11 @@ Receive path, each hostile case by name:
   surname included) are skipped, so a one-word sender never borrows a member's GUID;
   maps built before the decision are emptied when it's made; `"Unknown"` until a
   rescan reads the name; the roster with or without our realm's suffix; the real client
-  under the stub.
+  under the stub. #80: `Sync.ownName` cases; the decision line once, in our own words,
+  only while debug is on, no peer string; decided at start when solo; Core's owner name
+  and `NameForm` agree on the shared cases (Forever, retail, a hidden slot, an
+  unreadable or hidden realm, `UnitFullName` missing, our realm in the slot,
+  `UnitFullName` and `UnitName` disagreeing).
 - **channels:** WHISPER, `INSTANCE_CHAT`, CHANNEL, SAY, `nil` → `channel`, nothing sent.
 - **other prefixes:** ignored, no stats, no debug line.
 - **our own echo:** counted as `self`, no debug line.

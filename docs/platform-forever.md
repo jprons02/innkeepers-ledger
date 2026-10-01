@@ -127,7 +127,9 @@ in the sections above. **Partly** means the rest of the item is still open.
       members (see the #54 item); guild roster exposes member GUIDs. Two-part names are
       handled since #75 (bare `"First Surname"` keys; [decisions.md](decisions.md),
       2026-09-30); confirm with a second character that a party member's messages
-      resolve (`/ledger debug` shows `got hello PARTY`, not `drop unresolved`)
+      resolve (`/ledger debug` shows `got hello PARTY`, not `drop unresolved`). First,
+      logged in solo, `/ledger debug`'s report must end `names two-part` (#80: the form
+      is decided at login and kept for the session)
 - [ ] Sync glue ([specs/sync-glue.md §8](specs/sync-glue.md#8-unverified-client-facts-this-spec-relies-on)).
       **Partly** ✅: the `CHAT_MSG_ADDON` sender is `"First Surname"` (a space, no realm
       suffix); `GetNormalizedRealmName()` is `ClassicBetaPvP`; `UnitGUID("player")` and

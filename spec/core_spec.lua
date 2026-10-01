@@ -301,6 +301,16 @@ describe("Core opening the ledger at login", function()
   end)
 
   describe("owner name", function()
+    -- Both name functions answer `fn`: Core reads UnitFullName and falls back to UnitName,
+    -- so a case that stubbed only one would still read the stub's own name.
+    local function names(fn, extra)
+      local t = { UnitFullName = fn, UnitName = fn }
+      for k, v in pairs(extra or {}) do
+        t[k] = v
+      end
+      return t
+    end
+
     it("opens with me = {} for a valid-looking name that issecretvalue flags", function()
       local ns = login({ overrides = { issecretvalue = function(v) return v == "Traveler" end } })
       assert.is_false(ns.ledger.readOnly)
@@ -309,10 +319,9 @@ describe("Core opening the ledger at login", function()
 
     it("opens with me = {} for a hidden name", function()
       local hiddenName = secret()
-      local ns = login({ atLogin = {
-        UnitName = function() return hiddenName end,
+      local ns = login({ atLogin = names(function() return hiddenName end, {
         issecretvalue = function(v) return rawequal(v, hiddenName) end,
-      } })
+      }) })
       assert.same({}, wow.errors)
       assert.is_false(ns.ledger.readOnly)
       assert.same({}, saved()[GUID].me)
@@ -320,20 +329,35 @@ describe("Core opening the ledger at login", function()
 
     it("opens with me = {} for a name that isn't a string", function()
       for _, bad in ipairs({ 42, true, {} }) do
-        local ns = login({ atLogin = { UnitName = function() return bad end } })
+        local ns = login({ atLogin = names(function() return bad end) })
         assert.is_false(ns.ledger.readOnly)
         assert.same({}, saved()[GUID].me)
         wow.uninstall()
       end
     end)
 
-    it("opens with me = {} when UnitName raises or isn't a function", function()
+    it("opens with me = {} when the name functions raise or aren't functions", function()
       for _, bad in ipairs({ function() error("boom") end, 42 }) do
-        local ns = login({ atLogin = { UnitName = bad } })
+        local ns = login({ atLogin = names(bad) })
         assert.is_table(ns.ledger)
         assert.same({}, saved()[GUID].me)
         wow.uninstall()
       end
+    end)
+
+    it("reads UnitFullName first, and UnitName only when UnitFullName is missing", function()
+      local ns = login({ atLogin = {
+        UnitFullName = function() return "Wayfarer", "Stubrealm" end,
+        UnitName = function() return "Other" end,
+      } })
+      assert.equal("Wayfarer", ns.ledger.data.me.name)
+      wow.uninstall()
+
+      ns = login({ atLogin = {
+        UnitFullName = false,
+        UnitName = function() return "Other" end,
+      } })
+      assert.equal("Other", ns.ledger.data.me.name)
     end)
 
     it("updates me.name for a renamed character", function()
@@ -342,7 +366,7 @@ describe("Core opening the ledger at login", function()
       local db = deepcopy(_G.InnkeepersLedgerDB)
       wow.uninstall()
 
-      local ns = login({ db = db, atLogin = { UnitName = function() return "Wayfarer" end } })
+      local ns = login({ db = db, atLogin = names(function() return "Wayfarer" end) })
       assert.equal("Wayfarer", saved()[GUID].me.name)
       assert.equal(ns.ledger.data, saved()[GUID])
     end)
@@ -357,18 +381,17 @@ describe("Core opening the ledger at login", function()
     it("keeps the first name alone when the surname can't be told from a realm", function()
       local hiddenSlot = secret()
       local cases = {
-        ["our realm in the slot"] = { atLogin = {
-          UnitName = function() return "Traveler", "ClassicBetaPvP" end } },
-        ["a spaced realm in the slot"] = { atLogin = {
-          UnitName = function() return "Traveler", "Classic Beta PvP" end } },
+        ["our realm in the slot"] = { atLogin = names(
+          function() return "Traveler", "ClassicBetaPvP" end) },
+        ["a spaced realm in the slot"] = { atLogin = names(
+          function() return "Traveler", "Classic Beta PvP" end) },
         ["no realm"] = { atLogin = { GetNormalizedRealmName = function() return nil end } },
         ["a raising realm"] = { atLogin = {
           GetNormalizedRealmName = function() error("boom") end } },
         ["a hidden realm"] = { atLogin = {
           issecretvalue = function(v) return v == "ClassicBetaPvP" end } },
-        ["a hidden slot"] = { atLogin = {
-          UnitName = function() return "Traveler", hiddenSlot end,
-          issecretvalue = function(v) return rawequal(v, hiddenSlot) end } },
+        ["a hidden slot"] = { atLogin = names(function() return "Traveler", hiddenSlot end, {
+          issecretvalue = function(v) return rawequal(v, hiddenSlot) end }) },
       }
       for label, case in pairs(cases) do
         login({ overrides = wow.foreverNames("Traveler", "Wayfarer"), atLogin = case.atLogin })
@@ -388,7 +411,7 @@ describe("Core opening the ledger at login", function()
       local db = deepcopy(_G.InnkeepersLedgerDB)
       wow.uninstall()
 
-      local ns = login({ db = db, atLogin = { UnitName = function() return "x|cffff" end } })
+      local ns = login({ db = db, atLogin = names(function() return "x|cffff" end) })
       assert.is_table(ns.ledger)
       assert.equal("Traveler", saved()[GUID].me.name)
     end)
@@ -616,7 +639,43 @@ describe("the debug log", function()
   it("says so when Sync has no stats", function()
     ns.Sync.stats = nil
     wow.slash("/ledger debug")
-    assert.truthy(wow.chat[2]:find("ledger: open; sync: no stats", 1, true), wow.chat[2])
+    assert.truthy(wow.chat[2]:find("ledger: open; sync: no stats; names realm", 1, true),
+      wow.chat[2])
+  end)
+
+  it("ends the report with the client's name form", function()
+    local hiddenSlot = secret()
+    local cases = {
+      { "realm", {} },
+      { "two-part", { overrides = wow.foreverNames("Traveler", "Wayfarer") } },
+      { "undecided", { overrides = wow.foreverNames("Traveler", "Wayfarer"), atLogin = {
+        GetNormalizedRealmName = function() return nil end } } },
+      { "undecided", { overrides = wow.foreverNames("Traveler", "Wayfarer"), atLogin = {
+        UnitFullName = function() return "Traveler", hiddenSlot end,
+        issecretvalue = function(v) return rawequal(v, hiddenSlot) end } } },
+      -- Read-only: Sync never starts, so nothing decided it.
+      { "undecided", { db = { global = { ledgers = { [GUID] = { schema = 99 } } } } } },
+    }
+    for i, case in ipairs(cases) do
+      wow.uninstall()
+      ns = login(case[2])
+      wow.chat = {}
+      wow.slash("/ledger debug")
+      assert.same({}, wow.errors, i)
+      local suffix = "; names " .. case[1]
+      assert.equal(suffix, wow.chat[2]:sub(-#suffix), i .. ": " .. wow.chat[2])
+    end
+  end)
+
+  it("says names undecided when Sync has no client or NameForm fails", function()
+    ns.Sync.client = nil
+    wow.slash("/ledger debug")
+    assert.truthy(wow.chat[2]:find("; names undecided$"), wow.chat[2])
+    wow.slash("/ledger debug")
+    ns.Sync.NameForm = function() error("boom") end
+    wow.chat = {}
+    wow.slash("/ledger debug")
+    assert.truthy(wow.chat[2]:find("; names undecided$"), wow.chat[2])
   end)
 
   it("reports a read-only ledger with its reason", function()

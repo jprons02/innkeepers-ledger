@@ -27,7 +27,9 @@
   - ✅ **Two-part names** (`"First Surname"`, surname in the realm slot): fixed in #75.
     Senders, group and guild keys and stored names use the bare `"First Surname"`;
     the owner's name is `"First Surname"` ([decisions.md](decisions.md), 2026-09-30).
-    Still to confirm with a second character (#12).
+    Still to confirm with a second character (#12). `/ledger debug`'s report ends with
+    `names two-part`, `names realm` or `names undecided`, and Core and Sync read our
+    own name through one helper (#80).
   - ✅ **Zones can sit under the world map with no continent:** fixed in #76 (#83). Such a
     zone is grouped under its World map (Zephras Isle → Azeroth 947); a map ID never
     keys both a zone and a continent ([decisions.md](decisions.md), 2026-09-30). The
@@ -44,8 +46,6 @@
 
 ## Next step
 
-- **#80** (ready, no client needed): show the two-part name decision in `/ledger debug`
-  and read our own name one way. Do it before the #12 party test. Start here.
 - **#81** (blocked on the maintainer's accounts): the BigWigs packager. The workflow,
   version check and dry run can be built first; tags and publishing stay the
   maintainer's.
@@ -84,6 +84,7 @@ Batched in #12; the open items are the unticked ones in
 In short:
 - **Any innkeeper:** talk to them (gossip, NPC ID, `IsResting()` inside the inn, the
   button's look on their dialog).
+- **Solo, after login:** `/ledger debug`'s report ends `names two-part` (#80).
 - **A second character in a party** (a second account or a friend with both AddOns):
   party and raid round-trips; with `/ledger debug` on, their HELLO shows as
   `got hello PARTY`, not `drop unresolved` (#75's follow-up); what

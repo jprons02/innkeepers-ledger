@@ -105,7 +105,63 @@ describe("Sync.surname", function()
     end)
 end)
 
+describe("Sync.ownName", function()
+  local Sync
+
+  before_each(function()
+    local w = harness.new()
+    Sync = w:add("Aldric", { start = false }).ns.Sync
+  end)
+
+  -- { name, second, realm } -> display name, form
+  it("gives the display name and the name form from one reading", function()
+    for label, case in pairs({
+      forever = { { "Ada", "Brook", REALM }, "Ada Brook", true },
+      retail = { { "Aldric", "Stubrealm", "Stubrealm" }, "Aldric", false },
+      ["our realm in the slot"] = { { "Ada", REALM, REALM }, "Ada", false },
+      ["a spaced realm in the slot"] = { { "Ada", "Classic Beta PvP", REALM }, "Ada", false },
+      ["no slot"] = { { "Ada", nil, REALM }, "Ada", nil },
+      ["an empty slot"] = { { "Ada", "", REALM }, "Ada", nil },
+      ["a slot that isn't a string"] = { { "Ada", 42, REALM }, "Ada", nil },
+      ["no realm"] = { { "Ada", "Brook", nil }, "Ada", nil },
+      ["an empty realm"] = { { "Ada", "Brook", "" }, "Ada", nil },
+      ["a realm that isn't a string"] = { { "Ada", "Brook", 42 }, "Ada", nil },
+      ["a realm too long"] = { { "Ada", "Brook", ("R"):rep(49) }, "Ada", nil },
+      ["no name, two-part"] = { { nil, "Brook", REALM }, nil, true },
+      ["a name that isn't a string"] = { { 42, "Stubrealm", "Stubrealm" }, nil, false },
+    }) do
+      local name, form = Sync.ownName(case[1][1], case[1][2], case[1][3])
+      assert.equal(case[2], name, label)
+      assert.equal(case[3], form, label)
+    end
+  end)
+end)
+
 describe("Sync with two-part names: telling the client apart", function()
+  it("logs the decision once, in our own words", function()
+    for _, mode in ipairs({ { forever = true, word = "two-part", name = "Ada Brook" },
+      { forever = false, word = "realm", name = "Aldric" } }) do
+      local w = harness.new({ forever = mode.forever })
+      local me = w:add(mode.name, { start = false })
+      me.impl.GetNormalizedRealmName = function() return nil end
+      assert.is_true(me.client:start())
+      assert.same({ "sync: on" }, me.lines) -- undecided: no line
+      me.impl.GetNormalizedRealmName = function() return w.realm end
+      for _ = 1, 3 do
+        me.client:twoPart()
+        me.client:onEvent("GROUP_ROSTER_UPDATE")
+      end
+      assert.same({ "sync: on", "sync: names " .. mode.word }, me.lines)
+    end
+  end)
+
+  it("decides at start, solo, when our unit can be read", function()
+    local w = harness.new({ forever = true })
+    local me = w:add("Ada Brook")
+    assert.is_true(me.client.surnames)
+    assert.same({ "sync: on", "sync: names two-part" }, me.lines)
+  end)
+
   it("is two-part on Forever and not on retail, from our own player unit", function()
     local _, me = forever()
     assert.is_true(me.client:twoPart())
@@ -460,6 +516,55 @@ describe("ns.Sync:Start with two-part names (the real client)", function()
 
   after_each(wow.uninstall)
 
+  it("prints the decision line only while debug is on, and never a peer string", function()
+    -- Our realm can't be read at login: undecided, so nothing to print yet.
+    local realm = nil
+    local overrides = wow.foreverNames("Traveler", "Wayfarer")
+    overrides.GetNormalizedRealmName = function() return realm end
+    overrides.IsInGroup = function() return true end
+    overrides.GetNumGroupMembers = function() return 2 end
+    overrides.UnitGUID = function(unit)
+      if unit == "player" then return GUID end
+      if unit == "party1" then return MIRA end
+    end
+    local names = overrides.UnitFullName
+    overrides.UnitFullName = function(unit)
+      if unit == "party1" then return "Mira", "Vale" end
+      return names(unit)
+    end
+    wow.install(overrides)
+    local ns = load.addon({})
+    wow.fire("ADDON_LOADED", load.ADDON_NAME)
+    wow.fire("PLAYER_LOGIN")
+    assert.equal("undecided", ns.Sync:NameForm())
+    wow.slash("/ledger debug")
+    wow.chat = {}
+    realm = "ClassicBetaPvP"
+    wow.fire("GROUP_ROSTER_UPDATE")
+    wow.fire("GROUP_ROSTER_UPDATE")
+    assert.same({}, wow.errors)
+    assert.equal("two-part", ns.Sync:NameForm())
+    local found = 0
+    for _, line in ipairs(wow.chat) do
+      assert.is_nil(line:find("Mira", 1, true), line)
+      assert.is_nil(line:find("Vale", 1, true), line)
+      if line:find("sync: names", 1, true) then
+        found = found + 1
+        assert.equal("sync: names two-part", line:sub(-#"sync: names two-part"), line)
+      end
+    end
+    assert.equal(1, found)
+
+    -- Decided at login with debug off: nothing printed then, and the report says it.
+    wow.uninstall()
+    login({ "Mira", "Vale" })
+    wow.slash("/ledger debug")
+    for _, line in ipairs(wow.chat) do
+      assert.is_nil(line:find("sync: names", 1, true), line)
+    end
+    assert.equal("; names two-part", wow.chat[#wow.chat]:sub(-#"; names two-part"))
+  end)
+
   it("resolves a party member's bare two-part sender", function()
     local ns = login({ "Mira", "Vale" })
     assert.same({}, wow.errors)
@@ -470,5 +575,63 @@ describe("ns.Sync:Start with two-part names (the real client)", function()
     wow.fire("CHAT_MSG_ADDON", "InnLedger", "H1:0:0", "PARTY", "Mira", "", 0, 0, "", 0)
     wow.fire("CHAT_MSG_ADDON", "InnLedger", "H1:0:0", "PARTY", "Mira-Vale", "", 0, 0, "", 0)
     assert.equal(2, ns.Sync.stats.dropped.unresolved)
+  end)
+end)
+
+-- Core's owner name and Sync's name form come from one read of our player unit
+-- (Sync.readOwnName), so they can't disagree: "First Surname" exactly when two-part.
+describe("Our own name: one read for Core and Sync", function()
+  local hiddenSlot = hostileProxy()
+  local function fixed(...)
+    local n, answer = select("#", ...), { ... }
+    return function(unit)
+      if unit == "player" then return unpack(answer, 1, n) end
+    end
+  end
+  local foreverNames = wow.foreverNames("Traveler", "Wayfarer")
+  local CASES = {
+    { "Forever", foreverNames, {}, "Traveler Wayfarer", "two-part" },
+    { "retail", nil, {}, "Traveler", "realm" },
+    { "a hidden slot", foreverNames, {
+      UnitFullName = fixed("Traveler", hiddenSlot),
+      issecretvalue = function(v) return rawequal(v, hiddenSlot) end,
+    }, "Traveler", "undecided" },
+    { "an unreadable realm", foreverNames, {
+      GetNormalizedRealmName = function() error("boom") end,
+    }, "Traveler", "undecided" },
+    { "a hidden realm", foreverNames, {
+      issecretvalue = function(v) return v == "ClassicBetaPvP" end,
+    }, "Traveler", "undecided" },
+    { "UnitFullName missing (Forever)", foreverNames, { UnitFullName = false },
+      "Traveler Wayfarer", "two-part" },
+    { "UnitFullName missing (retail)", nil, { UnitFullName = false },
+      "Traveler", "undecided" },
+    { "our realm in the slot", foreverNames, {
+      UnitFullName = fixed("Traveler", "ClassicBetaPvP"),
+    }, "Traveler", "realm" },
+    { "UnitFullName and UnitName disagree", foreverNames, {
+      UnitName = fixed("Traveler", "ClassicBetaPvP"),
+    }, "Traveler Wayfarer", "two-part" },
+  }
+
+  after_each(wow.uninstall)
+
+  it("gives the same answer for the owner name and the name form", function()
+    for _, case in ipairs(CASES) do
+      local label = case[1]
+      wow.install(case[2])
+      local ns = load.addon({})
+      wow.fire("ADDON_LOADED", load.ADDON_NAME)
+      for k, v in pairs(case[3]) do
+        _G[k] = v
+      end
+      wow.fire("PLAYER_LOGIN")
+      assert.same({}, wow.errors, label)
+      local name, form = ns.ledger.data.me.name, ns.Sync:NameForm()
+      assert.equal(case[4], name, label)
+      assert.equal(case[5], form, label)
+      assert.equal(form == "two-part", name:find(" ", 1, true) ~= nil, label)
+      wow.uninstall()
+    end
   end)
 end)

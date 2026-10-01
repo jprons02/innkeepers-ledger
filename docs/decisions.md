@@ -10,6 +10,31 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-30 — One read of our own name; the name form shows in `/ledger debug`
+
+Settled in #80, which follows *Two-part names key as the bare sender form* (below) and
+doesn't change how the form is decided. Spec: [specs/sync-glue.md §3.2 step 2, §3.4,
+§3.8](specs/sync-glue.md#34-sender-resolution).
+- **Core's owner name and Sync's two-part decision come from one helper,**
+  `Sync.readOwnName` → `Sync.ownName(name, second, realm)`: `UnitFullName("player")`
+  first, `UnitName` only when it's missing. Core used to read `UnitName` and Sync
+  `UnitFullName`; the beta gives the same values from both, but one read means they
+  agree whenever they read the same values. (Core reads at login; Sync may decide later
+  if the realm or slot was unreadable then. The name is display only and the next
+  login corrects it.)
+- **The debug report ends with `names two-part`, `names realm` or `names undecided`,**
+  and the decision prints `sync: names <form>` once, while the log is on. If the #12
+  party test fails, the report says at once whether the client read its names wrong.
+- **The form is decided at start** when our unit and realm can be read, so a solo
+  player's report says it too (before, only a group, guild or message decided it).
+
+*Rejected:*
+- **Re-checking the form on each report:** the decision is made once per session by
+  design; the report shows what Sync is actually using.
+
+*Reflected in:* `Core.lua`, `Sync.lua`, `docs/specs/sync-glue.md` §3.2, §3.3.2, §3.4,
+§3.8, §6.3, §6.4; `docs/testing.md` → Forever names.
+
 ### 2026-09-30 — A zone with no Continent above it is grouped under its World map
 
 Settled in #76, which follows *Forever beta results* (below): Zephras Isle (map 2521,

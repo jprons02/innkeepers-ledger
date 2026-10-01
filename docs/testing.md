@@ -55,7 +55,11 @@ Proportional, not ceremonial:
 - **Place fixtures** (`spec/helpers/places.lua`): the fixture places, own entries and
   catalog of [specs/collection-cosmetics.md §6](specs/collection-cosmetics.md#6-test-plan),
   the two hidden-value stand-ins, a raw snapshot (nothing written) and a seeded shuffle,
-  shared by `spec/collection_spec.lua` and `spec/cosmetics_spec.lua`.
+  shared by `spec/collection_spec.lua` and `spec/cosmetics_spec.lua`. A hand-built place
+  table keeps zone keys apart from continent keys (zones 10, 11, … or 1001.., continents
+  1, 2): a key in both is excluded with everything under it
+  ([§3.2 rule 6](specs/collection-cosmetics.md#32-record-rules)), so a test that doesn't
+  assert `invalid` empty can pass on an empty atlas (#76 caught two).
 - **Export helpers** ([specs/export.md §3.8](specs/export.md#38-the-test-only-decoder)):
   `spec/helpers/export_libs.lua` loads the real vendored LibStub, AceSerializer-3.0 and
   LibDeflate into a private environment (standard library names only; no `LibStub`

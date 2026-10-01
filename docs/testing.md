@@ -48,6 +48,10 @@ Proportional, not ceremonial:
   `c.groupArgs` (the group calls' argument) and `w:timersOf(c)`. The send cases and the
   end-to-end runs live in `spec/sync_send_spec.lua`; the receive cases in
   `spec/sync_spec.lua`.
+- **Forever names** (two-part `"First Surname"` names, the surname in the realm slot;
+  [platform-forever.md](platform-forever.md)): `harness.new({ forever = true })` and
+  `harness.twoPart(name, guid)` in the harness, `wow.foreverNames(first, surname)` as
+  stub overrides. The cases live in `spec/sync_names_spec.lua`.
 - **Place fixtures** (`spec/helpers/places.lua`): the fixture places, own entries and
   catalog of [specs/collection-cosmetics.md §6](specs/collection-cosmetics.md#6-test-plan),
   the two hidden-value stand-ins, a raw snapshot (nothing written) and a seeded shuffle,

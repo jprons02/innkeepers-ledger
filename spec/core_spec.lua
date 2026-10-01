@@ -327,10 +327,13 @@ describe("Core opening the ledger at login", function()
       end
     end)
 
-    it("opens with me = {} when UnitName raises", function()
-      local ns = login({ atLogin = { UnitName = function() error("boom") end } })
-      assert.is_table(ns.ledger)
-      assert.same({}, saved()[GUID].me)
+    it("opens with me = {} when UnitName raises or isn't a function", function()
+      for _, bad in ipairs({ function() error("boom") end, 42 }) do
+        local ns = login({ atLogin = { UnitName = bad } })
+        assert.is_table(ns.ledger)
+        assert.same({}, saved()[GUID].me)
+        wow.uninstall()
+      end
     end)
 
     it("updates me.name for a renamed character", function()
@@ -342,6 +345,42 @@ describe("Core opening the ledger at login", function()
       local ns = login({ db = db, atLogin = { UnitName = function() return "Wayfarer" end } })
       assert.equal("Wayfarer", saved()[GUID].me.name)
       assert.equal(ns.ledger.data, saved()[GUID])
+    end)
+
+    it("stores First Surname on a two-part (Forever) client", function()
+      local ns = login({ overrides = wow.foreverNames("Traveler", "Wayfarer") })
+      assert.same({}, wow.errors)
+      assert.equal("Traveler Wayfarer", saved()[GUID].me.name)
+      assert.equal("Traveler Wayfarer", ns.ledger.data.me.name)
+    end)
+
+    it("keeps the first name alone when the surname can't be told from a realm", function()
+      local hiddenSlot = secret()
+      local cases = {
+        ["our realm in the slot"] = { atLogin = {
+          UnitName = function() return "Traveler", "ClassicBetaPvP" end } },
+        ["a spaced realm in the slot"] = { atLogin = {
+          UnitName = function() return "Traveler", "Classic Beta PvP" end } },
+        ["no realm"] = { atLogin = { GetNormalizedRealmName = function() return nil end } },
+        ["a raising realm"] = { atLogin = {
+          GetNormalizedRealmName = function() error("boom") end } },
+        ["a hidden realm"] = { atLogin = {
+          issecretvalue = function(v) return v == "ClassicBetaPvP" end } },
+        ["a hidden slot"] = { atLogin = {
+          UnitName = function() return "Traveler", hiddenSlot end,
+          issecretvalue = function(v) return rawequal(v, hiddenSlot) end } },
+      }
+      for label, case in pairs(cases) do
+        login({ overrides = wow.foreverNames("Traveler", "Wayfarer"), atLogin = case.atLogin })
+        assert.same({}, wow.errors, label)
+        assert.equal("Traveler", saved()[GUID].me.name, label)
+        wow.uninstall()
+      end
+    end)
+
+    it("leaves me empty when First Surname fails the name rule", function()
+      login({ overrides = wow.foreverNames("Traveler", "Way|farer") })
+      assert.same({}, saved()[GUID].me)
     end)
 
     it("keeps the stored name when the new one fails the name rule", function()

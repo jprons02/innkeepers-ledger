@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-30 (first Forever beta run: platform facts, #75, #76)
+**Updated:** 2026-09-30 (two-part names fixed, #75)
 
 ## Current state
 
@@ -24,7 +24,10 @@
     values outside combat; NPC IDs readable from `UnitGUID("npc")`; a button on the
     gossip frame works; custom-channel addon messages allowed; 255-byte cap (longer
     messages truncated silently); edit box holds 256 KB; no sitting API.
-  - ❌ **Two-part names break group sender resolution and the owner name:** #75.
+  - ✅ **Two-part names** (`"First Surname"`, surname in the realm slot): fixed in #75.
+    Senders, group and guild keys and stored names use the bare `"First Surname"`;
+    the owner's name is `"First Surname"` ([decisions.md](decisions.md), 2026-09-30).
+    Still to confirm with a second character (#12).
   - ❌ **Zones can sit under the world map with no continent:** #76.
 - **Not built:** `Sign` and `UI/Book`. The gossip and NPC-ID questions are answered for
   ordinary NPCs, but **no innkeeper has been seen yet**. File their tickets once one has
@@ -38,9 +41,8 @@
 
 ## Next step
 
-- **#75** (ready, no client needed): two-part names in `Core` and `Sync`. Start here:
-  party sync is a core feature and is dead on Forever until this lands.
-- **#76** (ready, no client needed): zones without a continent in `Collection`.
+- **#76** (ready, no client needed): zones without a continent in `Collection`. Start
+  here.
 - **In the client (maintainer, as you play):** keep ILProbe enabled. Talk to every
   innkeeper you pass (the probe logs NPC ID, map chain, faction and gossip options) and
   `/reload` now and then so the log is written. Then `Sign` and `UI/Book` tickets.
@@ -75,7 +77,9 @@ In short:
 - **Any innkeeper:** talk to them (gossip, NPC ID, `IsResting()` inside the inn, the
   button's look on their dialog).
 - **A second character in a party** (a second account or a friend with both AddOns):
-  party and raid round-trips, what `UnitFullName("partyN")` returns (#75's follow-up).
+  party and raid round-trips; with `/ledger debug` on, their HELLO shows as
+  `got hello PARTY`, not `drop unresolved` (#75's follow-up); what
+  `UnitFullName("partyN")` returns.
 - **A guild:** guild round-trip and roster names/GUIDs.
 - **One dungeon run in a group:** addon messages in instances and encounters.
 - **Copy out** an export string (once the Share window exists).
@@ -94,6 +98,10 @@ In short:
   addon traffic from other AddOns counted as `hidden` drops; group-map rescan budget
   (#54 review); a dropped `C_Timer.After`; export build time and the ~5 MB AceSerializer
   keeps after an opted-in export.
+- **Two-part names (#75 review, low):** show the two-part decision (yes / no /
+  undecided) in `/ledger debug` before the #12 group run, since a wrong early decision
+  holds for the session; `Core.ownerName` reads `UnitName("player")` while `Sync` reads
+  `UnitFullName` (same values in the beta), so one shared helper would close the gap.
 - **Weekly reset fallback:** the beta (region 90) resets Tuesday 16:00 UTC, an hour off
   the US row that `Core.RESET_FALLBACK` falls back to. It's only used if the API fails;
   fill the live regions' rows after launch.

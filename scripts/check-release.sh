@@ -80,6 +80,16 @@ else
   if grep -qE '^[[:space:]]*externals[[:space:]]*:' .pkgmeta; then
     fail ".pkgmeta has externals; ship only the reviewed Libs/."
   fi
+  # Every library entry is a plain copy (no keyword replacement), the manifest isn't.
+  for entry in $(cd Libs && LC_ALL=C ls -A); do
+    [ "$entry" = MANIFEST.sha256 ] && continue
+    if ! grep -qxF "  - Libs/$entry" .pkgmeta; then
+      fail ".pkgmeta's plain-copy list is missing Libs/$entry."
+    fi
+  done
+  if grep -qE '^[[:space:]]+-[[:space:]]+Libs/?[[:space:]]*$' .pkgmeta; then
+    fail ".pkgmeta plain-copies all of Libs/, which ships Libs/MANIFEST.sha256."
+  fi
   if ! grep -qxE 'manual-changelog:[[:space:]]*' .pkgmeta \
     || ! grep -qxE '[[:space:]]+filename:[[:space:]]*CHANGELOG\.md[[:space:]]*' .pkgmeta; then
     fail ".pkgmeta must name CHANGELOG.md as its manual-changelog filename."

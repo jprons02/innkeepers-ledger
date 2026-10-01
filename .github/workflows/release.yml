@@ -1,0 +1,112 @@
+name: release
+
+# Builds the AddOn with the BigWigs packager (CONTRIBUTING.md -> Releasing).
+# - `package` (every PR, a manual run, a v* tag): a dry run with no secrets. It checks
+#   the tree (scripts/check-release.sh), packages without uploading (-d) and checks the
+#   zip (scripts/check-package.sh). It's a required check on main and dev.
+# - `publish` (a v* tag only): runs in the `release` environment, which waits for the
+#   maintainer's approval and holds the CurseForge and Wago tokens. It builds and checks
+#   once more, then packages and uploads.
+# Only the maintainer can push v* tags (a tag ruleset). The packager is a third-party
+# action: pinned by commit SHA and allowed by that exact pattern in the repo's Actions
+# settings (docs/decisions.md, 2026-10-01). docs/security-checklist.md -> item 12.
+
+permissions: {}
+
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0 # the packager names the version from tags (git describe)
+          persist-credentials: false
+      - name: Self-test the release checks
+        run: |
+          sh scripts/check-release.sh --self-test
+          sh scripts/check-package.sh --self-test
+      - name: Check the tree before packaging
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$REF_TYPE" = tag ]; then
+            sh scripts/check-release.sh --tag "$REF_NAME"
+          else
+            sh scripts/check-release.sh --dry-run
+          fi
+      - name: Package without uploading
+        uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
+        with:
+          args: -d
+          pandoc: false
+      - name: Check the package
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -- .release/*.zip
+          if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
+            echo "::error::expected one zip in .release/, found: $*"
+            exit 1
+          fi
+          echo "Package: $1"
+          unzip -Z1 "$1"
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$REF_TYPE" = tag ]; then
+            sh scripts/check-package.sh --tag "$REF_NAME" "$1"
+          else
+            sh scripts/check-package.sh --dry-run "$1"
+          fi
+          grep '^## Version:' .release/InnkeepersLedger/InnkeepersLedger.toc
+
+  publish:
+    needs: package
+    if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-latest
+    environment: release # the maintainer approves; only v* tags may use it
+    permissions:
+      contents: write # the packager's GitHub release for the tag
+    concurrency:
+      group: publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check the tree before packaging
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: sh scripts/check-release.sh --tag "$REF_NAME"
+      - name: Package without uploading
+        uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
+        with:
+          args: -d
+          pandoc: false
+      - name: Check the package, then clear it
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -- .release/*.zip
+          [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "::error::expected one zip"; exit 1; }
+          sh scripts/check-package.sh --tag "$REF_NAME" "$1"
+          rm -rf .release
+      # The same commit and packager build the same files again; this run uploads them.
+      # Only this step sees the tokens.
+      - name: Package and publish
+        uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
+        with:
+          pandoc: false
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}

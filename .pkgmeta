@@ -1,5 +1,14 @@
 package-as: InnkeepersLedger
 
+# Release notes come from this file, never from commit messages: those hold links, and
+# the changelog ships in the package and on the download pages (addon policy).
+# scripts/check-release.sh fails a release without it.
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+# No externals: what ships is the reviewed Libs/ (docs/libraries.md). Dotfiles and
+# folders (.github, .claude, ...) are never packaged; they're listed for clarity.
 ignore:
   - docs
   - spec

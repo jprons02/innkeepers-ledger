@@ -47,7 +47,7 @@ jobs:
       - name: Package without uploading
         uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
         with:
-          args: -d
+          args: -d -u # no upload; keep the reviewed bytes (LF), not CRLF
           pandoc: false
       - name: Check the package
         env:
@@ -90,7 +90,7 @@ jobs:
       - name: Package without uploading
         uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
         with:
-          args: -d
+          args: -d -u # no upload; keep the reviewed bytes (LF), not CRLF
           pandoc: false
       - name: Check the package, then clear it
         env:
@@ -105,6 +105,7 @@ jobs:
       - name: Package and publish
         uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
         with:
+          args: -u # the same LF bytes the check above passed
           pandoc: false
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}

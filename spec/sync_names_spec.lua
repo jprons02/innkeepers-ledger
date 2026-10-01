@@ -581,7 +581,7 @@ end)
 -- Core's owner name and Sync's name form come from one read of our player unit
 -- (Sync.readOwnName), so they can't disagree: "First Surname" exactly when two-part.
 describe("Our own name: one read for Core and Sync", function()
-  local hiddenSlot = newproxy(false)
+  local hiddenSlot = hostileProxy()
   local function fixed(...)
     local n, answer = select("#", ...), { ... }
     return function(unit)

@@ -84,6 +84,7 @@ Batched in #12; the open items are the unticked ones in
 In short:
 - **Any innkeeper:** talk to them (gossip, NPC ID, `IsResting()` inside the inn, the
   button's look on their dialog).
+- **Solo, after login:** `/ledger debug`'s report ends `names two-part` (#80).
 - **A second character in a party** (a second account or a friend with both AddOns):
   party and raid round-trips; with `/ledger debug` on, their HELLO shows as
   `got hello PARTY`, not `drop unresolved` (#75's follow-up); what

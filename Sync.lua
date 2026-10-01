@@ -775,13 +775,13 @@ local function start(self)
   end
   self.running = true
   self:debug("sync: on")
-  self:twoPart() -- decide the name form now if our unit can be read, even when solo
   local now = self:now()
   if self:combatNow() then
     self:hold()
   else
     self.schedule:setHeld(false)
   end
+  self:twoPart() -- decide the name form now if our unit can be read, even when solo
   -- A /reload inside a group or guild syncs without waiting for an event.
   self:onGroup(now)
   self:onGuild(now)

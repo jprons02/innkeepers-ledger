@@ -110,8 +110,9 @@ at `PLAYER_LOGIN`) calls `Core:OpenLedger()`:
    `ledger: no GUID`. **The GUID is checked before it is used as a table key**, so a
    hidden value never indexes SavedVariables.
 2. **Owner name.** `name = Sync.readOwnName(api, hidden)`, the same read and rule that
-   decide `Sync`'s name form ([§3.4](#34-sender-resolution), #80), so the two never
-   disagree. It reads `name, second = UnitFullName("player")` (`UnitName` when
+   decide `Sync`'s name form ([§3.4](#34-sender-resolution), #80), so the two agree
+   whenever both read the same values (the name is read at login; `Sync` may decide
+   later, if the realm or slot was unreadable then). It reads `name, second = UnitFullName("player")` (`UnitName` when
    `UnitFullName` isn't a function) and `GetNormalizedRealmName()`, each in `pcall`; a
    hidden value counts as `nil`. A non-string `name` becomes `nil`; `Ledger.new` then
    leaves `me` empty (slice 1 §4.3). On a two-part client (Forever, #75) the name is

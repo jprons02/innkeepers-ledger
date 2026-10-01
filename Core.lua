@@ -79,7 +79,7 @@ end
 -- two-part names come back as "First", "Surname" (the surname in the realm slot), and
 -- the name is then "First Surname", the form its senders arrive in (sync-glue.md 3.4).
 -- Retail's slot holds our realm, so its name is unchanged. The same read and rule as
--- Sync's name form (Sync.readOwnName), so the two never disagree.
+-- Sync's name form (Sync.readOwnName), so the two agree whenever both read the same values.
 local function ownerName()
   local api = {
     UnitFullName = UnitFullName,

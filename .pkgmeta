@@ -7,6 +7,12 @@ manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
 
+# The libraries ship byte-for-byte as reviewed: no keyword replacement (LibDeflate's
+# header comment holds @project-...@ keywords) or line-ending change.
+# scripts/check-package.sh compares them with Libs/MANIFEST.sha256.
+plain-copy:
+  - Libs
+
 # No externals: what ships is the reviewed Libs/ (docs/libraries.md). Dotfiles and
 # folders (.github, .claude, ...) are never packaged; they're listed for clarity.
 ignore:

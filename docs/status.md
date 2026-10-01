@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-30 (two-part names fixed, #75)
+**Updated:** 2026-09-30 (two-part names fixed, #75; tickets #80, #81 filed)
 
 ## Current state
 
@@ -43,6 +43,11 @@
 
 - **#76** (ready, no client needed): zones without a continent in `Collection`. Start
   here.
+- **#80** (ready, no client needed): show the two-part name decision in `/ledger debug`
+  and read our own name one way. Do it before the #12 party test.
+- **#81** (blocked on the maintainer's accounts): the BigWigs packager. The workflow,
+  version check and dry run can be built first; tags and publishing stay the
+  maintainer's.
 - **In the client (maintainer, as you play):** keep ILProbe enabled. Talk to every
   innkeeper you pass (the probe logs NPC ID, map chain, faction and gossip options) and
   `/reload` now and then so the log is written. Then `Sign` and `UI/Book` tickets.
@@ -98,10 +103,6 @@ In short:
   addon traffic from other AddOns counted as `hidden` drops; group-map rescan budget
   (#54 review); a dropped `C_Timer.After`; export build time and the ~5 MB AceSerializer
   keeps after an opted-in export.
-- **Two-part names (#75 review, low):** show the two-part decision (yes / no /
-  undecided) in `/ledger debug` before the #12 group run, since a wrong early decision
-  holds for the session; `Core.ownerName` reads `UnitName("player")` while `Sync` reads
-  `UnitFullName` (same values in the beta), so one shared helper would close the gap.
 - **Weekly reset fallback:** the beta (region 90) resets Tuesday 16:00 UTC, an hour off
   the US row that `Core.RESET_FALLBACK` falls back to. It's only used if the API fails;
   fill the live regions' rows after launch.
@@ -110,12 +111,9 @@ In short:
   require a space before `{w}` in templates (#62 review nits).
 - Publish `Data/Inns`, `Data/Phrases` and `Data/Cosmetics` as a generated reference for
   export consumers; needs the inn data.
-- **Before the first tag (packager setup):** name tags plainly (`vX.Y.Z`), since the
-  packaged `## Version` must match `[A-Za-z0-9._+-]{1,32}` or every export refuses
-  (security-checklist item 13); add a CI step that checks it when the packager workflow
-  lands. Follow
-  [Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag).
-  Answer the phrase and catalog questions first: IDs freeze at the first public release.
+- **Before the first tag:** the packager setup is #81 (tag naming and its version check
+  included). Answer the phrase and catalog questions first: IDs freeze at the first
+  public release.
 - **`UI/Book`:** the book's in-game help says what sync shares, in the README's words
   (decisions.md, 2026-09-28, guild sync disclosure).
 - Export golden string (`GOLDEN_F`): regenerate if a library or interpreter change breaks

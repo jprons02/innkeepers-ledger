@@ -87,9 +87,11 @@ and publishing are the maintainer's; everything before them is checked in CI.
   product names. The packager never builds notes from commit messages.
 - **To release** (maintainer): merge the `dev → main` release PR, then on `main`
   `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag must be `vX.Y.Z` (numbers, no
-  leading zeros); it becomes the TOC's `## Version`. `package` runs again for the tag;
-  then `publish` waits for approval in the `release` environment. Approving builds and
-  checks the package once more and uploads it to CurseForge, Wago and a GitHub release.
+  leading zeros) on a commit that's on `main` (the check fails otherwise); it becomes
+  the TOC's `## Version`. `package` runs again for the tag; then `publish` waits for
+  approval in the `release` environment. Approving builds and checks the package once
+  more and uploads it to CurseForge, Wago and a GitHub release (the file label reads
+  `vX.Y.Z-forever`, the packager's game suffix), then checks the uploaded build again.
 - **Before the first release:** the CurseForge and Wago projects exist, their IDs are
   in the TOC (`## X-Curse-Project-ID`, `## X-Wago-ID`), and the maintainer has put
   `CF_API_TOKEN` and `WAGO_API_TOKEN` into the `release` environment. Never paste a

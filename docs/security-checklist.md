@@ -22,7 +22,7 @@ All are required checks on `main` and `dev` (`CLAUDE.md` → Branch flow).
 | `busted` | regressions, including the hostile-peer-data specs |
 | `coverage` | untested lines in pure modules: 95% floor for `Ledger`, `SyncProtocol` and `SyncSchedule`, 90% for the rest, no `luacov:` opt-outs (`scripts/check-coverage.sh`) |
 | `docs-links` | broken relative links in the docs and docs missing from the context map (`scripts/check-links.sh`) |
-| `package` | a package that isn't what the repo ships: the packager's dry run (`.github/workflows/release.yml`), then `scripts/check-package.sh` (exactly the shipped files, byte-for-byte, libraries matching the manifest, a filled-in, export-safe `## Version`) and `scripts/check-release.sh` (no `.env`, no externals, a manual changelog without links, each library a plain copy) |
+| `package` | a package that isn't what the repo ships: the packager's dry run (`.github/workflows/release.yml`), then `scripts/check-package.sh` (exactly the shipped files, byte-for-byte, libraries matching the manifest, a filled-in, export-safe `## Version`) and `scripts/check-release.sh` (no `.env`, only plain tracked files, only the allowed `.pkgmeta` keys so no externals or license fetch, a manual changelog without links, each library a plain copy; for a tag, `vX.Y.Z` on a commit on `main`) |
 
 GitHub settings that back these up: [Repository settings](#repository-settings).
 
@@ -106,18 +106,24 @@ Set in GitHub, not in files; re-check them in each release review (item 12). Set
     is blocked for everyone but the repository admin (the maintainer's account).
   - Environment `release`: the maintainer is the required reviewer, and only `v*` tags
     may deploy to it. It holds `CF_API_TOKEN` and `WAGO_API_TOKEN`, entered by the
-    maintainer. **Admins must not bypass it:** the environment's "Allow administrators
-    to bypass configured protection rules" box is unchecked, so even the maintainer's
-    own account approves each publish. (The maintainer unchecks it by hand; until then
-    it's on. `docs/status.md` tracks it.)
-  - Agents run as the maintainer's account, so the ruleset doesn't stop them; tagging
-    stays a maintainer gate by rule (`CLAUDE.md`), and the environment approval is the
-    hard stop.
+    maintainer. Its "Allow administrators to bypass configured protection rules" box
+    should be unchecked, so a publish always waits for an approval. The maintainer
+    unchecks it by hand; until then it's on (`docs/status.md` tracks it).
+  - **What actually stops an agent.** Agents run as the maintainer's account, so the
+    tag ruleset doesn't stop them, and the account that pushes a tag can also approve
+    its deployment (the only reviewer is the maintainer, and a self-review block would
+    lock him out). The stops are the agent's permission guard and the maintainer gates
+    in `CLAUDE.md` (tagging and publishing are his). The environment makes a publish a
+    deliberate, logged approval and keeps the tokens out of every other job; it is not
+    a barrier against a session holding the maintainer's token.
+  - `scripts/check-release.sh --tag` fails unless the tagged commit is on `origin/main`
+    (so only code that passed a release PR's security review ships). It guards against
+    a mistaken tag: the tagged commit carries its own copy of the script.
 
 ### Before the packager lands (first tag)
 
 The packager publishes to every player, so a stolen token or account is the worst
-supply-chain case. Before its workflow merges:
+supply-chain case. Before the first tag:
 - [ ] 2FA on the maintainer's GitHub (on since 2026-09-28), CurseForge and Wago accounts.
   The CurseForge and Wago accounts don't exist yet; the maintainer creates them at
   release time, with 2FA from the start. **Still open; needed before the first tag.**

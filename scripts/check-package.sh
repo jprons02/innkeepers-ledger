@@ -14,8 +14,8 @@
 #      matching Libs/MANIFEST.sha256 (what ships is what was reviewed);
 #   4. the TOC unchanged but for "## Version:", which is filled in and matches
 #      [A-Za-z0-9._+-]{1,32} (docs/specs/export.md 3.5);
-#   5. every file the TOC lists present; no link in shipped .lua/.toc/.xml outside Libs/
-#      or in CHANGELOG.md (addon policy).
+#   5. every file the TOC lists present; no URL in shipped .lua/.toc/.xml and no link or
+#      site name in shipped text (README, LICENSE, CHANGELOG.md), outside Libs/ (policy).
 # Runs from any directory; needs git, unzip, sha256sum and cmp.
 set -u
 set -f
@@ -26,6 +26,19 @@ NAME=InnkeepersLedger
 TOC=$NAME.toc
 nl='
 '
+# Links, mail addresses and site names; scripts/check-release.sh uses the same pattern.
+LINK_RE='(://|mailto:|www\.|[a-z0-9-]+\.(com|net|org|io|gg|ai|dev|app|co|me|tv|ly|us|uk|de|fr|eu|info|xyz|link|site|online|store|shop|gl|to|be|cc|ws|gift|blog)([^a-z0-9]|$))'
+
+# Zip entry names that would extract outside the folder: absolute, "..", backslashes.
+# Fails closed: if grep itself errors, every name is reported.
+unsafe_names() {
+  out=$(printf '%s\n' "$1" | LC_ALL=C grep -E '(^/|(^|/)\.\.(/|$)|\\)')
+  case $? in
+    0) printf '%s\n' "$out" ;;
+    1) ;;
+    *) printf '%s\n' "$1" ;;
+  esac
+}
 
 # The tracked files the package should hold, one per line, sorted.
 expected_files() {
@@ -91,14 +104,17 @@ check_tree() {
     [ "$f" = "$TOC" ] && continue
     cmp -s "$pkg/$f" "$repo/$f" || bad "$f differs from the checkout."
   done
+  libs=0
   while read -r hash path; do
     case "$path" in Libs/*) ;; *) continue ;; esac
+    libs=$((libs + 1))
     if [ ! -f "$pkg/$path" ]; then
       bad "$path (in Libs/MANIFEST.sha256) is missing."
     elif [ "$(sha256sum "$pkg/$path" | cut -d' ' -f1)" != "$hash" ]; then
       bad "$path doesn't match Libs/MANIFEST.sha256."
     fi
   done < "$repo/Libs/MANIFEST.sha256"
+  [ "$libs" -gt 0 ] || bad "no '<hash>  Libs/<path>' lines read from Libs/MANIFEST.sha256."
 
   # 4. The TOC.
   if [ ! -f "$pkg/$TOC" ]; then
@@ -124,15 +140,17 @@ check_tree() {
   for f in $(grep -v '^#' "$pkg/$TOC" | tr -d '\r' | tr '\\' '/'); do
     [ -f "$pkg/$f" ] || bad "$TOC lists $f, which isn't in the package."
   done
-  links=$(cd "$pkg" && LC_ALL=C grep -rnIiE '(https?://|www\.)' \
-    --include='*.lua' --include='*.toc' --include='*.xml' --exclude-dir=Libs . || true)
+  # Code: URLs. Text (README, LICENSE, CHANGELOG, any .md or .txt): site names too.
+  # grep exits 1 for no match; anything above that is a failed scan, which fails.
+  links=$(cd "$pkg" && LC_ALL=C grep -rnIiE '(://|www\.|mailto:)' \
+    --include='*.lua' --include='*.toc' --include='*.xml' --exclude-dir=Libs .)
+  [ $? -gt 1 ] && bad "the link scan of shipped code failed."
   [ -n "$links" ] && bad "links in shipped files:$nl$links"
-  if [ ! -f "$pkg/CHANGELOG.md" ]; then
-    bad "CHANGELOG.md is missing."
-  elif LC_ALL=C grep -nIiE '(https?://|www\.|[a-z0-9-]+\.(com|net|org|io|gg|ai)\b)' \
-    "$pkg/CHANGELOG.md"; then
-    bad "CHANGELOG.md holds a link or a site name."
-  fi
+  links=$(cd "$pkg" && LC_ALL=C grep -rnIiE "$LINK_RE" --exclude-dir=Libs \
+    --exclude='*.lua' --exclude='*.toc' --exclude='*.xml' .)
+  [ $? -gt 1 ] && bad "the link scan of shipped text failed."
+  [ -n "$links" ] && bad "links or site names in shipped text:$nl$links"
+  [ -f "$pkg/CHANGELOG.md" ] || bad "CHANGELOG.md is missing."
   return "$st"
 }
 
@@ -198,6 +216,19 @@ if [ "${1-}" = "--self-test" ]; then
   case_ "a version that isn't the tag" fail v1.2.4 ":"
   case_ "a TOC line changed" fail "" "sed -i 's/^## Interface: .*/## Interface: 110000/' $TOC"
   case_ "a link in the changelog" fail "" "echo 'see example.com' >> CHANGELOG.md"
+  case_ "a short link in the changelog" fail "" "echo 'bit.ly/x' >> CHANGELOG.md"
+  case_ "a mail address in the README" fail "" "echo 'mailto:a@b' >> README.md"
+  case_ "a site in the LICENSE" fail "" "echo 'x.dev' >> LICENSE"
+  case_ "a link in a new text file" fail "" "echo 'https://x' > Libs/../notes.txt"
+  case_ "no changelog" fail "" "rm CHANGELOG.md"
+  for name in "/etc/x" "../x" "a/../../x" "a/.." 'a\b' ".."; do
+    [ -n "$(unsafe_names "$name")" ] || {
+      echo "check-package: self-test FAIL: zip name '$name' passed" >&2; status=1; }
+  done
+  for name in "InnkeepersLedger/" "InnkeepersLedger/a..b.lua" "InnkeepersLedger/..a"; do
+    [ -z "$(unsafe_names "$name")" ] || {
+      echo "check-package: self-test FAIL: zip name '$name' failed" >&2; status=1; }
+  done
   case_ "a URL in Lua" fail "" "echo '-- https://x' >> Data/Inns.lua"
   case_ "an odd name" fail "" "echo x > 'a b.lua'"
   [ "$status" -eq 0 ] && echo "check-package: self-test OK ($n cases)."
@@ -222,7 +253,7 @@ fi
 
 # Entry names before extracting: relative, no "..", no backslashes.
 entries=$(unzip -Z1 "$zip") || { echo "check-package: FAIL: unreadable zip." >&2; exit 1; }
-badnames=$(printf '%s\n' "$entries" | LC_ALL=C grep -E '(^/|(^|/)\.\.(/|$)|\\)' || true)
+badnames=$(unsafe_names "$entries")
 if [ -n "$badnames" ]; then
   echo "check-package: FAIL: unsafe entry names:$nl$badnames" >&2
   exit 1

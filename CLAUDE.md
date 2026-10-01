@@ -153,5 +153,5 @@ Lua 5.1 (WoW client). Embedded, reviewed libraries (see
 [docs/libraries.md](docs/libraries.md)): Ace3 parts (AceAddon, AceEvent, AceDB,
 AceConsole, AceSerializer for export), ChatThrottleLib for sending, LibDeflate for export
 compression. UI is custom frames. Libraries are vendored in `Libs/`. Tests: `busted`.
-Lint: `luacheck`. Packaging: BigWigs packager (CurseForge + Wago), to be set up before
-release.
+Lint: `luacheck`. Packaging: BigWigs packager (CurseForge + Wago), pinned by SHA in
+`.github/workflows/release.yml` ([CONTRIBUTING.md → Releasing](CONTRIBUTING.md#releasing)).

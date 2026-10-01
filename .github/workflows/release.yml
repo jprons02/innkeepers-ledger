@@ -111,3 +111,13 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+      # It's already uploaded, so this can't stop it; it flags at once an upload that
+      # differs from the build checked above.
+      - name: Check the uploaded package
+        if: always()
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -- .release/*.zip
+          [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "::error::expected one zip"; exit 1; }
+          sh scripts/check-package.sh --tag "$REF_NAME" "$1"

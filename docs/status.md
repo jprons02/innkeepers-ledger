@@ -47,7 +47,7 @@
 
 ## Next step
 
-- **#81** (the packager): built and merged in #86. `release.yml` dry-runs the packager
+- **#81** (the packager): built in #86. `release.yml` dry-runs the packager
   on every PR (`package`, a required check) and publishes a `v*` tag only after the
   maintainer approves the `release` environment. Packager v2.6.1 pinned by SHA; tag
   ruleset and environment set. Left open for the maintainer's part (below) and the

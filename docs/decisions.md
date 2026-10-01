@@ -36,8 +36,20 @@ the packager. The maintainer approved one lookup of the packager's repository fo
   to the checkout but the TOC, the libraries matching `Libs/MANIFEST.sha256`, and a
   `## Version` of 1..32 bytes of `[A-Za-z0-9._+-]` equal to the tag (export.md §3.5).
   Every library entry is a `plain-copy`; our own files keep their LF bytes (`-u`).
-- **Tags are `vX.Y.Z`** (numbers, no leading zeros), and the tag is the version.
-  `CHANGELOG.md` needs a `## vX.Y.Z` section before a tag passes.
+- **Tags are `vX.Y.Z`** (numbers, no leading zeros) **on a commit already on `main`**,
+  and the tag is the version. `CHANGELOG.md` needs a `## vX.Y.Z` section before a tag
+  passes.
+- **The release check locks down the inputs** the packager trusts: `.pkgmeta` may hold
+  only `package-as`, `manual-changelog` (exactly `CHANGELOG.md`, markdown), `plain-copy`
+  and `ignore`, each once (no externals, no `license-output` fetch from the web, no
+  second changelog); every tracked file is a plain file (a symlink would ship whatever it
+  points at); no `.env`. Shipped text (README, LICENSE, CHANGELOG) carries no link or
+  site name.
+- **The environment approval isn't a barrier against an agent.** Agents run as the
+  maintainer's account, which can push the tag and approve its own deployment. The
+  stops are the agent permission guard and the `CLAUDE.md` gates; the environment makes
+  each publish a deliberate, logged approval and keeps the tokens in one job. Admin
+  bypass of the environment is to be turned off by the maintainer.
 
 *Rejected:*
 - **Floating `@v2`:** a moved tag upstream would change what publishes; SHA only.

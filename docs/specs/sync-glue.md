@@ -262,9 +262,9 @@ slot holds our realm (or `nil`), so it's `nil` there. The answer is decided once
 first time `realm` and a non-empty, non-hidden string `second` are both readable, and
 kept for the session; until then the client follows the realm rules, under which a
 two-part sender never matches (fails closed). Deciding "two-part" empties the group and
-guild maps (built in the realm form until then) and clears the rescan gate, so the two
-forms never mix: the next group miss rescans at once, and a guild miss requests the
-roster.
+guild maps (built in the realm form until then) and clears the rescan and roster gates,
+so the two forms never mix: the next group miss rescans at once, and the next guild
+miss requests the roster at once (then at most once per 60 s, as usual).
 3. **PARTY / RAID:** `guid = groupMap[full]`, the map below. If there's no entry,
    rescan the group's names now (the map only, at most once per 10 s; a clock that went
    back allows one at once) and look again; still no entry → unresolved. A sender who

@@ -323,6 +323,9 @@ describe("Sync with two-part names: the group", function()
     assert.is_true(resolves(me, "Mira Vale"))   -- the miss rescanned in the new form
     assert.same({ "Ada Brook", "Mira Vale" }, keys(me.client.group))
     assert.same({}, keys(me.client.guild))      -- refilled at the next roster update
+    local requests = me.calls.GuildRoster or 0
+    assert.is_false(resolves(me, "Mira Vale", "GUILD")) -- a miss asks for the roster
+    assert.equal(requests + 1, me.calls.GuildRoster)  -- at once: the gate was cleared
     me.client:onEvent("GUILD_ROSTER_UPDATE")
     w:advance(10) -- the trailing rebuild (one per 10 s; the last ran at start)
     assert.same({ "Ada Brook", "Mira Vale" }, keys(me.client.guild))

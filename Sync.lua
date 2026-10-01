@@ -510,7 +510,8 @@ end
 -- holds a surname (Sync.surname). Read from our unit, never from a peer, and decided once
 -- both it and our realm are readable; until then false, so a two-part sender fails closed.
 -- Deciding true empties the group and guild maps, which were built in the realm form, so
--- keys of the two forms never mix (a miss then rescans or requests the roster).
+-- keys of the two forms never mix (a miss then rescans or requests the roster, both at
+-- once: their gates are cleared too).
 function Client:twoPart()
   if self.surnames == nil then
     local realm = self:realm()
@@ -519,7 +520,7 @@ function Client:twoPart()
       and second ~= "" then
       self.surnames = Sync.surname(second, realm) ~= nil
       if self.surnames then
-        self.group, self.guild, self.rescanAt = {}, {}, nil
+        self.group, self.guild, self.rescanAt, self.rosterAt = {}, {}, nil, nil
       end
     end
   end

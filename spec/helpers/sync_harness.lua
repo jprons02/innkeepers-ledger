@@ -22,6 +22,11 @@
 -- (`timer.owner`). `UnitFullName` / `UnitName` answer "player", "partyN" and "raidN";
 -- `c.tokens` makes UnitGUID answer unit tokens like "target" (any case), and UnitGUID of
 -- a member's name still answers, so a test can show what the old name lookup did.
+--
+-- Forever names: `harness.new({ forever = true })` models the beta (2026-09-30). Names
+-- are two-part ("Ada Brook"), the realm is `H.FOREVER_REALM`, senders and roster names
+-- are the bare "First Surname", and UnitFullName / UnitName give "First", "Surname" for
+-- every unit (seen for "player"; assumed for the others until #12 sees them).
 local load = require("helpers.load")
 
 local H = {}
@@ -30,6 +35,7 @@ H.PREFIX = "InnLedger"
 H.NOW = 1794000000
 H.ANCHOR = 1790089200 -- Tuesday 2026-09-22 15:00 UTC, the retail US reset
 H.REALM = "Stubrealm"
+H.FOREVER_REALM = "ClassicBetaPvP" -- the beta's GetNormalizedRealmName
 H.HOME = 1 -- LE_PARTY_CATEGORY_HOME
 
 -- Fixture data (the real Data tables are empty): inns 1..300, phrases 1..40, seals 1..20.
@@ -61,11 +67,13 @@ local World = {}
 World.__index = World
 
 -- opts.seed: the seed of the shared random numbers (Park-Miller, exact in doubles).
+-- opts.forever: Forever's two-part names (see the top of this file).
 function H.new(opts)
   opts = opts or {}
   return setmetatable({
     now = H.NOW,
-    realm = H.REALM,
+    forever = opts.forever == true,
+    realm = opts.forever and H.FOREVER_REALM or H.REALM,
     seed = opts.seed or 12345,
     timers = {},
     timerSeq = 0,
@@ -181,6 +189,12 @@ function H.member(name, guid, realm)
   return { name = name, full = name .. "-" .. (realm or H.REALM), guid = guid }
 end
 
+-- A member record for a Forever world: `name` is "First Surname", the sender form.
+function H.twoPart(name, guid)
+  local first, surname = name:match("^(%S+) (%S+)$")
+  return { name = name, first = first or name, surname = surname, full = name, guid = guid }
+end
+
 -- The default client functions for `c`.
 local function defaults(w, c)
   local impl = {}
@@ -237,8 +251,19 @@ local function defaults(w, c)
     end
     return nil
   end
+  -- Forever: the first name and the surname, for every unit.
+  local function twoPartName(unit)
+    local m = unitMember(unit)
+    if not m then
+      return nil
+    end
+    return m.first, m.surname
+  end
   -- Name and realm, the realm nil for our own realm except for "player" (retail).
   impl.UnitFullName = function(unit)
+    if w.forever then
+      return twoPartName(unit)
+    end
     local m = unitMember(unit)
     if not m then
       return nil
@@ -251,6 +276,9 @@ local function defaults(w, c)
   end
   -- Name and realm, the realm nil for our own realm.
   impl.UnitName = function(unit)
+    if w.forever then
+      return twoPartName(unit)
+    end
     local m = unitMember(unit)
     if not m then
       return nil
@@ -303,7 +331,8 @@ local function defaults(w, c)
   return impl
 end
 
--- Adds a client named `name` (full name "<name>-<realm>"). opts:
+-- Adds a client named `name` (full name "<name>-<realm>"; in a Forever world `name` is
+-- "First Surname" and is the full name too). opts:
 --   guid     its GUID (default Player-1-<index as 8 hex digits>)
 --   ledger   a ledger object to use instead of a fresh one
 --   data     the saved table the fresh ledger opens (e.g. "junk" for a read-only one)
@@ -316,7 +345,7 @@ function World:add(name, opts)
   local c = {
     world = self,
     name = name,
-    full = name .. "-" .. self.realm,
+    full = self.forever and name or name .. "-" .. self.realm,
     guid = opts.guid or ("Player-1-%08X"):format(index),
     lines = {},     -- debug lines
     calls = {},     -- client function name -> call count
@@ -327,6 +356,10 @@ function World:add(name, opts)
     groupArgs = {}, -- group function name -> { n = argument count, ... }
     tokens = {},    -- unit tokens UnitGUID answers: lower-case token -> GUID
   }
+  if self.forever then
+    c.first, c.surname = name:match("^(%S+) (%S+)$")
+    c.first = c.first or name
+  end
   local ns = {}
   load.file("Ledger.lua", ns, load.pure_env())
   load.file("SyncProtocol.lua", ns, load.pure_env())

@@ -75,11 +75,24 @@ local function ownerGUID()
   return guid
 end
 
--- The owner's name for display, or nil if it's hidden or not a string.
+-- The owner's name for display, or nil if it's hidden or not a string. Forever's
+-- two-part names come back as "First", "Surname" (the surname in the realm slot), and
+-- the name is then "First Surname", the form its senders arrive in (sync-glue.md 3.4).
+-- Retail's second return is nil for the player, so its name is unchanged.
 local function ownerName()
-  local name = call(UnitName, "player")
-  if hidden(name) or type(name) ~= "string" then
+  if type(UnitName) ~= "function" then
     return nil
+  end
+  local ok, name, second = pcall(UnitName, "player")
+  if not ok or hidden(name) or type(name) ~= "string" then
+    return nil
+  end
+  if not hidden(second) then
+    local realm = call(GetNormalizedRealmName)
+    local surname = not hidden(realm) and ns.Sync.surname(second, realm)
+    if surname then
+      return name .. " " .. surname
+    end
   end
   return name
 end

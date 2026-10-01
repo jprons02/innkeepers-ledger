@@ -10,6 +10,44 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-30 — Two-part names key as the bare sender form
+
+Settled in #75, which follows *Forever beta results* (below). On a client whose names
+are two-part, a character's one key form (group map, guild map, stored traveler name)
+is the sender as the server sends it, `"First Surname"`. A realm client (retail) keeps
+`"Name-Realm"`, unchanged. Spec: [specs/sync-glue.md §3.4](specs/sync-glue.md#34-sender-resolution).
+- **The client tells which it is from its own player unit only:** the realm slot of
+  `UnitFullName("player")` holds a one-word surname that differs from
+  `GetNormalizedRealmName()` (`Sync.surname`). Never from a peer string. Decided once
+  both are readable; until then the realm rules apply and two-part senders fail closed.
+- **Units key as `name .. " " .. surname`,** taken from the observed `player` reading
+  and assumed for party and raid units until #12 sees another character. A slot that's
+  empty or holds our realm leaves the name alone, so the likely alternatives (the whole
+  name with `nil` or our realm) key the same way. Anything else skips the unit.
+- **Our own realm's suffix is dropped** from a sender or roster name (`"First
+  Surname-<our realm>"` → `"First Surname"`), since both name the same character. Any
+  other suffix stays, so it never matches a bare key.
+- **The owner's name is `"First Surname"`** on such a client (it was the first name
+  only), the same form travelers are stored in. Retail's owner name stays the bare
+  name.
+- The security model is unchanged: resolution still compares server-set strings with
+  names our own scans read, ambiguous keys are removed, and the own-signature rule
+  stands.
+
+*Rejected:*
+- **Appending our realm on Forever too (`"First Surname-ClassicBetaPvP"`):** this would
+  have needed the fewest code changes (the guild map already matched that way). But the
+  suffix is made up, since Forever senders carry none and you only group or guild
+  within one ruleset realm. It would also put the ruleset's name into every stored and
+  exported traveler name.
+- **Guessing two-part names from the shape of peer strings (a space in the sender):**
+  a peer string must never decide how we read names.
+- **Keying units by the first name alone:** two members sharing a first name would
+  collide, and a near-miss sender could match.
+
+*Reflected in:* `Sync.lua`, `Core.lua`, `docs/specs/sync-glue.md` §3.2, §3.4, §6, §8;
+`docs/platform-forever.md` → Verification checklist; `docs/testing.md`.
+
 ### 2026-09-30 — Forever beta results: modern API, two-part names, zones without continents
 
 The first in-client run (#12, beta build 1.60.1.70124) settled most platform questions;

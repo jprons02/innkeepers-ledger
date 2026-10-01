@@ -147,6 +147,21 @@ local function defaults()
   return api
 end
 
+-- Overrides for Forever's two-part names, as the beta gave them (2026-09-30): the surname
+-- in the realm slot of UnitName / UnitFullName("player"), and the ruleset realm.
+function M.foreverNames(first, surname)
+  first, surname = first or "Traveler", surname or "Wayfarer"
+  local function names(unit)
+    if unit == "player" then return first, surname end
+  end
+  return {
+    UnitName = names,
+    UnitFullName = names,
+    GetRealmName = function() return "Classic Beta PvP" end,
+    GetNormalizedRealmName = function() return "ClassicBetaPvP" end,
+  }
+end
+
 -- Installs the stub into _G. `overrides` replaces or adds names for this case.
 function M.install(overrides)
   M.uninstall()

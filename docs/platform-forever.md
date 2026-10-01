@@ -39,7 +39,8 @@ unverified · ❓ unknown
   suffix, no dash**. A whisper addressed `"First-Surname"` still arrived. ⚠️ Region-wide
   uniqueness is still only reported. ❓ What `UnitFullName("partyN")` and
   `GetGuildRosterInfo` return for *other* characters (needs a second character or a
-  guild). What this breaks in our code: [decisions.md](decisions.md), 2026-09-30.
+  guild). What this broke and how #75 keys names now: [decisions.md](decisions.md),
+  2026-09-30 (*Forever beta results*; *Two-part names key as the bare sender form*).
 - ✅ **A new world at the start:** the first zone seen, *Zephras Isle* (map 2521, type
   Zone), sits **directly under the Azeroth world map** (947, type World), with no
   Continent-type map between them. New races (e.g. *Skyborne*) map onto Alliance and
@@ -123,8 +124,10 @@ in the sections above. **Partly** means the rest of the item is still open.
 - [x] Weekly reset ✅: `C_DateAndTime.GetSecondsUntilWeeklyReset()` works at login; the
       beta resets Tuesday 16:00 UTC (region 90). Live regions: check after launch
 - [ ] Addon-message sender name resolves to a GUID: through our own unit scan for group
-      members (see the #54 item); guild roster exposes member GUIDs. **Known broken**
-      for two-part names; see [decisions.md](decisions.md), 2026-09-30
+      members (see the #54 item); guild roster exposes member GUIDs. Two-part names are
+      handled since #75 (bare `"First Surname"` keys; [decisions.md](decisions.md),
+      2026-09-30); confirm with a second character that a party member's messages
+      resolve (`/ledger debug` shows `got hello PARTY`, not `drop unresolved`)
 - [ ] Sync glue ([specs/sync-glue.md §8](specs/sync-glue.md#8-unverified-client-facts-this-spec-relies-on)).
       **Partly** ✅: the `CHAT_MSG_ADDON` sender is `"First Surname"` (a space, no realm
       suffix); `GetNormalizedRealmName()` is `ClassicBetaPvP`; `UnitGUID("player")` and
@@ -136,8 +139,10 @@ in the sections above. **Partly** means the rest of the item is still open.
 - [ ] Group sender names (#54). **Partly** ✅: the sender is a bare `"First Surname"`
       with no `-Realm`; `UnitFullName("player")` returns the surname, not our realm;
       `UNKNOWNOBJECT` is `"Unknown"` (AceDB's profile key read it at load). Still open:
-      what `UnitFullName("partyN")` returns and whether it can match the sender; unit-token
-      names; `GROUP_ROSTER_UPDATE` after a name loads
+      what `UnitFullName("partyN")` returns (#75 assumes `"First", "Surname"` like
+      `player`, and also accepts the whole name with `nil` or our realm) and what
+      `GetGuildRosterInfo` gives as a name (with or without `-ClassicBetaPvP`, both
+      handled); unit-token names; `GROUP_ROSTER_UPDATE` after a name loads
 - [ ] Collect every inn for the `Data/Inns` table (#12), per innkeeper: the NPC ID; the
       inn's English name; the zone's map ID and English name; the continent's map ID
       and English name; the innkeeper's faction (`"Alliance"`, `"Horde"`, or neutral if

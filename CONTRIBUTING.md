@@ -53,6 +53,10 @@ them are required:
 | Forbidden APIs | `sh scripts/check-apis.sh` |
 | Vendored libraries | `sh scripts/check-libs.sh` |
 | Doc links and context map | `sh scripts/check-links.sh` |
+| Release checks (self-tests) | `sh scripts/check-release.sh --self-test`, `sh scripts/check-package.sh --self-test` (seconds on Linux, a few minutes in Git Bash) |
+
+The packager's dry run itself (`package` in `.github/workflows/release.yml`) runs only in
+CI; see [Releasing](#releasing).
 
 [docs/security-checklist.md](docs/security-checklist.md) explains the API and library
 checks.
@@ -69,6 +73,27 @@ whether a module is done.
 - Branch from `dev`: `feat/<slug>`, `fix/<slug>`, `chore/<slug>` or `docs/<slug>`.
 - Open the PR against `dev`. It's squash-merged once CI is green.
 - `main` only receives `dev → main` release PRs.
+
+## Releasing
+
+Releases are built by the BigWigs packager in `.github/workflows/release.yml`. Tagging
+and publishing are the maintainer's; everything before them is checked in CI.
+
+- **Every PR** runs `package`: the packager with `-d -u` (no upload, Unix line endings),
+  then `scripts/check-package.sh` on the zip. A manual run (*Actions → release → Run
+  workflow*) does the same for any branch once `release.yml` is on `main`.
+- **Release notes** go in `CHANGELOG.md` under `## vX.Y.Z` before tagging. It ships in
+  the AddOn and is the text on the download pages, so it's plain: no links, no site or
+  product names. The packager never builds notes from commit messages.
+- **To release** (maintainer): merge the `dev → main` release PR, then on `main`
+  `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag must be `vX.Y.Z` (numbers, no
+  leading zeros); it becomes the TOC's `## Version`. `package` runs again for the tag;
+  then `publish` waits for approval in the `release` environment. Approving builds and
+  checks the package once more and uploads it to CurseForge, Wago and a GitHub release.
+- **Before the first release:** the CurseForge and Wago projects exist, their IDs are
+  in the TOC (`## X-Curse-Project-ID`, `## X-Wago-ID`), and the maintainer has put
+  `CF_API_TOKEN` and `WAGO_API_TOKEN` into the `release` environment. Never paste a
+  token anywhere else. Without an ID or token, the packager skips that site.
 
 ## Reporting bugs
 

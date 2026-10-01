@@ -22,6 +22,7 @@ All are required checks on `main` and `dev` (`CLAUDE.md` → Branch flow).
 | `busted` | regressions, including the hostile-peer-data specs |
 | `coverage` | untested lines in pure modules: 95% floor for `Ledger`, `SyncProtocol` and `SyncSchedule`, 90% for the rest, no `luacov:` opt-outs (`scripts/check-coverage.sh`) |
 | `docs-links` | broken relative links in the docs and docs missing from the context map (`scripts/check-links.sh`) |
+| `package` | a package that isn't what the repo ships: the packager's dry run (`.github/workflows/release.yml`), then `scripts/check-package.sh` (exactly the shipped files, byte-for-byte, libraries matching the manifest, a filled-in, export-safe `## Version`) and `scripts/check-release.sh` (no `.env`, no externals, a manual changelog without links, each library a plain copy) |
 
 GitHub settings that back these up: [Repository settings](#repository-settings).
 
@@ -96,23 +97,37 @@ Set in GitHub, not in files; re-check them in each release review (item 12). Set
   need approval before CI runs.
 - **Reporting:** private vulnerability reporting is on; [SECURITY.md](../SECURITY.md)
   points reporters there.
-- **Secrets:** secret scanning and push protection are on. No repository secrets exist
-  until the packager needs them.
+- **Secrets:** secret scanning and push protection are on. No repository secrets exist;
+  the upload tokens live only in the `release` environment (below).
+- **The packager** (set 2026-10-01, #81; [decisions.md](decisions.md)):
+  - Allowed actions: GitHub-owned, plus exactly
+    `BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0` (v2.6.1).
+  - Tag ruleset *Release tags: maintainer only*: creating, moving or deleting a `v*` tag
+    is blocked for everyone but the repository admin (the maintainer's account).
+  - Environment `release`: the maintainer is the required reviewer, and only `v*` tags
+    may deploy to it. It holds `CF_API_TOKEN` and `WAGO_API_TOKEN`, entered by the
+    maintainer. **Admins must not bypass it:** the environment's "Allow administrators
+    to bypass configured protection rules" box is unchecked, so even the maintainer's
+    own account approves each publish. (The maintainer unchecks it by hand; until then
+    it's on. `docs/status.md` tracks it.)
+  - Agents run as the maintainer's account, so the ruleset doesn't stop them; tagging
+    stays a maintainer gate by rule (`CLAUDE.md`), and the environment approval is the
+    hard stop.
 
 ### Before the packager lands (first tag)
 
 The packager publishes to every player, so a stolen token or account is the worst
 supply-chain case. Before its workflow merges:
-- 2FA on the maintainer's GitHub (on since 2026-09-28), CurseForge and Wago accounts.
+- [ ] 2FA on the maintainer's GitHub (on since 2026-09-28), CurseForge and Wago accounts.
   The CurseForge and Wago accounts don't exist yet; the maintainer creates them at
-  release time, with 2FA from the start.
-- The workflow runs only on `v*` tag pushes; a tag ruleset lets only the maintainer
-  create or move `v*` tags.
-- The CurseForge and Wago tokens live in a GitHub Environment with the maintainer as
+  release time, with 2FA from the start. **Still open; needed before the first tag.**
+- [x] The workflow runs only on `v*` tag pushes; a tag ruleset lets only the maintainer
+  create or move `v*` tags (#81).
+- [x] The CurseForge and Wago tokens live in a GitHub Environment with the maintainer as
   required reviewer, never as plain repository secrets. Only the publishing job gets
-  `contents: write`.
-- The packager action is pinned by SHA and added to the allowed-actions list by that
-  exact pattern; a decision entry records it (it's a third-party action, item 12).
+  `contents: write` (#81).
+- [x] The packager action is pinned by SHA and added to the allowed-actions list by that
+  exact pattern; a decision entry records it (it's a third-party action, item 12) (#81).
 
 ## Release review (every `dev → main` PR)
 
@@ -155,8 +170,9 @@ launch the session does this on its own. A finding that needs a maintainer decis
 11. **Public repo hygiene:** no secrets, personal information, private notes or other
     projects in the diff, including docs and tickets.
 12. **Workflows:** read-only token, `persist-credentials: false`, actions pinned by SHA,
-    no `pull_request_target`, no new third-party actions. The
-    [repository settings](#repository-settings) still hold.
+    no `pull_request_target`, no new third-party actions (the one allowed is the
+    packager, pinned by SHA). Only `release.yml`'s `publish` job has `contents: write`
+    or sees the tokens. The [repository settings](#repository-settings) still hold.
 13. **Packaged version:** the version the packager writes into the TOC (`## Version`)
     matches `[A-Za-z0-9._+-]{1,32}`. Anything else (a space, a `/`, 33 bytes) makes every
     export refuse with `"addon"` ([specs/export.md §3.5](specs/export.md#35-build-rules)).

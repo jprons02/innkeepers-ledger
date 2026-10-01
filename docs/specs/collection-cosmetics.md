@@ -144,7 +144,8 @@ ns.Data.Inns[<innkeeper NPC ID>]    = { alias = <NPC ID of the inn's primary rec
 
 `Collection.bind` keeps a record only if every rule holds; anything else is **excluded**
 and named in `invalid` (never raised), as `Phrase.bind` does. A CI test keeps `invalid`
-empty for the real data. Validation runs in this order, so an exclusion cascades:
+empty for the real data. Validation runs in this order, so an exclusion cascades (rule 5
+applies within steps 1–3, rule 6 within steps 1–2):
 
 1. **Continents:** key an integer in 1..`mapKeyMax`; value a table with exactly `name`.
 2. **Zones:** key an integer in 1..`mapKeyMax`; exactly `name`, `continent`, `seal`;
@@ -701,8 +702,9 @@ ns.Data.Cosmetics).SEALS` on a fresh ledger: the `101` entry is stored too
   faction (`"Alliance"`,
   `"Horde"`, or neutral if both can use it); and whether another innkeeper serves the same
   inn (an alias). Zone seals are numbered 101, 102, … in the order zones are added.
-  The walk is bounded: it stops at a parent of `0` or `nil`, at a map ID it has already
-  seen, or after 12 steps (the probe's walk does this). A chain with no *Zone* map, or
+  The walk is bounded: it stops at a parent of `0` or `nil`, at an unreadable map, or
+  after 12 steps (as the probe's walk does), and the step cap is what ends a looping
+  chain. A chain with no *Zone* map, or
   with no Continent or World map above the zone, isn't entered: it goes on #12 as a
   question, and the rule is extended here first.
 - **`Sign`:** gets the faction as the first return of `UnitFactionGroup("player")`

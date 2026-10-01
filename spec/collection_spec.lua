@@ -532,6 +532,7 @@ describe("Collection.bind", function()
     end
     setmetatable(inns, { __index = spy })
     setmetatable(zones, { __index = spy })
+    setmetatable(conts, { __index = spy })
     setmetatable(inns[5001], { __index = function() calls = calls + 1 return "Horde" end })
     local atlas = Collection.bind(inns, zones, conts)
     assert.same({}, atlas.invalid)

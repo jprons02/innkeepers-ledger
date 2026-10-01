@@ -506,20 +506,57 @@ local function unitName(api, unit)
   return name, realm
 end
 
+-- Our own name and this client's name form, from one reading of our player unit (spec
+-- 3.2 step 2, 3.4). `name`, `second`: UnitFullName("player")'s returns; `realm`:
+-- GetNormalizedRealmName's; a hidden value is passed as nil. Returns the display name (nil
+-- unless `name` is a string; "First Surname" on a two-part client) and the form: true
+-- (two-part), false (realm), or nil (undecided: no readable realm, or no non-empty string
+-- in the slot). Core's owner name and Client:twoPart both come from here.
+function Sync.ownName(name, second, realm)
+  if type(realm) ~= "string" or #realm > REALM_MAX then
+    realm = nil
+  end
+  local twoPart
+  if realm ~= nil and realm ~= "" and type(second) == "string" and second ~= "" then
+    twoPart = Sync.surname(second, realm) ~= nil
+  end
+  if type(name) ~= "string" then
+    return nil, twoPart
+  end
+  if twoPart then
+    return name .. " " .. second, twoPart
+  end
+  return name, twoPart
+end
+
+-- Reads our player unit for Sync.ownName: UnitFullName (UnitName where it's missing) and
+-- GetNormalizedRealmName from `api`, each in pcall; a value `isHidden` flags counts as
+-- nil. The one read of our own name.
+function Sync.readOwnName(api, isHidden)
+  local name, second = unitName(api, "player")
+  local realm = call(api.GetNormalizedRealmName)
+  local function shown(v)
+    if isHidden(v) then
+      return nil
+    end
+    return v
+  end
+  return Sync.ownName(shown(name), shown(second), shown(realm))
+end
+
 -- Whether this client's names are two-part (Forever): our own player unit's realm slot
--- holds a surname (Sync.surname). Read from our unit, never from a peer, and decided once
--- both it and our realm are readable; until then false, so a two-part sender fails closed.
--- Deciding true empties the group and guild maps, which were built in the realm form, so
--- keys of the two forms never mix (a miss then rescans or requests the roster, both at
--- once: their gates are cleared too).
+-- holds a surname (Sync.readOwnName). Read from our unit, never from a peer, and decided
+-- once both it and our realm are readable; until then false, so a two-part sender fails
+-- closed. The decision is logged once. Deciding true empties the group and guild maps,
+-- which were built in the realm form, so keys of the two forms never mix (a miss then
+-- rescans or requests the roster, both at once: their gates are cleared too).
 function Client:twoPart()
   if self.surnames == nil then
-    local realm = self:realm()
-    local _, second = unitName(self.api, "player")
-    if realm ~= nil and not self:hidden(second) and type(second) == "string"
-      and second ~= "" then
-      self.surnames = Sync.surname(second, realm) ~= nil
-      if self.surnames then
+    local _, twoPart = Sync.readOwnName(self.api, function(v) return self:hidden(v) end)
+    if twoPart ~= nil then
+      self.surnames = twoPart
+      self:debug(twoPart and "sync: names two-part" or "sync: names realm")
+      if twoPart then
         self.group, self.guild, self.rescanAt, self.rosterAt = {}, {}, nil, nil
       end
     end
@@ -738,6 +775,7 @@ local function start(self)
   end
   self.running = true
   self:debug("sync: on")
+  self:twoPart() -- decide the name form now if our unit can be read, even when solo
   local now = self:now()
   if self:combatNow() then
     self:hold()
@@ -1079,6 +1117,22 @@ function Sync:Start()
     self.stats.errors = self.stats.errors + 1
     pcall(function() ns.Core:Debug("sync: error in start") end)
   end
+end
+
+-- The name form for the debug report (spec 3.8): "two-part", "realm", or "undecided"
+-- (not decided yet, or no client). Our own constant words only.
+function Sync:NameForm()
+  local client = self.client
+  if type(client) ~= "table" then
+    return "undecided"
+  end
+  local surnames = client.surnames
+  if surnames == true then
+    return "two-part"
+  elseif surnames == false then
+    return "realm"
+  end
+  return "undecided"
 end
 
 -- Sign calls this after ledger:addOwn returns "added" (spec 3.5.1): a HELLO goes out on

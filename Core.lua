@@ -78,23 +78,15 @@ end
 -- The owner's name for display, or nil if it's hidden or not a string. Forever's
 -- two-part names come back as "First", "Surname" (the surname in the realm slot), and
 -- the name is then "First Surname", the form its senders arrive in (sync-glue.md 3.4).
--- Retail's second return is nil for the player, so its name is unchanged.
+-- Retail's slot holds our realm, so its name is unchanged. The same read and rule as
+-- Sync's name form (Sync.readOwnName), so the two never disagree.
 local function ownerName()
-  if type(UnitName) ~= "function" then
-    return nil
-  end
-  local ok, name, second = pcall(UnitName, "player")
-  if not ok or hidden(name) or type(name) ~= "string" then
-    return nil
-  end
-  if not hidden(second) then
-    local realm = call(GetNormalizedRealmName)
-    local surname = not hidden(realm) and ns.Sync.surname(second, realm)
-    if surname then
-      return name .. " " .. surname
-    end
-  end
-  return name
+  local api = {
+    UnitFullName = UnitFullName,
+    UnitName = UnitName,
+    GetNormalizedRealmName = GetNormalizedRealmName,
+  }
+  return (ns.Sync.readOwnName(api, hidden))
 end
 
 -- The server time of a weekly reset (sync-ledger.md 8 -> Weekly reset source).
@@ -202,6 +194,15 @@ local function ledgerReport()
   return table.concat(parts, ", ")
 end
 
+-- Sync's name form: "names two-part", "names realm" or "names undecided".
+local function namesReport()
+  local ok, form = pcall(function() return ns.Sync:NameForm() end)
+  if not ok or (form ~= "two-part" and form ~= "realm") then
+    form = "undecided"
+  end
+  return "names " .. form
+end
+
 -- The totals of Sync's counters that exist; a table of counters is summed.
 local function syncReport()
   local stats = ns.Sync and ns.Sync.stats
@@ -232,7 +233,7 @@ function Core:ToggleDebug()
   if self.debugOn then
     self.debugPrinted, self.debugSkipped = {}, 0
     self:Print("Debug log on.")
-    self:Print(ledgerReport() .. "; " .. syncReport())
+    self:Print(ledgerReport() .. "; " .. syncReport() .. "; " .. namesReport())
   else
     self:Print("Debug log off.")
   end

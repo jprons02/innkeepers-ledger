@@ -51,7 +51,9 @@ Proportional, not ceremonial:
 - **Forever names** (two-part `"First Surname"` names, the surname in the realm slot;
   [platform-forever.md](platform-forever.md)): `harness.new({ forever = true })` and
   `harness.twoPart(name, guid)` in the harness, `wow.foreverNames(first, surname)` as
-  stub overrides. The cases live in `spec/sync_names_spec.lua`.
+  stub overrides. The cases live in `spec/sync_names_spec.lua`. Our own name is read
+  through `UnitFullName("player")` first (`Sync.readOwnName`, `UnitName` only when it's
+  missing), so a test that changes the player's name stubs both, or it tests nothing.
 - **Place fixtures** (`spec/helpers/places.lua`): the fixture places, own entries and
   catalog of [specs/collection-cosmetics.md §6](specs/collection-cosmetics.md#6-test-plan),
   the two hidden-value stand-ins, a raw snapshot (nothing written) and a seeded shuffle,

@@ -30,7 +30,7 @@ local STAT_NAMES = {
   "errors",
 }
 
--- The packager replaces @project-version@; an unpackaged checkout reports "dev".
+-- The packager fills in the TOC's Version line; an unpackaged checkout reports "dev".
 local function version()
   local v = GetAddOnMetadata(ADDON_NAME, "Version")
   if not v or v:find("@", 1, true) then

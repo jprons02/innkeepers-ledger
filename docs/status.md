@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-30 (zones under the world map: #76 merged in #83; two-part names, #75)
+**Updated:** 2026-10-01 (packager workflow, #81 in #86; name form in `/ledger debug`, #80 in #85)
 
 ## Current state
 
@@ -39,16 +39,19 @@
   (contracts in each spec's §8).
 - **Data:** `Data/Inns` empty. Forever's world is new, so it fills in from the probe's
   logs as the maintainer plays. Phrase and cosmetic sets are DRAFTs.
-- **CI:** seven required checks on `main` and `dev`, all runnable locally
+- **CI:** eight required checks on `main` and `dev`, all runnable locally but the
+  packager's dry run (`package`, CI only)
   ([CONTRIBUTING.md](../CONTRIBUTING.md#development-setup)).
 - **Releases:** the Phase 1 release PR (2026-09-28) shipped to `main`; later changes are
   on `dev` only. No tags or published builds (maintainer gate).
 
 ## Next step
 
-- **#81** (blocked on the maintainer's accounts): the BigWigs packager. The workflow,
-  version check and dry run can be built first; tags and publishing stay the
-  maintainer's.
+- **#81** (the packager): built in #86. `release.yml` dry-runs the packager
+  on every PR (`package`, a required check) and publishes a `v*` tag only after the
+  maintainer approves the `release` environment. Packager v2.6.1 pinned by SHA; tag
+  ruleset and environment set. Left open for the maintainer's part (below) and the
+  first manual dry run once `release.yml` reaches `main`.
 - **In the client (maintainer, as you play):** keep ILProbe enabled. Talk to every
   innkeeper you pass (the probe logs NPC ID, map chain, faction and gossip options) and
   `/reload` now and then so the log is written. Then `Sign` and `UI/Book` tickets.
@@ -97,9 +100,16 @@ In short:
 
 - GitHub 2FA: ✅ on. Account email settings stay as they are
   ([decisions.md](decisions.md), 2026-09-28).
+- **Now (one checkbox):** Settings → Environments → `release` → uncheck *Allow
+  administrators to bypass configured protection rules*, so each publish needs an
+  approval even from the maintainer's account (#81; an agent's attempt was refused by
+  its permission guard).
 - **At release time, not before:** the maintainer creates the CurseForge and Wago
-  accounts with 2FA from the start, then the project pages and upload tokens
-  ([security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)).
+  accounts with 2FA from the start, then the project pages (send the project IDs for
+  the TOC) and upload tokens, entered only into the `release` environment as
+  `CF_API_TOKEN` and `WAGO_API_TOKEN`
+  ([security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag),
+  [CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing)).
 
 ## Follow-ups
 
@@ -115,9 +125,11 @@ In short:
   require a space before `{w}` in templates (#62 review nits).
 - Publish `Data/Inns`, `Data/Phrases` and `Data/Cosmetics` as a generated reference for
   export consumers; needs the inn data.
-- **Before the first tag:** the packager setup is #81 (tag naming and its version check
-  included). Answer the phrase and catalog questions first: IDs freeze at the first
-  public release.
+- **Before the first tag:** write `CHANGELOG.md`'s `## vX.Y.Z` notes (the release check
+  requires them), add the TOC IDs (#81), and answer the phrase and catalog questions:
+  IDs freeze at the first public release. Whether CurseForge and Wago map interface
+  `16001` to a Forever game version is unverified until the first upload; the
+  packager's `-g` overrides it if not.
 - **`UI/Book`:** the book's in-game help says what sync shares, in the README's words
   (decisions.md, 2026-09-28, guild sync disclosure).
 - Export golden string (`GOLDEN_F`): regenerate if a library or interpreter change breaks

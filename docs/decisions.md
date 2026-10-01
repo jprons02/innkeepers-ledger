@@ -10,6 +10,63 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-01 — The BigWigs packager, pinned; releases built and checked in CI
+
+Settled in #81 (PR #86), carrying out *Security audit: repository hardening* (below) for
+the packager. The maintainer approved one lookup of the packager's repository for this.
+- **Third-party action (checklist item 12):** `BigWigsMods/packager` **v2.6.1**, commit
+  `e50a250f8705041e40f2fa1ddcb280a686d65aa0` (released 2026-09-18). It's allowed by
+  that exact `owner/repo@sha` pattern; any other version needs a new entry. Reviewed at
+  that commit: `action.yml` runs `setup-packager.sh` (installs pandoc only with a
+  WoWInterface token, subversion only for svn externals; we have neither) and
+  `release.sh`. Things that shaped the workflow: `release.sh` **sources a `.env` file**
+  from the checkout (so the release check refuses one); it **builds `CHANGELOG.md` from
+  commit messages** unless a manual changelog is set (ours hold links, so `.pkgmeta`
+  names a hand-written `CHANGELOG.md`); it writes CRLF unless given `-u`; it replaces
+  `@…@` keywords in `.lua`/`.xml`/`.toc`/`.md`/`.txt` files (LibDeflate's header has
+  some), unless a path is a `plain-copy`; and `plain-copy` overrides `ignore`. It maps
+  interface `16xxx` to Forever.
+- **Two jobs** (`release.yml`): `package` (every PR, manual runs, `v*` tags) is a dry
+  run with no secrets and a required check; `publish` (`v*` tags only) runs in the
+  `release` environment (maintainer approval, tokens there only, the only job with
+  `contents: write`), builds and checks once more, then uploads to CurseForge, Wago and
+  a GitHub release for the tag.
+- **What ships is checked byte-for-byte:** `scripts/check-package.sh` requires exactly
+  the tracked files minus dotfiles and the `.pkgmeta` ignore list, every one identical
+  to the checkout but the TOC, the libraries matching `Libs/MANIFEST.sha256`, and a
+  `## Version` of 1..32 bytes of `[A-Za-z0-9._+-]` equal to the tag (export.md §3.5).
+  Every library entry is a `plain-copy`; our own files keep their LF bytes (`-u`).
+- **Tags are `vX.Y.Z`** (numbers, no leading zeros) **on a commit already on `main`**,
+  and the tag is the version. `CHANGELOG.md` needs a `## vX.Y.Z` section before a tag
+  passes.
+- **The release check locks down the inputs** the packager trusts: `.pkgmeta` may hold
+  only `package-as`, `manual-changelog` (exactly `CHANGELOG.md`, markdown), `plain-copy`
+  and `ignore`, each once (no externals, no `license-output` fetch from the web, no
+  second changelog); every tracked file is a plain file (a symlink would ship whatever it
+  points at); no `.env`. Shipped text (README, LICENSE, CHANGELOG) carries no link or
+  site name.
+- **The environment approval isn't a barrier against an agent.** Agents run as the
+  maintainer's account, which can push the tag and approve its own deployment. The
+  stops are the agent permission guard and the `CLAUDE.md` gates; the environment makes
+  each publish a deliberate, logged approval and keeps the tokens in one job. Admin
+  bypass of the environment is to be turned off by the maintainer.
+
+*Rejected:*
+- **Floating `@v2`:** a moved tag upstream would change what publishes; SHA only.
+- **Letting the packager write the changelog:** it would ship `Claude-Session` links and
+  co-author lines in the AddOn and on the download pages (addon policy).
+- **Building once and uploading that zip:** the packager can't upload a prebuilt zip.
+  The publish job builds twice from the same commit and checks the first build.
+- **`plain-copy: Libs`:** it ships `Libs/MANIFEST.sha256` (plain-copy beats ignore).
+- **A pre-release suffix on tags (`-beta1`):** not needed for v1; one line in
+  `scripts/check-release.sh` if it ever is.
+
+*Reflected in:* `.github/workflows/release.yml`, `.pkgmeta`, `CHANGELOG.md`,
+`scripts/check-release.sh`, `scripts/check-package.sh`, `Core.lua` (a comment);
+`docs/security-checklist.md` → Automated, Repository settings, Before the packager lands,
+item 12; `docs/libraries.md` → Vendoring and upgrades; `CONTRIBUTING.md` → Releasing;
+`docs/status.md`.
+
 ### 2026-09-30 — One read of our own name; the name form shows in `/ledger debug`
 
 Settled in #80, which follows *Two-part names key as the bare sender form* (below) and

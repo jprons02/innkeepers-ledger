@@ -127,3 +127,8 @@ account-affecting APIs, combat APIs, hooks and URLs; ran hostile inputs on Lua 5
   current copy, repeat the review (search + hostile-input run) on changed code paths,
   update the table, hashes and manifest here, and add a decision-log entry. One library
   per PR.
+- **Packaging:** every entry under `Libs/` but the manifest is a `plain-copy` in
+  `.pkgmeta`, so the packager ships it byte-for-byte (no keyword replacement or line-ending
+  change; LibDeflate's header holds `@project-…@` keywords). A new library needs its own
+  line there; `scripts/check-release.sh` fails without it, and `scripts/check-package.sh`
+  compares the packaged files with the manifest.

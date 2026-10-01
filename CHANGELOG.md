@@ -1,0 +1,5 @@
+# Innkeeper's Ledger
+
+## Unreleased
+
+- Sign the ledger at the inns you visit, and collect the signatures of travelers you meet.

@@ -257,11 +257,14 @@ sender form*). Forever's names are `"First Surname"`, and its `UnitName` /
 the realm. The client tells the two apart **from its own player unit only**, never from
 a peer string: `Sync.surname(second, realm)` is `second` (the 2nd return of
 `UnitFullName("player")`, `UnitName` as the fallback) when it's a non-empty string of at
-most 48 bytes with no space or `-` that differs from `realm`, else `nil`. Retail's slot
-holds our realm (or `nil`), so it's `nil` there. The answer is decided once, the first
-time `realm` and a non-empty, non-hidden string `second` are both readable, and kept
-for the session; until then the client follows the realm rules, under which a two-part
-sender never matches (fails closed).
+most 48 bytes with no whitespace or `-` that differs from `realm`, else `nil`. Retail's
+slot holds our realm (or `nil`), so it's `nil` there. The answer is decided once, the
+first time `realm` and a non-empty, non-hidden string `second` are both readable, and
+kept for the session; until then the client follows the realm rules, under which a
+two-part sender never matches (fails closed). Deciding "two-part" empties the group and
+guild maps (built in the realm form until then) and clears the rescan gate, so the two
+forms never mix: the next group miss rescans at once, and a guild miss requests the
+roster.
 3. **PARTY / RAID:** `guid = groupMap[full]`, the map below. If there's no entry,
    rescan the group's names now (the map only, at most once per 10 s; a clock that went
    back allows one at once) and look again; still no entry → unresolved. A sender who
@@ -297,9 +300,11 @@ sender never matches (fails closed).
   must be 1..48 bytes and `key = name .. "-" .. realm`; any other `realm` skips the unit.
   **Verify** (#12) that this matches the sender string's form.
 - **Two-part form** (a two-part client, instead of the realm form). The second return
-  `realm` is `nil` or empty → `key = name`; a string that, once its spaces and `-` are
-  removed, equals our realm → `key = name` (so `"First Surname", nil` and
-  `"First Surname", "<our realm>"` key like the sender). Otherwise it's the surname:
+  `realm` is `nil`, empty, or a string that equals our realm once its spaces and `-` are
+  removed → `key = name` **if `name` contains a space**, else the unit is skipped (so
+  `"First Surname", nil` and `"First Surname", "<our realm>"` key like the sender, and a
+  unit read as `"First", "<our realm>"` never gives a first-name key another member's
+  sender could match). Otherwise it's the surname:
   `name` must hold no whitespace and `realm` no whitespace or `-`, and
   `key = name .. " " .. realm`, at most 96 bytes; anything else skips the unit. Seen for
   `player` (beta); **assumed** for `partyN` / `raidN` until #12 sees another character.
@@ -842,7 +847,9 @@ Receive path, each hostile case by name:
   case changes, a first name alone, `"Mira-Vale"`, extra spaces and another realm's
   suffix → `unresolved`, our realm's suffix → the bare name; two members sharing a first
   name or a surname resolve apart; a name two units or rows claim → `unresolved`; every
-  form a unit may give keys as the sender's, odd ones are skipped; `"Unknown"` until a
+  form a unit may give keys as the sender's, odd ones (a one-word name without a
+  surname included) are skipped, so a one-word sender never borrows a member's GUID;
+  maps built before the decision are emptied when it's made; `"Unknown"` until a
   rescan reads the name; the roster with or without our realm's suffix; the real client
   under the stub.
 - **channels:** WHISPER, `INSTANCE_CHAT`, CHANNEL, SAY, `nil` → `channel`, nothing sent.

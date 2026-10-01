@@ -260,8 +260,6 @@ describe("Sync with two-part names: the group", function()
         { { "Mira Vale", "" }, "Mira Vale" },
         { { "Mira Vale", REALM }, "Mira Vale" },      -- the whole name and our realm
         { { "Mira Vale", "Classic Beta PvP" }, "Mira Vale" },
-        { { "Mira", REALM }, "Mira" },                -- a one-part name on our realm
-        { { "Mira", nil }, "Mira" },
         { { ("M"):rep(47), ("V"):rep(48) }, ("M"):rep(47) .. " " .. ("V"):rep(48) },
       }
       for _, case in ipairs(cases) do
@@ -274,6 +272,7 @@ describe("Sync with two-part names: the group", function()
       me.secret = function(v) return v == hiddenSlot end
       for i, bad in ipairs({
         { "Mira Vale", "Farshore" },        -- two-part plus a slot that isn't our realm
+        { "Mira", REALM }, { "Mira", nil }, { "Mira", "" }, -- one word, no surname
         { "Mira", "Va le" }, { "Mira", "Va-le" }, { "Mira", "Vale\t" },
         { "Mira", 42 }, { "Mira", {} }, { "Mira", hiddenSlot },
         { "Mira", hostileProxy() },
@@ -290,6 +289,45 @@ describe("Sync with two-part names: the group", function()
       end
       assert.equal(0, stats(me).errors)
     end)
+
+  it("never lets a one-word sender borrow a member whose unit drops the surname", function()
+    -- If units ever read "Mira", <our realm> for Mira Vale, a member whose sender is
+    -- "Mira" (unit not loaded yet) must not resolve to Mira Vale's GUID.
+    local _, me, members = forever({ "Mira Vale",
+      harness.twoPart("Mira", "Player-1-0000C001") })
+    unitAnswers(me, "party1", "Mira", REALM)
+    unitAnswers(me, "party2", "Unknown", nil)
+    me.client:onEvent("GROUP_ROSTER_UPDATE")
+    assert.same({ "Ada Brook" }, keys(me.client.group))
+    assert.is_nil(me.client:resolve("PARTY", "Mira", harness.NOW))
+    assert.is_false(resolves(me, "Mira"))
+    assert.equal(0, (held(me, members[2].guid)))
+  end)
+
+  it("empties maps built before the client knew its names were two-part", function()
+    local w = harness.new({ forever = true })
+    local me = w:add("Ada Brook", { start = false })
+    local mira = w:add("Mira Vale", { start = false })
+    w:setGroup({ me, mira })
+    w:setGuild({ me, mira })
+    local readable = false
+    me.impl.GetNormalizedRealmName = function() return readable and REALM or nil end
+    assert.is_true(me.client:start())
+    -- Undecided at start: the maps were built in the realm form.
+    assert.is_nil(me.client.surnames)
+    assert.same({ "Ada-Brook", "Mira-Vale" }, keys(me.client.group))
+    assert.same({ "Ada Brook", "Mira Vale" }, keys(me.client.guild))
+    readable = true
+    assert.is_false(resolves(me, "Mira-Vale"))  -- decided now: the old keys are gone
+    assert.is_true(me.client.surnames)
+    assert.is_true(resolves(me, "Mira Vale"))   -- the miss rescanned in the new form
+    assert.same({ "Ada Brook", "Mira Vale" }, keys(me.client.group))
+    assert.same({}, keys(me.client.guild))      -- refilled at the next roster update
+    me.client:onEvent("GUILD_ROSTER_UPDATE")
+    w:advance(10) -- the trailing rebuild (one per 10 s; the last ran at start)
+    assert.same({ "Ada Brook", "Mira Vale" }, keys(me.client.guild))
+    assert.is_true(resolves(me, "Mira Vale", "GUILD"))
+  end)
 
   it("resolves a member whose name hadn't loaded, once a rescan reads it", function()
     local w, me, members = forever({ "Mira Vale" })

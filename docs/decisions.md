@@ -22,8 +22,13 @@ is the sender as the server sends it, `"First Surname"`. A realm client (retail)
   both are readable; until then the realm rules apply and two-part senders fail closed.
 - **Units key as `name .. " " .. surname`,** taken from the observed `player` reading
   and assumed for party and raid units until #12 sees another character. A slot that's
-  empty or holds our realm leaves the name alone, so the likely alternatives (the whole
-  name with `nil` or our realm) key the same way. Anything else skips the unit.
+  empty or holds our realm leaves a two-word name alone, so the likely alternatives (the
+  whole name with `nil` or our realm) key the same way. A one-word name with such a slot
+  is skipped: a first-name key could match another member's one-word sender and store
+  their entries under the wrong GUID (found in #75's review). Anything else skips the
+  unit too.
+- **Deciding "two-part" empties the group and guild maps** built before it (in the
+  realm form), so keys of the two forms never mix.
 - **Our own realm's suffix is dropped** from a sender or roster name (`"First
   Surname-<our realm>"` → `"First Surname"`), since both name the same character. Any
   other suffix stays, so it never matches a bare key.

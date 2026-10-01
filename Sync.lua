@@ -509,6 +509,8 @@ end
 -- Whether this client's names are two-part (Forever): our own player unit's realm slot
 -- holds a surname (Sync.surname). Read from our unit, never from a peer, and decided once
 -- both it and our realm are readable; until then false, so a two-part sender fails closed.
+-- Deciding true empties the group and guild maps, which were built in the realm form, so
+-- keys of the two forms never mix (a miss then rescans or requests the roster).
 function Client:twoPart()
   if self.surnames == nil then
     local realm = self:realm()
@@ -516,6 +518,9 @@ function Client:twoPart()
     if realm ~= nil and not self:hidden(second) and type(second) == "string"
       and second ~= "" then
       self.surnames = Sync.surname(second, realm) ~= nil
+      if self.surnames then
+        self.group, self.guild, self.rescanAt = {}, {}, nil
+      end
     end
   end
   return self.surnames == true
@@ -523,17 +528,17 @@ end
 
 -- A two-part client's key for a unit (spec 3.4). The player unit gives "First",
 -- "Surname" (beta, 2026-09-30); other units are assumed to until #12 sees one. A realm
--- slot that's empty or holds our realm leaves the name as is, so "First Surname" with
--- nil or our realm gives the same key. Anything else is skipped.
+-- slot that's empty or holds our realm keeps a name that's already two-part as is, so
+-- "First Surname" with nil or our realm gives the same key; a one-word name there is
+-- skipped (a key of the first name alone could match another member's sender).
+-- Anything else is skipped too.
 local function twoPartKey(name, realm, ourRealm)
-  if realm == nil or realm == "" then
-    return name
+  if realm == nil or realm == "" or (type(realm) == "string"
+    and gsub(realm, "[%s%-]", "") == ourRealm) then
+    return find(name, " ", 1, true) and name or nil
   end
   if type(realm) ~= "string" then
     return nil
-  end
-  if gsub(realm, "[%s%-]", "") == ourRealm then
-    return name
   end
   if find(name, "%s") or find(realm, "[%s%-]") or #name + 1 + #realm > SENDER_MAX then
     return nil

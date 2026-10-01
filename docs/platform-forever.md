@@ -145,15 +145,18 @@ in the sections above. **Partly** means the rest of the item is still open.
       handled); unit-token names; `GROUP_ROSTER_UPDATE` after a name loads
 - [ ] Collect every inn for the `Data/Inns` table (#12), per innkeeper: the NPC ID; the
       inn's English name; the zone's map ID and English name; the continent's map ID
-      and English name; the innkeeper's faction (`"Alliance"`, `"Horde"`, or neutral if
+      and English name (the World map's, if no Continent is above the zone); the
+      innkeeper's faction (`"Alliance"`, `"Horde"`, or neutral if
       both can use it); whether another innkeeper serves the same inn (an alias). Zone
       seals are numbered 101, 102, … in the order zones are added
       ([specs/collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
       The probe logs every NPC talked to, so this fills in during normal play
 - [ ] Map IDs readable at each inn (`C_Map.GetBestMapForUnit("player")`, then the
       `C_Map.GetMapInfo(id).parentMapID` chain up to the first *Zone*- and
-      *Continent*-type maps); a capital city is its own zone. **Partly** ✅: the chain
-      reads, but Zephras Isle has **no Continent ancestor** (Zone → World)
+      *Continent*-type maps, or a *World* map if it comes first); a capital city is its
+      own zone. **Partly** ✅: the chain reads; Zephras Isle has **no Continent
+      ancestor** (Zone 2521 → World 947), so it's grouped under Azeroth (947) (#76). Still
+      open: the chain for every other Forever zone, as the collection fills in
 - [x] The player's faction token ✅: `UnitFactionGroup("player")` returns `"Alliance"`
       (readable, English); `UnitFactionGroup("npc")` gives an NPC's faction (`"Horde"`,
       `"Alliance"`, or nothing for neutral ones), `UnitReaction` its standing

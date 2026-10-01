@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-30 (two-part names fixed, #75; tickets #80, #81 filed)
+**Updated:** 2026-09-30 (zones under the world map, #76; two-part names, #75)
 
 ## Current state
 
@@ -28,7 +28,10 @@
     Senders, group and guild keys and stored names use the bare `"First Surname"`;
     the owner's name is `"First Surname"` ([decisions.md](decisions.md), 2026-09-30).
     Still to confirm with a second character (#12).
-  - ❌ **Zones can sit under the world map with no continent:** #76.
+  - ✅ **Zones can sit under the world map with no continent:** fixed in #76. Such a
+    zone is grouped under its World map (Zephras Isle → Azeroth 947); a map ID never
+    keys both a zone and a continent ([decisions.md](decisions.md), 2026-09-30). The
+    other zones' chains come in as the collection fills (#12).
 - **Not built:** `Sign` and `UI/Book`. The gossip and NPC-ID questions are answered for
   ordinary NPCs, but **no innkeeper has been seen yet**. File their tickets once one has
   (contracts in each spec's §8).
@@ -41,10 +44,8 @@
 
 ## Next step
 
-- **#76** (ready, no client needed): zones without a continent in `Collection`. Start
-  here.
 - **#80** (ready, no client needed): show the two-part name decision in `/ledger debug`
-  and read our own name one way. Do it before the #12 party test.
+  and read our own name one way. Do it before the #12 party test. Start here.
 - **#81** (blocked on the maintainer's accounts): the BigWigs packager. The workflow,
   version check and dry run can be built first; tags and publishing stay the
   maintainer's.
@@ -70,7 +71,9 @@ None block work; drafts ship and get retuned ([decisions.md](decisions.md) →
   [collection-cosmetics.md §9](specs/collection-cosmetics.md#9-draft-catalog-draft):
   set, names, thresholds (retuned once the inns are counted). Also: "every inn" = every
   inn your faction can use? Keep a zone seal when a patch adds an inn to that zone?
-  Later: continent seals, a "home inn" reward, a badge kind?
+  Later: continent seals, a "home inn" reward, a badge kind? For the retune: a zone with
+  no Continent above it is grouped under its World map, which counts toward the
+  `continent` quill (#76).
 - **Export (#64):** add `me.region` (Forever names are unique only per region)? Ever
   want an import or backup restore ([export.md → Open questions](specs/export.md#open-questions-maintainer))?
 

@@ -15,6 +15,9 @@
 cosmetics, their names and their thresholds in [§9](#9-draft-catalog-draft) are a DRAFT
 and the maintainer decides them (a `CLAUDE.md` gate). They ship as written until then;
 the questions are tracked in [status.md](../status.md). Nothing else here waits on them.
+Amended 2026-09-30 (#76): a zone with no Continent map above it is grouped under its
+World map ([§3.1](#31-places-inns-zones-continents)), and a map ID can't key both a zone
+and a continent ([§3.2](#32-record-rules) rule 6).
 **Security-sensitive:** moderately. `Cosmetics.SEALS` is the `seals` table of
 `SyncProtocol`'s rule 16, so it decides which peer entries are stored. The reviewer
 applies security-level scrutiny to [§5](#5-security-notes) and must try hostile input of
@@ -105,7 +108,14 @@ ns.Data.Inns[<innkeeper NPC ID>]    = { alias = <NPC ID of the inn's primary rec
 - **Zone and continent keys are the client's own map IDs** (`uiMapID`), read by #12's
   walk at each innkeeper: the zone is the first map of type *Zone* walking up from
   `C_Map.GetBestMapForUnit("player")` through `C_Map.GetMapInfo(id).parentMapID`, the
-  continent the first of type *Continent* (**verify** in #12). Map IDs are
+  continent the first of type *Continent* above it, **or, when the chain reaches a
+  *World*-type map first, that World map** (#76). The Forever beta showed why: *Zephras
+  Isle* (map 2521, type Zone) hangs directly off the *Azeroth* world map (947, type World),
+  with no Continent between, so its record is `Zones[2521] = { name = "Zephras Isle",
+  continent = 947, … }` and `Continents[947] = { name = "Azeroth" }`. "Continent" in this
+  spec, in `byContinent` and in the export means this group: a Continent map, or the
+  World map such a zone sits under. A map ID is one map, so it never keys both a zone and
+  a continent (3.2 rule 6). Map IDs are
   locale-independent, stable across patches, come from the client rather than a naming
   choice, and let the book localize names later from `C_Map.GetMapInfo(id).name`. A
   capital city is its own zone (it has its own map). If #12 finds map IDs unreadable, the
@@ -152,6 +162,13 @@ empty for the real data. Validation runs in this order, so an exclusion cascades
    the allow-list `A-Z a-z 0-9`, space, `'`, `,`, `.`, `-`, first byte `A-Z`, no leading
    or trailing space, no two spaces in a row. So no `|`, `%`, `\`, control bytes or bytes
    ≥ 128. Explicit byte ranges, never `%a`/`%w` (locale-dependent; sync-ledger.md §5.2).
+6. **One map, one role** (#76): a key present in both `Zones` and `Continents` excludes
+   **both** records, whatever either holds (even a record excluded for another reason):
+   we can't tell which is wrong, and no "first one wins" depends on `pairs` order. The
+   continent's exclusion cascades to its zones and their inns, as rule 2 does. This also
+   catches a zone whose chain loops back to itself (its `continent` is its own key) or
+   two zones that are each other's continent. A zone whose `continent` is its own key
+   with no such continent record is excluded by rule 2 already.
 
 Any non-table argument counts as an empty table. `invalid` prints only numeric keys
 (`"inn 5003"`, `"zone 10"`, `"continent 2"`) and names any other key by its type
@@ -247,7 +264,7 @@ One ID space of 1..`Ledger.LIMITS.cosmeticIdMax` (9 999), the key space of `earn
   |---|---|---|
   | `inns` | `n` integer 1..9999 | `n` distinct open inns signed |
   | `zones` | `n` integer 1..999 | `n` zones done (every open inn signed) |
-  | `continent` | none | any one continent done |
+  | `continent` | none | any one continent done (a World-map group counts, 3.1) |
   | `all` | none | every inn open to you signed (`total >= 1`) |
 
 - **Zone seals** are generated from the kept zones with rule `{ kind = "zone", zone =
@@ -393,6 +410,16 @@ Same pattern as `Phrase` ([phrase.md §3.7](phrase.md#37-loading-and-binding)):
 - **Zone seal ID = map ID:** map IDs go over 999, the wire's seal limit. **= 100 + list
   position:** inserting a zone renumbers every later seal.
 - **Continent on each inn record:** can disagree with its zone.
+- **For a zone with no Continent above it (#76):**
+  - *`continent = nil`, reported under an "other lands" group:* `byContinent` would need
+    a made-up key or a hole, the export's "every zone's `continent` is a `byContinent`
+    key" rule would break, and the group would need a player-facing label nobody has
+    chosen.
+  - *Each such zone as its own group:* a zone key would also be a continent key (against
+    rule 6), and every lone island would earn the `continent` rule alone.
+  - *Renaming `continent` to `group`:* clearer, but it renames export fields and
+    `byContinent` for no change in meaning. The World-map rule keeps the shape, the
+    progress math and the export byte-for-byte as they were.
 - **Counting innkeepers:** a faction pair or a replaced NPC would count one inn twice, and
   "every inn in a zone" would demand both factions' innkeepers.
 - **Totals over both factions:** contested zones' seals and the `all` rule could never be
@@ -509,6 +536,16 @@ times, never the clock. Coverage floor 90% for both modules (already in
   names with `|`, `%`, `\`, `\0`, a UTF-8 byte, a leading, trailing or double space, a
   lowercase first byte, 49 bytes (48 passes), empty, non-string; a record that's a string
   or a number. An entry at an excluded inn counts as `unknown`.
+- **A zone under a World map** (#76): F plus continent `[947] = "Azeroth"`, zone
+  `[2521] = { "Zephras Isle", continent 947, seal 105 }`, inn `[251001]` in it: binds
+  with `invalid` empty, and progress counts the inn under `byZone[2521]` (continent 947)
+  and `byContinent[947]`; in `Cosmetics`, its zone seal and the `continent` rule are
+  earned by signing it.
+- **Rule 6, hostile:** a World key reused as a zone key (`Zones[947]` beside
+  `Continents[947]`) → both excluded, and zone 2521 and its inn with them; a key in both
+  tables where one record is junk (a string, a number) → both excluded; a zone whose
+  `continent` is its own key, with and without a continent record of that key; two zones
+  that are each other's continent → all excluded, F still binds.
 - `bind()`, `bind("x", 7, true)`, `bind({}, {}, {})` → an empty atlas, no error.
 - **Copies:** changing F after `bind`, or a table returned by `inn`/`zone`/`zoneKeys`/
   `progress`, changes no later result.
@@ -596,7 +633,8 @@ Loads `Data/Inns.lua`, `Data/Cosmetics.lua`, `Ledger.lua`, `Collection.lua`,
 - `ns.Collection.invalid` and `ns.Cosmetics.invalid` are empty; every `Data.Inns` key is
   an integer in 1..`innMax`; every record is a primary or an alias of a primary.
 - Every zone is used by at least one inn and every continent by one zone (a zone retired
-  after release gets a named exception here); names unique per kind (case-insensitive);
+  after release gets a named exception here); no map ID is both a zone and a continent;
+  names unique per kind (case-insensitive);
   zone seals unique and in 101..999 (vacuous until #12, then it bites).
 - Every key of `ns.Cosmetics.SEALS` is an integer in 1..`Ledger.LIMITS.sealMax`, and
   `SEALS` holds exactly the catalog's seals plus one per zone.
@@ -658,9 +696,15 @@ ns.Data.Cosmetics).SEALS` on a fresh ledger: the `101` entry is stored too
 
 - **#12 (the in-client walk)** records, per innkeeper: the NPC ID; the inn's English
   name; the zone's map ID and English name (first *Zone*-type map up the parent chain);
-  the continent's map ID and English name; the innkeeper's faction (`"Alliance"`,
+  the continent's map ID and English name (the first *Continent*-type map above the zone,
+  or the first *World*-type map if the chain reaches one first, 3.1); the innkeeper's
+  faction (`"Alliance"`,
   `"Horde"`, or neutral if both can use it); and whether another innkeeper serves the same
   inn (an alias). Zone seals are numbered 101, 102, … in the order zones are added.
+  The walk is bounded: it stops at a parent of `0` or `nil`, at a map ID it has already
+  seen, or after 12 steps (the probe's walk does this). A chain with no *Zone* map, or
+  with no Continent or World map above the zone, isn't entered: it goes on #12 as a
+  question, and the rule is extended here first.
 - **`Sign`:** gets the faction as the first return of `UnitFactionGroup("player")`
   (checked with `issecretvalue` and `type == "string"`, else `nil`; added to
   `.luacheckrc`'s glue list). Before `addOwn`, `unlocked = ns.Cosmetics.unlocked(own,
@@ -727,7 +771,10 @@ inks mark depth. No name refers to a faction, race or class.
 1. **The draft catalog** (§9): which cosmetics, their names, and the ladder (1 / 5 / 10 /
    20 inns; 3 / 10 zones; a continent; everything). Ship as is, or redirect? The numbers
    will be retuned once #12 knows how many inns there are. Doesn't block the build or the
-   merge; IDs change freely until the first release.
+   merge; IDs change freely until the first release. Note for the retune (#76): a zone
+   with no Continent above it is grouped under its World map, which counts as a
+   continent for the `continent` rule. If many Forever zones hang straight off Azeroth,
+   that group nears "every inn"; a lone such zone makes the rule easy.
 2. **Per-faction totals** (Assumptions): agree that "every inn" means every inn your
    faction can use?
 3. **Never taken away** (Assumptions): agree that a seal stays when Forever adds an inn to

@@ -5,7 +5,7 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-30 (zones under the world map, #76; two-part names, #75)
+**Updated:** 2026-09-30 (zones under the world map: #76 merged in #83; two-part names, #75)
 
 ## Current state
 
@@ -28,7 +28,7 @@
     Senders, group and guild keys and stored names use the bare `"First Surname"`;
     the owner's name is `"First Surname"` ([decisions.md](decisions.md), 2026-09-30).
     Still to confirm with a second character (#12).
-  - ✅ **Zones can sit under the world map with no continent:** fixed in #76. Such a
+  - ✅ **Zones can sit under the world map with no continent:** fixed in #76 (#83). Such a
     zone is grouped under its World map (Zephras Isle → Azeroth 947); a map ID never
     keys both a zone and a continent ([decisions.md](decisions.md), 2026-09-30). The
     other zones' chains come in as the collection fills (#12).

@@ -10,6 +10,38 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-09-30 — A zone with no Continent above it is grouped under its World map
+
+Settled in #76, which follows *Forever beta results* (below): Zephras Isle (map 2521,
+type Zone) hangs directly off the Azeroth world map (947, type World). Spec:
+[specs/collection-cosmetics.md §3.1, §3.2 rule 6](specs/collection-cosmetics.md#31-places-inns-zones-continents).
+- **A zone's continent is the first Continent-type map above it, or the first
+  World-type map if the chain reaches one first.** So `Continents[947] = { name =
+  "Azeroth" }`, and Zephras Isle's inns count under it. "Continent" in the spec,
+  `byContinent` and the export means this group.
+- **A map ID keys a zone or a continent, never both:** a key in both tables excludes
+  both records (and cascades), whatever either holds. This also catches a zone whose
+  `continent` loops back to itself or to another zone.
+- **Nothing else changes:** the record shape, the progress math, `Cosmetics` and the
+  export (still v1) are as they were. The group's name is the map's own name from the
+  client, so no new player-facing label is needed.
+- The `continent` cosmetic rule counts a World-map group like any continent. Noted for
+  the catalog retune (#63), not changed.
+
+*Rejected:*
+- **`continent = nil` and an "other lands" group:** a made-up key or a hole in
+  `byContinent`, a broken export rule (every zone's `continent` is a `byContinent` key),
+  and a new label for the maintainer to name.
+- **Each such zone as its own group:** a key in both tables, and every lone island would
+  earn the `continent` rule alone.
+- **Renaming `continent` to `group`:** clearer, but it renames export fields for no change
+  in meaning.
+
+*Reflected in:* `Collection.lua`, `Data/Inns.lua`, `docs/specs/collection-cosmetics.md`
+§3.1, §3.2, §3.5, §3.10, §6.1, §6.6, §8, open question 1; `docs/specs/export.md`
+(implementation notes, §4.1); `docs/export-format.md`; `docs/platform-forever.md` →
+Verification checklist.
+
 ### 2026-09-30 — Two-part names key as the bare sender form
 
 Settled in #75, which follows *Forever beta results* (below). On a client whose names

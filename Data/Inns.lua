@@ -11,8 +11,11 @@
 --   Continents[<map ID>] = { name = "..." }
 --
 -- An inn's continent comes through its zone. Zone and continent keys are the client's own
--- map IDs. A zone's `seal` is its seal ID (101..999), allocated once in the order zones are
--- added and never reused. After the first release no record is ever removed or renumbered:
+-- map IDs. A zone's continent is the first Continent-type map above it, or, with none
+-- there, the nearest World-type map (Zephras Isle 2521 sits right under Azeroth 947, so
+-- Continents[947] = { name = "Azeroth" }). A map ID is never both a zone and a continent.
+-- A zone's `seal` is its seal ID (101..999), allocated once in the order zones are added
+-- and never reused. After the first release no record is ever removed or renumbered:
 -- a retired inn keeps its record, a replacing innkeeper becomes an alias of it.
 local _, ns = ...
 

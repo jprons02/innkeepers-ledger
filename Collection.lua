@@ -1,5 +1,6 @@
 -- Collection (pure): the passport math. Validates the place data (inns, zones,
--- continents) once, then counts the player's own signatures: signed / total overall, by
+-- continents; a zone's "continent" is a World map when no Continent map is above it) once,
+-- then counts the player's own signatures: signed / total overall, by
 -- continent, by zone, and per inn.
 -- No WoW API here. Client values come in as arguments (docs/architecture.md -> Modules).
 -- Spec: docs/specs/collection-cosmetics.md (sections 3.1-3.4, 3.8, 3.9). Own entries come
@@ -117,11 +118,13 @@ function Collection.bind(inns, zones, continents)
   end
   local invalid = {}
 
-  -- 1. Continents.
+  -- 1. Continents (a zone's group: a Continent map, or a World map with no Continent
+  -- between). A map ID is one map, so a key in both tables excludes both records, whatever
+  -- they hold: we can't tell which one is wrong (rule 6).
   local conts = {} -- key -> { name }
   for k, v in next, continents do
-    if isInt(k, 1, MAP_KEY_MAX) and type(v) == "table" and exactFields(v, CONTINENT_FIELDS)
-      and validName(rawget(v, "name")) then
+    if isInt(k, 1, MAP_KEY_MAX) and rawget(zones, k) == nil and type(v) == "table"
+      and exactFields(v, CONTINENT_FIELDS) and validName(rawget(v, "name")) then
       conts[k] = { name = rawget(v, "name") }
     else
       invalid[#invalid + 1] = label("continent", k)
@@ -139,7 +142,8 @@ function Collection.bind(inns, zones, continents)
   end
   local zoneRecs, zoneKeys = {}, {} -- key -> { name, continent, seal }; sorted keys
   for k, v in next, zones do
-    local ok = isInt(k, 1, MAP_KEY_MAX) and type(v) == "table" and exactFields(v, ZONE_FIELDS)
+    local ok = isInt(k, 1, MAP_KEY_MAX) and rawget(continents, k) == nil and type(v) == "table"
+      and exactFields(v, ZONE_FIELDS)
     local name, continent, seal
     if ok then
       name, continent, seal = rawget(v, "name"), rawget(v, "continent"), rawget(v, "seal")

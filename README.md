@@ -1,9 +1,9 @@
 # Innkeeper's Ledger
 
-> *"Sign the ledger, traveler?"*
+> *"Sign the guestbook, traveler?"*
 
-A free World of Warcraft AddOn for **WoW: Forever**. Talk to an innkeeper, sign the
-ledger, and slowly fill a book of every inn you've rested at. Travelers you group with
+A free World of Warcraft AddOn for **WoW: Forever**. Talk to an innkeeper, sign the inn's
+guestbook, and slowly fill a book of every inn you've rested at. Travelers you group with
 leave their marks in your book too, so years later you might find that the stranger
 from last night's dungeon slept in the same tiny Hillsbrad inn you did.
 

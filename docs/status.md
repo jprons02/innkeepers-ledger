@@ -29,7 +29,8 @@ Wago projects; release to `main`)
 - **Releasing is wired up (#81, #86):** `release.yml` dry-runs the BigWigs packager on
   every PR (`package`, a required check) and publishes a `v*` tag only after the
   maintainer approves the `release` environment
-  ([CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing)). CurseForge `1721704`
+  ([CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing)). The first manual dry
+  run on `main` passed (2026-10-02, 36 files); #81 is closed. CurseForge `1721704`
   and Wago `n6VYeONd` exist, with pages written and both IDs in the TOC (#87, #88).
 - **CI:** eight required checks on `main` and `dev`, all runnable locally but `package`.
 - **Releases:** `main` holds everything through 2026-10-01 (the release PR of that
@@ -37,8 +38,6 @@ Wago projects; release to `main`)
 
 ## Next step
 
-- **#81, the last bit (agent):** run *Actions → release → Run workflow* on `main` (the
-  manual dry run) and attach it to #81; close #81 once the Wago token is in.
 - **In the client (maintainer, as you play):** keep ILProbe enabled, talk to every
   innkeeper you pass and `/reload` now and then. Then the `Sign` and `UI/Book` tickets.
 
@@ -72,11 +71,9 @@ any innkeeper (gossip, NPC ID, `IsResting()`, the button's look); solo after log
 `got hello PARTY` not `drop unresolved`, `UnitFullName("partyN")`, also in a cross-realm or group-finder group); a guild round-trip;
 one dungeon run; copying out an export string (once the Share window exists).
 
-**Accounts:**
-- `WAGO_API_TOKEN` into the `release` environment's **secrets** (key from Wago's
-  account API-keys page). `CF_API_TOKEN` is in.
-- Confirm 2-Step Verification on the Google account CurseForge signs in with
-  ([security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)).
+**Accounts:** nothing waiting. Both upload tokens are in the `release` environment's
+  secrets, and every publishing account has a second factor (2026-10-01;
+  [security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)).
 
 ## Follow-ups
 

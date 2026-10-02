@@ -116,6 +116,12 @@ Set in GitHub, not in files; re-check them in each release review (item 12). Set
     in `CLAUDE.md` (tagging and publishing are his). The environment makes a publish a
     deliberate, logged approval and keeps the tokens out of every other job; it is not
     a barrier against a session holding the maintainer's token.
+    **Observed 2026-10-01:** the agents' GitHub token is narrower than the account. It
+    gets HTTP 403 when starting a workflow (`workflow_dispatch`) and when listing
+    repository or environment secrets and variables. So an agent can't start the
+    manual dry run (the maintainer clicks *Run workflow*), and most likely can't
+    approve a deployment either; not tested, since trying would mean attempting an
+    approval. If the token's permissions change, recheck before relying on this.
   - `scripts/check-release.sh --tag` fails unless the tagged commit is on `origin/main`
     (so only code that passed a release PR's security review ships). It guards against
     a mistaken tag: the tagged commit carries its own copy of the script.

@@ -124,12 +124,12 @@ Set in GitHub, not in files; re-check them in each release review (item 12). Set
 
 The packager publishes to every player, so a stolen token or account is the worst
 supply-chain case. Before the first tag:
-- [ ] A second factor on every account that can publish. GitHub: 2FA, on since
+- [x] A second factor on every account that can publish. GitHub: 2FA, on since
   2026-09-28. CurseForge (project `1721704`) signs in with Google, so its second factor
   is that Google account's 2-Step Verification. Wago (project `n6VYeONd`) is reached
   through the GitHub sign-in it was set up with, which GitHub's 2FA covers; if it's
-  another login, that login's 2-Step. **The maintainer confirms Google 2-Step before the
-  first tag.** The upload tokens are separate keys that bypass any login: they live only
+  another login, that login's 2-Step. The maintainer confirmed Google 2-Step
+  (2026-10-01). The upload tokens are separate keys that bypass any login: they live only
   in the `release` environment's secrets, and are revoked and replaced if ever exposed.
 - [x] The workflow runs only on `v*` tag pushes; a tag ruleset lets only the maintainer
   create or move `v*` tags (#81).

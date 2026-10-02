@@ -144,7 +144,11 @@ in the sections above. **Partly** means the rest of the item is still open.
       what `UnitFullName("partyN")` returns (#75 assumes `"First", "Surname"` like
       `player`, and also accepts the whole name with `nil` or our realm) and what
       `GetGuildRosterInfo` gives as a name (with or without `-ClassicBetaPvP`, both
-      handled); unit-token names; `GROUP_ROSTER_UPDATE` after a name loads
+      handled; a one-word roster name is skipped); unit-token names;
+      `GROUP_ROSTER_UPDATE` after a name loads. Also: in a cross-realm or group-finder
+      group, does a member's `UnitFullName` slot hold a surname or another realm? The
+      group map reads any one-word slot as a surname, which is only safe while groups
+      stay within one ruleset realm (release review, 2026-10-01)
 - [ ] Collect every inn for the `Data/Inns` table (#12), per innkeeper: the NPC ID; the
       inn's English name; the zone's map ID and English name; the continent's map ID
       and English name (the World map's, if no Continent is above the zone); the

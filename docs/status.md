@@ -69,7 +69,7 @@ None block work; drafts ship and get retuned ([decisions.md](decisions.md) →
 [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)):
 any innkeeper (gossip, NPC ID, `IsResting()`, the button's look); solo after login,
 `/ledger debug` ends `names two-part` (#80); a second character in a party (round-trips,
-`got hello PARTY` not `drop unresolved`, `UnitFullName("partyN")`); a guild round-trip;
+`got hello PARTY` not `drop unresolved`, `UnitFullName("partyN")`, also in a cross-realm or group-finder group); a guild round-trip;
 one dungeon run; copying out an export string (once the Share window exists).
 
 **Accounts:**

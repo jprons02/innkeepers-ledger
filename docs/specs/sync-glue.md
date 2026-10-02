@@ -333,7 +333,9 @@ miss requests the roster at once (then at most once per 60 s, as usual).
   row if either is hidden, `name` isn't a 1..96-byte string, or `guid` fails `validGUID`.
   Key by `keyOf(name)`, as a sender (step 2): on a two-part client a roster name with or
   without our realm's suffix keys as `"First Surname"` (which one Forever gives is open,
-  #12).
+  #12). **A two-part client skips a key with no space** (a one-word row, the surname
+  missing, or `"First-<other realm>"`), as the group map skips a one-word name, so a
+  one-word sender can never borrow a member's GUID (release review, 2026-10-01).
 - A key that two rows claim is **removed** and stays removed until the next rebuild
   (ambiguous → unresolved). Rows past 2 000 are ignored (the server's guild cap is far
   lower; this only bounds the loop).

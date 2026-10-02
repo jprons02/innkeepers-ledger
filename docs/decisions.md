@@ -10,6 +10,40 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-01 — Distribution pages: CurseForge and Wago, no outbound links
+
+The maintainer created both projects (#81): CurseForge `1721704` and Wago `n6VYeONd`,
+both now in the TOC (`## X-Curse-Project-ID`, `## X-Wago-ID`).
+- **Page text** (chosen by the maintainer): name *Innkeeper's Ledger*; summary *"Sign a
+  guestbook at every inn and discover which fellow travelers have stayed there before
+  you."*; the description follows the README (what it does, exactly what sync shares,
+  principles), with a Blizzard trademark line. Logo: an original drawing (a timber inn
+  at night, its sign an open ledger and quill), no game art. License: MIT. Third-party
+  distribution allowed on CurseForge.
+- **No outbound links** on either page (website, wiki, source, support and Discord left
+  empty), per [addon-policy.md](addon-policy.md) rule 4, which covers distribution
+  pages. **One exception:** Wago's license field requires a URL, so it points at the
+  neutral MIT text (`opensource.org/license/mit`), not at the repo.
+- **The Wago project is a custom addon, not linked to the GitHub repo:** uploads come
+  from `release.yml` with `WAGO_API_TOKEN`, so Wago needs no access to the repo.
+- **Account security:** CurseForge signs in with Google, so its second factor is the
+  Google account's 2-Step Verification
+  ([security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)).
+  Tokens go only into the `release` environment's **secrets** (never variables); the
+  first CurseForge token, entered as a plain variable in a second, unprotected
+  environment, was revoked and replaced, and that environment deleted.
+
+*Rejected:*
+- **Linking the source repo from the pages:** harmless in spirit, but still a link out;
+  revisit only as a deliberate exception.
+- **Wago's "GitHub Addon Creation":** ties the project to the repo and may ask for
+  GitHub permissions, for nothing the workflow needs.
+- **Renaming the environment to `production`:** it would mean redoing the reviewer,
+  tag policy and docs for no gain.
+
+*Reflected in:* `InnkeepersLedger.toc`; `docs/security-checklist.md` → Repository
+settings, Before the packager lands; `docs/status.md`.
+
 ### 2026-10-01 — The BigWigs packager, pinned; releases built and checked in CI
 
 Settled in #81 (PR #86), carrying out *Security audit: repository hardening* (below) for

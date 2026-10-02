@@ -50,8 +50,9 @@
 - **#81** (the packager): built in #86. `release.yml` dry-runs the packager
   on every PR (`package`, a required check) and publishes a `v*` tag only after the
   maintainer approves the `release` environment. Packager v2.6.1 pinned by SHA; tag
-  ruleset and environment set. Left open for the maintainer's part (below) and the
-  first manual dry run once `release.yml` reaches `main`.
+  ruleset and environment set. CurseForge and Wago projects exist and are in the TOC;
+  left open for the Wago token (below) and the first manual dry run once
+  `release.yml` reaches `main`.
 - **In the client (maintainer, as you play):** keep ILProbe enabled. Talk to every
   innkeeper you pass (the probe logs NPC ID, map chain, faction and gossip options) and
   `/reload` now and then so the log is written. Then `Sign` and `UI/Book` tickets.
@@ -100,16 +101,16 @@ In short:
 
 - GitHub 2FA: ✅ on. Account email settings stay as they are
   ([decisions.md](decisions.md), 2026-09-28).
-- **Now (one checkbox):** Settings → Environments → `release` → uncheck *Allow
-  administrators to bypass configured protection rules*, so each publish needs an
-  approval even from the maintainer's account (#81; an agent's attempt was refused by
-  its permission guard).
-- **CurseForge:** project created (2026-10-01), ID `1721704`, now in the TOC. Still
-  to do: 2FA on the account, and the upload token entered only into the `release`
-  environment as `CF_API_TOKEN`.
-- **Wago:** the account (2FA from the start), the project (send its ID for the TOC's
-  `## X-Wago-ID`) and the token, entered only into the `release` environment as
-  `WAGO_API_TOKEN`
+- **CurseForge:** project `1721704` (2026-10-01), in the TOC; `CF_API_TOKEN` is in the
+  `release` environment's secrets (rotated after it first went in as a plain
+  variable). Still to confirm: 2-Step Verification on the Google account it signs in
+  with.
+- **Wago:** project `n6VYeONd` (2026-10-01, a custom addon, not linked to the repo),
+  in the TOC. Still to do: `WAGO_API_TOKEN` in the `release` environment's secrets.
+- **Both pages are set up** (name, summary, description, logo, MIT); see
+  [decisions.md](decisions.md), 2026-10-01, *Distribution pages*. The `release`
+  environment is the only one, and admin bypass is off (checked 2026-10-01).
+- Then #81 closes after the manual dry run once `release.yml` is on `main`
   ([security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag),
   [CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing)).
 

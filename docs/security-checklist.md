@@ -107,8 +107,8 @@ Set in GitHub, not in files; re-check them in each release review (item 12). Set
   - Environment `release`: the maintainer is the required reviewer, and only `v*` tags
     may deploy to it. It holds `CF_API_TOKEN` and `WAGO_API_TOKEN`, entered by the
     maintainer. Its "Allow administrators to bypass configured protection rules" box
-    should be unchecked, so a publish always waits for an approval. The maintainer
-    unchecks it by hand; until then it's on (`docs/status.md` tracks it).
+    is unchecked (the maintainer, 2026-10-01), so a publish always waits for an
+    approval.
   - **What actually stops an agent.** Agents run as the maintainer's account, so the
     tag ruleset doesn't stop them, and the account that pushes a tag can also approve
     its deployment (the only reviewer is the maintainer, and a self-review block would
@@ -124,9 +124,13 @@ Set in GitHub, not in files; re-check them in each release review (item 12). Set
 
 The packager publishes to every player, so a stolen token or account is the worst
 supply-chain case. Before the first tag:
-- [ ] 2FA on the maintainer's GitHub (on since 2026-09-28), CurseForge and Wago accounts.
-  The CurseForge and Wago accounts don't exist yet; the maintainer creates them at
-  release time, with 2FA from the start. **Still open; needed before the first tag.**
+- [ ] A second factor on every account that can publish. GitHub: 2FA, on since
+  2026-09-28. CurseForge (project `1721704`) signs in with Google, so its second factor
+  is that Google account's 2-Step Verification. Wago (project `n6VYeONd`) is reached
+  through the GitHub sign-in it was set up with, which GitHub's 2FA covers; if it's
+  another login, that login's 2-Step. **The maintainer confirms Google 2-Step before the
+  first tag.** The upload tokens are separate keys that bypass any login: they live only
+  in the `release` environment's secrets, and are revoked and replaced if ever exposed.
 - [x] The workflow runs only on `v*` tag pushes; a tag ruleset lets only the maintainer
   create or move `v*` tags (#81).
 - [x] The CurseForge and Wago tokens live in a GitHub Environment with the maintainer as

@@ -10,6 +10,255 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-01 — On a two-part client, guild keys must be two words too
+
+From the `dev → main` release review. This extends *Two-part names key as the bare
+sender form* (2026-09-30) to the guild map. That entry already skips a one-word unit name
+in the group map; the guild map keyed whatever the roster gave. Now a two-part client
+also skips a roster key with no space (`"First"`, `"First-<our realm>"` reduced to
+`"First"`, or `"First-<other realm>"`). Both maps fail closed the same way, so a one-word
+sender can't resolve to a member whose roster row lost its surname. Spec:
+[specs/sync-glue.md §3.4](specs/sync-glue.md#34-sender-resolution).
+
+The same review noted that the group map reads any one-word slot as a surname, which is
+only safe while groups stay within one ruleset realm. That's now an item on #12's list
+(a cross-realm or group-finder member's `UnitFullName`).
+
+*Rejected:* holding the release for it. Both findings were low, and the guild fix is
+small enough to land first.
+
+*Reflected in:* `Sync.lua` (`rebuildGuild`), `spec/sync_names_spec.lua`,
+`docs/specs/sync-glue.md` §3.4, `docs/platform-forever.md` → Verification checklist,
+`docs/status.md`.
+
+### 2026-10-01 — Distribution pages: CurseForge and Wago, no outbound links
+
+The maintainer created both projects (#81): CurseForge `1721704` and Wago `n6VYeONd`,
+both now in the TOC (`## X-Curse-Project-ID`, `## X-Wago-ID`).
+- **Page text** (chosen by the maintainer): name *Innkeeper's Ledger*; summary *"Sign a
+  guestbook at every inn and discover which fellow travelers have stayed there before
+  you."*; the description follows the README (what it does, exactly what sync shares,
+  principles), with a Blizzard trademark line. Logo: an original drawing (a timber inn
+  at night, its sign an open ledger and quill), no game art. License: MIT. Third-party
+  distribution allowed on CurseForge.
+- **No outbound links** on either page (website, wiki, source, support and Discord left
+  empty), per [addon-policy.md](addon-policy.md) rule 4, which covers distribution
+  pages. **One exception:** Wago's license field requires a URL, so it points at the
+  neutral MIT text (`opensource.org/license/mit`), not at the repo.
+- **The Wago project is a custom addon, not linked to the GitHub repo:** uploads come
+  from `release.yml` with `WAGO_API_TOKEN`, so Wago needs no access to the repo.
+- **Account security:** CurseForge signs in with Google, so its second factor is the
+  Google account's 2-Step Verification
+  ([security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)).
+  Tokens go only into the `release` environment's **secrets** (never variables); the
+  first CurseForge token, entered as a plain variable in a second, unprotected
+  environment, was revoked and replaced, and that environment deleted.
+
+*Rejected:*
+- **Linking the source repo from the pages:** harmless in spirit, but still a link out;
+  revisit only as a deliberate exception.
+- **Wago's "GitHub Addon Creation":** ties the project to the repo and may ask for
+  GitHub permissions, for nothing the workflow needs.
+- **Renaming the environment to `production`:** it would mean redoing the reviewer,
+  tag policy and docs for no gain.
+
+*Reflected in:* `InnkeepersLedger.toc`; `docs/security-checklist.md` → Repository
+settings, Before the packager lands; `docs/status.md`.
+
+### 2026-10-01 — The BigWigs packager, pinned; releases built and checked in CI
+
+Settled in #81 (PR #86), carrying out *Security audit: repository hardening* (below) for
+the packager. The maintainer approved one lookup of the packager's repository for this.
+- **Third-party action (checklist item 12):** `BigWigsMods/packager` **v2.6.1**, commit
+  `e50a250f8705041e40f2fa1ddcb280a686d65aa0` (released 2026-09-18). It's allowed by
+  that exact `owner/repo@sha` pattern; any other version needs a new entry. Reviewed at
+  that commit: `action.yml` runs `setup-packager.sh` (installs pandoc only with a
+  WoWInterface token, subversion only for svn externals; we have neither) and
+  `release.sh`. Things that shaped the workflow: `release.sh` **sources a `.env` file**
+  from the checkout (so the release check refuses one); it **builds `CHANGELOG.md` from
+  commit messages** unless a manual changelog is set (ours hold links, so `.pkgmeta`
+  names a hand-written `CHANGELOG.md`); it writes CRLF unless given `-u`; it replaces
+  `@…@` keywords in `.lua`/`.xml`/`.toc`/`.md`/`.txt` files (LibDeflate's header has
+  some), unless a path is a `plain-copy`; and `plain-copy` overrides `ignore`. It maps
+  interface `16xxx` to Forever.
+- **Two jobs** (`release.yml`): `package` (every PR, manual runs, `v*` tags) is a dry
+  run with no secrets and a required check; `publish` (`v*` tags only) runs in the
+  `release` environment (maintainer approval, tokens there only, the only job with
+  `contents: write`), builds and checks once more, then uploads to CurseForge, Wago and
+  a GitHub release for the tag.
+- **What ships is checked byte-for-byte:** `scripts/check-package.sh` requires exactly
+  the tracked files minus dotfiles and the `.pkgmeta` ignore list, every one identical
+  to the checkout but the TOC, the libraries matching `Libs/MANIFEST.sha256`, and a
+  `## Version` of 1..32 bytes of `[A-Za-z0-9._+-]` equal to the tag (export.md §3.5).
+  Every library entry is a `plain-copy`; our own files keep their LF bytes (`-u`).
+- **Tags are `vX.Y.Z`** (numbers, no leading zeros) **on a commit already on `main`**,
+  and the tag is the version. `CHANGELOG.md` needs a `## vX.Y.Z` section before a tag
+  passes.
+- **The release check locks down the inputs** the packager trusts: `.pkgmeta` may hold
+  only `package-as`, `manual-changelog` (exactly `CHANGELOG.md`, markdown), `plain-copy`
+  and `ignore`, each once (no externals, no `license-output` fetch from the web, no
+  second changelog); every tracked file is a plain file (a symlink would ship whatever it
+  points at); no `.env`. Shipped text (README, LICENSE, CHANGELOG) carries no link or
+  site name.
+- **The environment approval isn't a barrier against an agent.** Agents run as the
+  maintainer's account, which can push the tag and approve its own deployment. The
+  stops are the agent permission guard and the `CLAUDE.md` gates; the environment makes
+  each publish a deliberate, logged approval and keeps the tokens in one job. Admin
+  bypass of the environment is to be turned off by the maintainer.
+
+*Rejected:*
+- **Floating `@v2`:** a moved tag upstream would change what publishes; SHA only.
+- **Letting the packager write the changelog:** it would ship `Claude-Session` links and
+  co-author lines in the AddOn and on the download pages (addon policy).
+- **Building once and uploading that zip:** the packager can't upload a prebuilt zip.
+  The publish job builds twice from the same commit and checks the first build.
+- **`plain-copy: Libs`:** it ships `Libs/MANIFEST.sha256` (plain-copy beats ignore).
+- **A pre-release suffix on tags (`-beta1`):** not needed for v1; one line in
+  `scripts/check-release.sh` if it ever is.
+
+*Reflected in:* `.github/workflows/release.yml`, `.pkgmeta`, `CHANGELOG.md`,
+`scripts/check-release.sh`, `scripts/check-package.sh`, `Core.lua` (a comment);
+`docs/security-checklist.md` → Automated, Repository settings, Before the packager lands,
+item 12; `docs/libraries.md` → Vendoring and upgrades; `CONTRIBUTING.md` → Releasing;
+`docs/status.md`.
+
+### 2026-09-30 — One read of our own name; the name form shows in `/ledger debug`
+
+Settled in #80, which follows *Two-part names key as the bare sender form* (below) and
+doesn't change how the form is decided. Spec: [specs/sync-glue.md §3.2 step 2, §3.4,
+§3.8](specs/sync-glue.md#34-sender-resolution).
+- **Core's owner name and Sync's two-part decision come from one helper,**
+  `Sync.readOwnName` → `Sync.ownName(name, second, realm)`: `UnitFullName("player")`
+  first, `UnitName` only when it's missing. Core used to read `UnitName` and Sync
+  `UnitFullName`; the beta gives the same values from both, but one read means they
+  agree whenever they read the same values. (Core reads at login; Sync may decide later
+  if the realm or slot was unreadable then. The name is display only and the next
+  login corrects it.)
+- **The debug report ends with `names two-part`, `names realm` or `names undecided`,**
+  and the decision prints `sync: names <form>` once, while the log is on. If the #12
+  party test fails, the report says at once whether the client read its names wrong.
+- **The form is decided at start** when our unit and realm can be read, so a solo
+  player's report says it too (before, only a group, guild or message decided it).
+
+*Rejected:*
+- **Re-checking the form on each report:** the decision is made once per session by
+  design; the report shows what Sync is actually using.
+
+*Reflected in:* `Core.lua`, `Sync.lua`, `docs/specs/sync-glue.md` §3.2, §3.3.2, §3.4,
+§3.8, §6.3, §6.4; `docs/testing.md` → Forever names.
+
+### 2026-09-30 — A zone with no Continent above it is grouped under its World map
+
+Settled in #76, which follows *Forever beta results* (below): Zephras Isle (map 2521,
+type Zone) hangs directly off the Azeroth world map (947, type World). Spec:
+[specs/collection-cosmetics.md §3.1, §3.2 rule 6](specs/collection-cosmetics.md#31-places-inns-zones-continents).
+- **A zone's continent is the first Continent-type map above it, or the first
+  World-type map if the chain reaches one first.** So `Continents[947] = { name =
+  "Azeroth" }`, and Zephras Isle's inns count under it. "Continent" in the spec,
+  `byContinent` and the export means this group.
+- **A map ID keys a zone or a continent, never both:** a key in both tables excludes
+  both records (and cascades), whatever either holds. This also catches a zone whose
+  `continent` loops back to itself or to another zone.
+- **Nothing else changes:** the record shape, the progress math, `Cosmetics` and the
+  export (still v1) are as they were. The group's name is the map's own name from the
+  client, so no new player-facing label is needed.
+- The `continent` cosmetic rule counts a World-map group like any continent. Noted for
+  the catalog retune (#63), not changed.
+
+*Rejected:*
+- **`continent = nil` and an "other lands" group:** a made-up key or a hole in
+  `byContinent`, a broken export rule (every zone's `continent` is a `byContinent` key),
+  and a new label for the maintainer to name.
+- **Each such zone as its own group:** a key in both tables, and every lone island would
+  earn the `continent` rule alone.
+- **Renaming `continent` to `group`:** clearer, but it renames export fields for no change
+  in meaning.
+
+*Reflected in:* `Collection.lua`, `Data/Inns.lua`, `docs/specs/collection-cosmetics.md`
+§3.1, §3.2, §3.5, §3.10, §6.1, §6.6, §8, open question 1; `docs/specs/export.md`
+(implementation notes, §4.1); `docs/export-format.md`; `docs/platform-forever.md` →
+Verification checklist.
+
+### 2026-09-30 — Two-part names key as the bare sender form
+
+Settled in #75, which follows *Forever beta results* (below). On a client whose names
+are two-part, a character's one key form (group map, guild map, stored traveler name)
+is the sender as the server sends it, `"First Surname"`. A realm client (retail) keeps
+`"Name-Realm"`, unchanged. Spec: [specs/sync-glue.md §3.4](specs/sync-glue.md#34-sender-resolution).
+- **The client tells which it is from its own player unit only:** the realm slot of
+  `UnitFullName("player")` holds a one-word surname that differs from
+  `GetNormalizedRealmName()` (`Sync.surname`). Never from a peer string. Decided once
+  both are readable; until then the realm rules apply and two-part senders fail closed.
+- **Units key as `name .. " " .. surname`,** taken from the observed `player` reading
+  and assumed for party and raid units until #12 sees another character. A slot that's
+  empty or holds our realm leaves a two-word name alone, so the likely alternatives (the
+  whole name with `nil` or our realm) key the same way. A one-word name with such a slot
+  is skipped: a first-name key could match another member's one-word sender and store
+  their entries under the wrong GUID (found in #75's review). Anything else skips the
+  unit too.
+- **Deciding "two-part" empties the group and guild maps** built before it (in the
+  realm form), so keys of the two forms never mix.
+- **Our own realm's suffix is dropped** from a sender or roster name (`"First
+  Surname-<our realm>"` → `"First Surname"`), since both name the same character. Any
+  other suffix stays, so it never matches a bare key.
+- **The owner's name is `"First Surname"`** on such a client (it was the first name
+  only), the same form travelers are stored in. Retail's owner name stays the bare
+  name.
+- The security model is unchanged: resolution still compares server-set strings with
+  names our own scans read, ambiguous keys are removed, and the own-signature rule
+  stands.
+
+*Rejected:*
+- **Appending our realm on Forever too (`"First Surname-ClassicBetaPvP"`):** this would
+  have needed the fewest code changes (the guild map already matched that way). But the
+  suffix is made up, since Forever senders carry none and you only group or guild
+  within one ruleset realm. It would also put the ruleset's name into every stored and
+  exported traveler name.
+- **Guessing two-part names from the shape of peer strings (a space in the sender):**
+  a peer string must never decide how we read names.
+- **Keying units by the first name alone:** two members sharing a first name would
+  collide, and a near-miss sender could match.
+
+*Reflected in:* `Sync.lua`, `Core.lua`, `docs/specs/sync-glue.md` §3.2, §3.4, §6, §8;
+`docs/platform-forever.md` → Verification checklist; `docs/testing.md`.
+
+### 2026-09-30 — Forever beta results: modern API, two-part names, zones without continents
+
+The first in-client run (#12, beta build 1.60.1.70124) settled most platform questions;
+the facts live in [platform-forever.md](platform-forever.md). What they decide:
+
+- **Target the modern API; the TOC says `## Interface: 16001`.** The beta installs as a
+  "classic" product but runs the retail/Midnight API (`WOW_PROJECT_ID` 1), so the
+  retail-style design stands. The TOC placeholder is gone, and its test now checks the
+  real number.
+- **Two-part names break sender keys, so sync is fixed in #75.** The surname fills the
+  realm slot of `UnitName`/`UnitFullName`, and addon-message senders arrive as
+  `"First Surname"` with no realm. The group map keys units as `"First-Surname"`, so
+  group senders never resolve (fail-closed, as designed, so it's not a security hole),
+  and the ledger's owner name keeps only the first name. The security model doesn't
+  change, only how names are keyed.
+- **The collection must allow a zone with no Continent above it (#76).** Zephras Isle
+  hangs directly off the Azeroth world map, which breaks `collection-cosmetics.md` §3.1's
+  "first Continent-type ancestor" rule.
+- **Inn data comes from play.** Forever's world is new (new zones, NPC IDs from 251 000
+  up), so neither Classic nor retail inn lists carry over. The probe logs every NPC the
+  maintainer talks to, and `Data/Inns` fills in from those logs during the beta.
+- **Sync keeps its 255-byte cap and self-contained messages.** The client truncates
+  longer messages silently and reports success, and a burst of whispers arrived out of
+  order. `SyncProtocol` already caps at 255 and never relies on ordering or multi-part
+  messages; this confirms the design.
+- **Custom-channel addon messages work,** so a post-v1 "inn common room" stays possible.
+  It's still out of v1 scope.
+
+*Rejected:*
+- **Building for the Classic API because of the product name:** the client reports
+  mainline, and its API is retail's.
+- **Keeping a realm suffix as the canonical sender form "because retail does":** Forever
+  senders carry none. #75 picks one key form from the observed facts.
+
+*Reflected in:* `docs/platform-forever.md`, `InnkeepersLedger.toc`, `docs/status.md`,
+#75, #76.
+
 ### 2026-09-28 — Account email settings stay as they are
 
 This supersedes one clause of *Security audit: repository hardening* below ("Account

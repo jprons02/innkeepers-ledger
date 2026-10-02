@@ -1,10 +1,11 @@
-# PLACEHOLDER interface number: WoW: Forever's is unverified (docs/platform-forever.md).
-# Set it from the client (/dump select(4, GetBuildInfo())); tracked in #12.
-## Interface: 120000
+# Interface number read in the Forever beta client (build 1.60.1.70124, 2026-09-30); #12.
+## Interface: 16001
 ## Title: Innkeeper's Ledger
 ## Notes: Sign the ledger at every inn you rest in, and collect the signatures of travelers you meet along the way.
 ## Version: @project-version@
 ## SavedVariables: InnkeepersLedgerDB
+## X-Curse-Project-ID: 1721704
+## X-Wago-ID: n6VYeONd
 
 Libs\embeds.xml
 

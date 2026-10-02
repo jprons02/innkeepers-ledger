@@ -467,6 +467,18 @@ describe("Cosmetics unlocked", function()
     assert.same({}, set.unlocked(nil, "Alliance"))
   end)
 
+  it("a zone under a World map earns its seal, and its group counts as a continent (#76)",
+    function()
+      local world = Cosmetics.bind(Collection.bind(
+        { [251001] = { name = "Zephras Inn", zone = 2521 } },
+        { [2521] = { name = "Zephras Isle", continent = 947, seal = 101 } },
+        { [947] = { name = "Azeroth" } }), fx.catalog())
+      assert.same({}, world.invalid)
+      assert.same({ 1, 2, 101 }, keys(world.SEALS))
+      assert.same(U({ { 2, T }, { 101, T }, { 1102, T } }),
+        world.unlocked({ { inn = 251001, t = T, phrase = { 1 } } }, "Alliance"))
+    end)
+
   describe("the kept floor", function()
     local function withNewInn()
       local inns, zones, conts = fx.places()
@@ -739,13 +751,14 @@ describe("Data/Cosmetics (the draft catalog)", function()
   end)
 
   it("every rule is reachable: 40 neutral inns in 20 zones on 2 continents", function()
+    -- Zone keys 1001..1020, apart from the continent keys: a map ID is one or the other.
     local inns, zones, conts = {}, {}, { [1] = { name = "East" }, [2] = { name = "West" } }
     for z = 1, 20 do
-      zones[z] = { name = "Zone " .. z, continent = z <= 10 and 1 or 2, seal = 100 + z }
+      zones[1000 + z] = { name = "Zone " .. z, continent = z <= 10 and 1 or 2, seal = 100 + z }
     end
     local own = {}
     for i = 1, 40 do
-      inns[i] = { name = "Inn " .. i, zone = math.ceil(i / 2) }
+      inns[i] = { name = "Inn " .. i, zone = 1000 + math.ceil(i / 2) }
       own[i] = { inn = i, t = T + i }
     end
     local atlas = Collection.bind(inns, zones, conts)
@@ -764,8 +777,8 @@ describe("Data/Cosmetics (the draft catalog)", function()
   end)
 
   it("the first signature earns an ink at once (spec 9's feel)", function()
-    local atlas = Collection.bind({ [1] = { name = "Inn", zone = 1 } },
-      { [1] = { name = "Zone", continent = 1, seal = 101 } }, { [1] = { name = "Land" } })
+    local atlas = Collection.bind({ [1] = { name = "Inn", zone = 10 } },
+      { [10] = { name = "Zone", continent = 1, seal = 101 } }, { [1] = { name = "Land" } })
     local set = Cosmetics.bind(atlas, DATA)
     local got = set.unlocked({ { inn = 1, t = T } }, "Horde")
     assert.same({ id = 1101, t = T }, got[#got])

@@ -71,7 +71,10 @@ means you keep meeting the same travelers, which makes crossing paths stronger. 
   Profiles show only the uploader's own signatures. It's a separate project, started
   after launch.
 - **Inn common room.** Seeing every AddOn user who stayed at your inn, strangers
-  included, over a hidden chat channel. Only possible if Forever allows addon messages
-  on custom channels (Classic blocks them); see [platform-forever.md](platform-forever.md).
+  included, over a hidden chat channel. Classic blocks addon messages on custom
+  channels, but the Forever beta allows them (2026-09-30), so it's technically possible;
+  see [platform-forever.md](platform-forever.md). It's what "which fellow travelers have
+  stayed there before you" on the download pages could grow into, but it widens who
+  sees your signatures from group and guild to strangers, so it needs its own decision.
 
 None of these are in v1. See [decisions.md](decisions.md).

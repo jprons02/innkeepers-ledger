@@ -132,8 +132,10 @@ AddOn. `SyncProtocol` validates everything before anything reaches `Ledger`:
   - **Any other channel (whisper, a future global channel):** not accepted in v1.
   - **Unresolved sender** (left the group, not in the roster yet, lookup returns nil):
     drop the message. No retry and no fallback.
-  - The entry's `name` is the resolved sender's name (normalized per the mega-realm name
-    format, **verify**).
+  - The entry's `name` is the resolved sender's name in one form per character:
+    `"Name-Realm"` on retail, the bare `"First Surname"` on Forever. Which form applies
+    is read from our own player unit, never from a peer (decisions: *Two-part names key
+    as the bare sender form*).
 - **Size first:** drop any message over the byte cap or with a multi-part marker before
   parsing it.
 - **Schema:** exact field count and order, known version, bounded array lengths,

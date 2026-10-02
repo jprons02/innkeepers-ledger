@@ -109,9 +109,16 @@ at `PLAYER_LOGIN`) calls `Core:OpenLedger()`:
    (`ns.ledger = nil`), `Sync` never starts, and the debug report says
    `ledger: no GUID`. **The GUID is checked before it is used as a table key**, so a
    hidden value never indexes SavedVariables.
-2. **Owner name.** `name = UnitName("player")` (first return). A hidden or non-string
-   value becomes `nil`; `Ledger.new` then leaves `me` empty (slice 1 §4.3). The name is
-   display only and never blocks opening.
+2. **Owner name.** `name = Sync.readOwnName(api, hidden)`, the same read and rule that
+   decide `Sync`'s name form ([§3.4](#34-sender-resolution), #80), so the two agree
+   whenever both read the same values (the name is read at login; `Sync` may decide
+   later, if the realm or slot was unreadable then). It reads `name, second = UnitFullName("player")` (`UnitName` when
+   `UnitFullName` isn't a function) and `GetNormalizedRealmName()`, each in `pcall`; a
+   hidden value counts as `nil`. A non-string `name` becomes `nil`; `Ledger.new` then
+   leaves `me` empty (slice 1 §4.3). On a two-part client (Forever, #75) the name is
+   `name .. " " .. second`; a hidden or unreadable `second` or realm, or a slot that
+   isn't a surname (our realm, retail), leaves `name` alone. A result that fails
+   `validName` is dropped as before. The name is display only and never blocks opening.
 3. **Weekly anchor** (slice 1 §8 → Weekly reset source):
    - `secs = C_DateAndTime.GetSecondsUntilWeeklyReset()`, called in `pcall`, only if
      `C_DateAndTime` is a table and that field a function.
@@ -185,9 +192,11 @@ only.
    everything is validated anyway). Anything else → sync off for the session, debug
    `sync: off (prefix)`.
 3. `held = combatNow()` (§3.6) → `schedule:setHeld(held)`.
-4. Run the group and guild handlers once (§3.5.1) so a `/reload` inside a group or guild
+4. Decide the name form if our player unit and realm can be read (`client:twoPart()`,
+   §3.4), so the report and the decision line say it even when solo.
+5. Run the group and guild handlers once (§3.5.1) so a `/reload` inside a group or guild
    starts syncing without waiting for an event.
-5. Only `ns.Sync:Start()` (the real path) creates the frame and registers the events:
+6. Only `ns.Sync:Start()` (the real path) creates the frame and registers the events:
    `CHAT_MSG_ADDON`, `GROUP_ROSTER_UPDATE`, `GUILD_ROSTER_UPDATE`, `PLAYER_GUILD_UPDATE`,
    `PLAYER_REGEN_DISABLED`, `PLAYER_REGEN_ENABLED`. Every handler calls
    `client:onEvent(event, ...)`. Tests call `onEvent` directly.
@@ -234,11 +243,41 @@ The server sets `sender`, and the channel limits who can send there, so the name
 authentic. Resolution maps it to a GUID and fails closed.
 
 1. **Shape.** `sender` must be a string of 1..96 bytes, else unresolved.
-2. **Full name.** `full = fullName(sender)`: if it contains `-`, it's used as is;
-   otherwise `sender .. "-" .. realm`, where `realm = GetNormalizedRealmName()`, used only
-   when it's a non-hidden string of 1..48 bytes (else `full = sender`). One form per
-   character keeps a traveler's stored name stable across channels. The UI may hide our
-   own realm suffix when it displays names; storage keeps the full form.
+2. **Key.** `full = keyOf(sender)`, the one form per character, which keeps a
+   traveler's stored name stable across channels. `realm = GetNormalizedRealmName()`,
+   used only when it's a non-hidden string of 1..48 bytes (else `nil`). The form depends
+   on the client (*two-part names*, below):
+   - **A realm client** (retail): `fullName(sender)`. If it contains `-`, it's used as
+     is; otherwise `sender .. "-" .. realm` (`sender` alone when `realm` is `nil`). The
+     UI may hide our own realm suffix when it displays names; storage keeps the full
+     form.
+   - **A two-part client** (Forever): the sender as the server sends it,
+     `"First Surname"`. A sender ending in `"-" .. realm` (our own realm, exactly) loses
+     that suffix; any other `-` stays, so it can't match a bare key. Senders were seen
+     with no realm (beta, 2026-09-30).
+
+**Two-part names** (#75; decisions.md, 2026-09-30, *Two-part names key as the bare
+sender form*). Forever's names are `"First Surname"`, and its `UnitName` /
+`UnitFullName("player")` return `"First", "Surname"`: the surname sits where retail puts
+the realm. The client tells the two apart **from its own player unit only**, never from
+a peer string: `Sync.surname(second, realm)` is `second` (the 2nd return of
+`UnitFullName("player")`, `UnitName` as the fallback) when it's a non-empty string of at
+most 48 bytes with no whitespace or `-` that differs from `realm`, else `nil`. Retail's
+slot holds our realm (or `nil`), so it's `nil` there. **One read, one rule** (#80):
+`Sync.readOwnName(api, isHidden)` reads our player unit and realm (hidden values count as
+`nil`) and passes them to the pure `Sync.ownName(name, second, realm)`, which returns the
+display name and the form: `true` (two-part), `false` (realm) or `nil` (undecided: no
+1..48-byte realm, or no non-empty string in the slot). `Core`'s owner name (§3.2 step 2)
+and the decision here both come from it. The answer is decided once, at start (§3.3.2,
+so a solo player is decided too) or the first time after that both are readable, and
+kept for the session; until then the client follows the realm rules, under which a
+two-part sender never matches (fails closed). Deciding prints one debug line,
+`sync: names two-part` or `sync: names realm` (§3.8), and `Sync:NameForm()` reports it
+as `two-part`, `realm` or `undecided` (`undecided` too with no client). Deciding
+"two-part" empties the group and
+guild maps (built in the realm form until then) and clears the rescan and roster gates,
+so the two forms never mix: the next group miss rescans at once, and the next guild
+miss requests the roster at once (then at most once per 60 s, as usual).
 3. **PARTY / RAID:** `guid = groupMap[full]`, the map below. If there's no entry,
    rescan the group's names now (the map only, at most once per 10 s; a clock that went
    back allows one at once) and look again; still no entry → unresolved. A sender who
@@ -273,6 +312,15 @@ authentic. Resolution maps it to a GUID and fails closed.
   `key = fullName(name)`, the same completion step 2 gives a bare sender. Otherwise it
   must be 1..48 bytes and `key = name .. "-" .. realm`; any other `realm` skips the unit.
   **Verify** (#12) that this matches the sender string's form.
+- **Two-part form** (a two-part client, instead of the realm form). The second return
+  `realm` is `nil`, empty, or a string that equals our realm once its spaces and `-` are
+  removed → `key = name` **if `name` contains a space**, else the unit is skipped (so
+  `"First Surname", nil` and `"First Surname", "<our realm>"` key like the sender, and a
+  unit read as `"First", "<our realm>"` never gives a first-name key another member's
+  sender could match). Otherwise it's the surname:
+  `name` must hold no whitespace and `realm` no whitespace or `-`, and
+  `key = name .. " " .. realm`, at most 96 bytes; anything else skips the unit. Seen for
+  `player` (beta); **assumed** for `partyN` / `raidN` until #12 sees another character.
 - A key two units claim is **removed** until the next scan (ambiguous → unresolved).
 - **Our own name is kept**, as the guild map keeps our roster row: our echo resolves to
   our GUID and `receive` drops it as `self`, quietly. The member set still skips us.
@@ -283,7 +331,11 @@ authentic. Resolution maps it to a GUID and fails closed.
   as 0): `name` = the 1st return of
   `GetGuildRosterInfo(i)`, `guid` = the **17th** (retail order, **verify** #12). Skip the
   row if either is hidden, `name` isn't a 1..96-byte string, or `guid` fails `validGUID`.
-  Key by `fullName(name)`.
+  Key by `keyOf(name)`, as a sender (step 2): on a two-part client a roster name with or
+  without our realm's suffix keys as `"First Surname"` (which one Forever gives is open,
+  #12). **A two-part client skips a key with no space** (a one-word row, the surname
+  missing, or `"First-<other realm>"`), as the group map skips a one-word name, so a
+  one-word sender can never borrow a member's GUID (release review, 2026-10-01).
 - A key that two rows claim is **removed** and stays removed until the next rebuild
   (ambiguous → unresolved). Rows past 2 000 are ignored (the server's guild cap is far
   lower; this only bounds the loop).
@@ -557,7 +609,15 @@ budget records) for tests and the debug report.
   `open`, with the non-zero `loadReport` counts, or `no GUID`, `open failed`, `not open
   yet` while the GUID retry runs) and the `stats` totals. `Core` reads the real client's
   counters at `ns.Sync.stats` (the `Sync` receive ticket exposes them there) and sums each
-  table of counters; with no `stats` it prints `sync: no stats`.
+  table of counters; with no `stats` it prints `sync: no stats`. It ends with the name
+  form, `names two-part`, `names realm` or `names undecided` (from `ns.Sync:NameForm()`;
+  an error or any other answer prints `undecided`), so a failed party test shows at once
+  whether the client read its names the wrong way (#80, [§3.4](#34-sender-resolution)).
+  For example: `ledger: open; sync: received 0, …, errors 0; names two-part`.
+- **The name-form decision** prints `sync: names two-part` or `sync: names realm` once,
+  when it's made. Like every line it prints only while the log is on (a decision at
+  login, before `/ledger debug`, prints nothing; the report shows it) and counts against
+  the limit below.
 - **While on:** `Core:Debug(line)` prints through `Core:Print`. At most 5 lines per 10 s;
   lines over that are counted, and the next printed line starts with `(<n> skipped)`.
   Nothing is buffered.
@@ -712,6 +772,11 @@ comments ("the combat flag", "the transport"). The README principle about checki
   a fresh `ns` for each client. *Built in #46,* except the combat flags and events and
   `LE_PARTY_CATEGORY_HOME` (the group functions ignore their argument), which #47 adds.
   A client function the harness should expose must also be listed in its `API_NAMES`.
+- **Forever names (#75).** `harness.new({ forever = true })` models the beta: two-part
+  names (`w:add("Ada Brook")`, `harness.twoPart(name, guid)` for a record), the realm
+  `ClassicBetaPvP`, bare `"First Surname"` senders and roster names, and `"First",
+  "Surname"` from `UnitFullName` / `UnitName` for every unit. `wow.foreverNames(first,
+  surname)` gives the stub the same for `player` (overrides for `wow.install`).
 
 ### 6.2 `spec/sync_schedule_spec.lua` (pure, strict environment, fixed `now`, a scripted `rand`)
 
@@ -763,7 +828,13 @@ comments ("the combat flag", "the transport"). The README principle about checki
 - A hidden GUID (`issecretvalue` true) → treated as unreadable, and **no table is indexed
   with it** (use a stand-in whose metamethods raise).
 - Hidden or non-string name → opened with `me = {}`; a renamed character → `me.name`
-  updated.
+  updated. Forever names → `me.name` is `"First Surname"`; our realm (spaced or not) in
+  the slot, no readable realm, or a hidden slot or realm → the first name alone; a
+  composed name failing the name rule → `me = {}`. `UnitFullName` is read first,
+  `UnitName` only when it's missing (name stubs set both, or a case tests nothing).
+- The report ends with `names realm` (default stub), `names two-part`
+  (`wow.foreverNames()`), or `names undecided` (no realm, a hidden slot, a read-only
+  ledger, no client, `NameForm` raising).
 - Anchor: from the API (and rounded: `secs` ending in `:29` and `:31` seconds); API
   missing, erroring, returning `nil`, a string, `NaN`, `-1`, `604 861` or a hidden value →
   the fallback; region 1 and an unknown region → the US row.
@@ -796,6 +867,22 @@ Receive path, each hostile case by name:
   realm, with a space or `-` in `UnitName`'s realm, still resolves; placeholder, dashed,
   hidden and over-long names skipped; a miss rescans the map at most once per 10 s and
   never sends a HELLO.
+- **two-part names (#75, `spec/sync_names_spec.lua`):** `Sync.surname` cases; the
+  two-part check waits while our realm or slot is unreadable, then holds; a party or
+  raid member's bare sender resolves to their GUID and stores `"First Surname"`, a
+  non-member doesn't; two Forever clients sync end to end; near misses (`"Mira Val"`),
+  case changes, a first name alone, `"Mira-Vale"`, extra spaces and another realm's
+  suffix → `unresolved`, our realm's suffix → the bare name; two members sharing a first
+  name or a surname resolve apart; a name two units or rows claim → `unresolved`; every
+  form a unit may give keys as the sender's, odd ones (a one-word name without a
+  surname included) are skipped, so a one-word sender never borrows a member's GUID;
+  maps built before the decision are emptied when it's made; `"Unknown"` until a
+  rescan reads the name; the roster with or without our realm's suffix; the real client
+  under the stub. #80: `Sync.ownName` cases; the decision line once, in our own words,
+  only while debug is on, no peer string; decided at start when solo; Core's owner name
+  and `NameForm` agree on the shared cases (Forever, retail, a hidden slot, an
+  unreadable or hidden realm, `UnitFullName` missing, our realm in the slot,
+  `UnitFullName` and `UnitName` disagreeing).
 - **channels:** WHISPER, `INSTANCE_CHAT`, CHANNEL, SAY, `nil` → `channel`, nothing sent.
 - **other prefixes:** ignored, no stats, no debug line.
 - **our own echo:** counted as `self`, no debug line.
@@ -900,9 +987,11 @@ Designed within retail's behavior; each is on the #12 checklist in
 | Addon message size | 255 bytes | slice 1 constants change |
 | Instance groups' chat type | PARTY / RAID | `INSTANCE_CHAT` needs a decision entry and a `SyncProtocol` channel change |
 | Hidden senders outside combat | normal strings | the hidden check drops everything; sync can't work there |
-| `CHAT_MSG_ADDON` sender format | `Name-Realm` (maybe a two-part name with a space) | `fullName` changes |
-| `GetNormalizedRealmName()` on a mega-realm | a string | `fullName` uses the sender as is |
-| `UnitFullName(partyN)` (#54) | the name plus the realm in the sender's form once spaces and `-` are removed, `nil` or empty for our realm; `UNKNOWNOBJECT` until a name loads | the group map's key changes; until then group senders are unresolved (fails closed) |
+| `CHAT_MSG_ADDON` sender format | ✅ seen (beta): `"First Surname"`, no realm; the key is the bare form on a two-part client (§3.4, #75) | `keyOf` changes |
+| `GetNormalizedRealmName()` on a mega-realm | ✅ seen (beta): `ClassicBetaPvP` | `keyOf` uses the sender as is, and the client can't tell it has two-part names |
+| `UnitFullName("player")` / `UnitName("player")` | ✅ seen (beta): `"First", "Surname"`, never a realm | the two-part check (§3.4) changes |
+| `UnitFullName(partyN)` (#54, #75) | like `player` on Forever: `"First", "Surname"` (or the whole name with `nil` or our realm); retail: the name plus the realm in the sender's form once spaces and `-` are removed, `nil` or empty for our realm; `UNKNOWNOBJECT` until a name loads | the group map's key changes; until then group senders are unresolved (fails closed) |
+| `GetGuildRosterInfo` name on Forever | `"First Surname"`, with or without our realm's suffix | the guild map's key changes; until then guild senders are unresolved |
 | Home vs instance groups | `LE_PARTY_CATEGORY_HOME` exists; instance-only groups aren't sent to | the group check changes |
 | `GetGuildRosterInfo` GUID | 17th return, a player GUID | the guild map changes |
 | `GUILD_ROSTER_UPDATE` / `C_GuildInfo.GuildRoster()` | as retail | the refresh changes |
@@ -938,7 +1027,8 @@ Filed under #41, in order:
 - A big guild's newcomer may take several HELLO rounds to hear from everyone (200 pending
   WANTs, 12 WANTs a minute). That's acceptable for v1.
 - Players who haven't signed anything send nothing at all.
-- Storing names in full `Name-Realm` form is right; the UI trims our own realm.
+- Storing names in full `Name-Realm` form is right on a realm client; the UI trims our
+  own realm. On Forever the stored form is the bare `"First Surname"` (#75).
 
 ## Open questions (maintainer)
 

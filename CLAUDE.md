@@ -22,16 +22,16 @@ task needs, using the "Read when" column. Don't read everything.
 | [docs/archive/decisions-2026-09.md](docs/archive/decisions-2026-09.md) | the 2026-09-25 seed product decisions (target, inns only, phrases, sync scope, own signatures, cosmetics, export, license) | `decisions.md`'s index points there; a product question may already be settled |
 | [docs/vision.md](docs/vision.md) | what we're building, the feel it must have, post-v1 directions | product or UX choices, wording, "should we build X" |
 | [docs/architecture.md](docs/architecture.md) | modules, data model, signing flow, sync protocol, **security model** | any code; sync, validation, storage caps, new modules |
-| [docs/testing.md](docs/testing.md) | testing posture: what gets tested hard, module pattern and strict env, the WoW stub, hostile-input tests, fuzzing, coverage floors | writing or reviewing tests; `spec/helpers/`, `.luacheckrc`, CI or a coverage floor |
+| [docs/testing.md](docs/testing.md) | testing posture: what gets tested hard, module pattern and strict env, the WoW stub, hostile-input tests, fuzzing, coverage floors | writing or reviewing tests; `spec/helpers/`, `.luacheckrc`, CI or a coverage floor; the in-client probe (`/ilp`, `spike/12-probe`) |
 | [docs/platform-forever.md](docs/platform-forever.md) | what's verified vs unverified about the Forever client; verification checklist | anything calling a WoW API; TOC; in-client testing |
 | [docs/addon-policy.md](docs/addon-policy.md) | Blizzard AddOn policy rules that bind us | in-game text, links, anything paid or cosmetic, distribution pages |
-| [docs/security-checklist.md](docs/security-checklist.md) | security checks on every PR (incl. the forbidden-API list), the GitHub repository settings, packager prerequisites, and the release security review | opening a release PR; changing CI, `scripts/check-*.sh`, an allow-list or repo settings; adding the packager; calling a new WoW API |
+| [docs/security-checklist.md](docs/security-checklist.md) | security checks on every PR (incl. the forbidden-API list), the GitHub repository settings, packager prerequisites, and the release security review | opening a release PR; changing CI, `scripts/check-*.sh`, an allow-list or repo settings; the packager or `release.yml`; calling a new WoW API |
 | [SECURITY.md](SECURITY.md) | how outsiders report a vulnerability privately, and what counts | a security report arrives; changing how reports are handled |
 | [docs/libraries.md](docs/libraries.md) | embedded libraries: versions, reviewed file hashes, licenses, security findings, upgrade steps | touching `Libs/`, sync transport or serialization; "is this library safe/allowed" |
 | [docs/export-format.md](docs/export-format.md) | the export string spec (v1) | `Export` module; any change to exported data |
 | [docs/prior-art.md](docs/prior-art.md) | existing guestbook AddOns and what we took from them; the Forever AddOn landscape near launch | positioning, sync pattern precedent, "does this already exist?" for a new feature |
 | [docs/kickoff.md](docs/kickoff.md) | phased build sequence to v1, cut order, completion criteria | picking the next step; timeline slips |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | local dev setup (Lua 5.1, busted, luacheck; Windows notes), PR conventions | setting up tooling; tests won't run locally |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | local dev setup (Lua 5.1, busted, luacheck; Windows notes), PR conventions, releasing (tags, `CHANGELOG.md`, the packager workflow) | setting up tooling; tests won't run locally; preparing or cutting a release |
 | [docs/specs/phrase.md](docs/specs/phrase.md) | the `Phrase` spec: phrase data shape and ID ranges, the composition grammar, rendering, content rules, the draft phrase set | `Phrase.lua` or `Data/Phrases.lua`; adding or rewording phrases; rendering entries (UI, export) |
 | [docs/specs/collection-cosmetics.md](docs/specs/collection-cosmetics.md) | the `Collection` + `Cosmetics` spec: `Data/Inns` shape (inns, zones, continents, aliases, factions), progress math, stamps, cosmetic IDs and unlock rules, `SEALS`, the draft catalog | `Collection.lua`, `Cosmetics.lua`, `Data/Inns.lua` or `Data/Cosmetics.lua`; filling `Data/Inns` (#12); a seal on signing; the collection view or export |
 | [docs/specs/export.md](docs/specs/export.md) | the `Export` spec: the v1 data table (types, ranges, sources), the encoding pipeline, `Core:ExportString`, the travelers opt-in, limits and size budget, the test-only decoder and the no-decoder guard | `Export.lua` or `Core:ExportString`; anything that ends up in an export; the Share window; writing an export consumer |
@@ -153,5 +153,5 @@ Lua 5.1 (WoW client). Embedded, reviewed libraries (see
 [docs/libraries.md](docs/libraries.md)): Ace3 parts (AceAddon, AceEvent, AceDB,
 AceConsole, AceSerializer for export), ChatThrottleLib for sending, LibDeflate for export
 compression. UI is custom frames. Libraries are vendored in `Libs/`. Tests: `busted`.
-Lint: `luacheck`. Packaging: BigWigs packager (CurseForge + Wago), to be set up before
-release.
+Lint: `luacheck`. Packaging: BigWigs packager (CurseForge + Wago), pinned by SHA in
+`.github/workflows/release.yml` ([CONTRIBUTING.md → Releasing](CONTRIBUTING.md#releasing)).

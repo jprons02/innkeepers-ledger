@@ -5,122 +5,100 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-09-28 (security audit: #71, repo hardening, sync and export privacy
-decisions)
+**Updated:** 2026-10-01 (#80 name form in `/ledger debug`; #81 packager, CurseForge and
+Wago projects; release to `main`)
 
 ## Current state
 
 - **Phase 1 of [kickoff.md](kickoff.md) is done:** every pure module and the sync glue
-  exist, are tested (pure modules at 100% coverage) and passed security-level reviews.
-  - Slice 1 (#10): `Ledger`, `SyncProtocol`; spec [specs/sync-ledger.md](specs/sync-ledger.md).
-  - Slice 2 (#41): `Core` opens the ledger, `SyncSchedule`, `Sync` send/receive, combat
-    hold, group senders resolved through our own unit scan; spec
-    [specs/sync-glue.md](specs/sync-glue.md). Two players' AddOns trade signatures; the
-    40-player raid simulation stays under every rate limit.
-  - Slice 3 (#61): `Phrase` + a DRAFT `Data/Phrases` ([specs/phrase.md](specs/phrase.md));
-    `Collection` + `Cosmetics` + a DRAFT `Data/Cosmetics`, and the `Data/Inns` shape
-    ([specs/collection-cosmetics.md](specs/collection-cosmetics.md)); `Export` +
-    `Core:ExportString`, export string **v1** ([specs/export.md](specs/export.md),
-    [export-format.md](export-format.md)).
-- **Not built:** `Sign` and `UI/Book`. Both are glue that needs the client. Their
-  contracts are in each spec's §8 (e.g. `Sign` calls `ns.Sync:WindowChanged()` after
-  `addOwn` returns `"added"`, checks `ns.Cosmetics.canSeal`, records unlocks with
-  `markEarned`).
-- **Data:** `Data/Inns` is empty until #12. Phrase and cosmetic sets are DRAFTs whose IDs
-  change freely until the first public release.
-- **CI:** seven required checks on `main` and `dev`; every one also runs locally
-  ([CONTRIBUTING.md](../CONTRIBUTING.md#development-setup)). Release PRs get a security
-  review ([security-checklist.md](security-checklist.md)).
-- **Security audit (2026-09-28):** both sides reviewed; no exploitable peer-data path.
-  The decoder guard now covers `C_EncodingUtil` (#71). GitHub settings are hardened
-  ([security-checklist.md → Repository settings](security-checklist.md#repository-settings)),
-  and there's a [SECURITY.md](../SECURITY.md). Guild sync stays on, and the README says what it
-  shares. Published exports show other travelers only as counts
-  ([decisions.md](decisions.md), 2026-09-28).
-- **Releases:** the Phase 1 release PR (2026-09-28) shipped to `main`; the audit changes
-  are on `dev` only. No tags or published builds (maintainer gate).
-- **Client verification** ([platform-forever.md](platform-forever.md)): ⬜ no Forever
-  client yet.
+  exist, tested (pure modules at 100% coverage) and security-reviewed. Specs:
+  [sync-ledger](specs/sync-ledger.md), [sync-glue](specs/sync-glue.md),
+  [phrase](specs/phrase.md), [collection-cosmetics](specs/collection-cosmetics.md),
+  [export](specs/export.md) (export string **v1**).
+- **Phase 2 has started (#12)** in the Forever beta. The probe's first run (2026-09-30)
+  answered most client questions ([platform-forever.md](platform-forever.md)): modern
+  API, TOC `16001`, NPC IDs from `UnitGUID("npc")`, a gossip-frame button works,
+  custom-channel addon messages allowed, 255-byte message cap.
+  - **Two-part names** (`"First Surname"`) are handled (#75), and `/ledger debug`'s report
+    ends with `names two-part` / `realm` / `undecided`; Core and Sync read our own name
+    through one helper (#80). Still to confirm with a second character (#12).
+  - **Zones with no continent** group under their World map (#76).
+- **Not built:** `Sign` and `UI/Book`. **No innkeeper has been seen yet**; file their
+  tickets once one has (contracts in each spec's §8). `Data/Inns` is empty (it fills from
+  the probe's logs). Phrase and cosmetic sets are DRAFTs.
+- **Releasing is wired up (#81, #86):** `release.yml` dry-runs the BigWigs packager on
+  every PR (`package`, a required check) and publishes a `v*` tag only after the
+  maintainer approves the `release` environment
+  ([CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing)). CurseForge `1721704`
+  and Wago `n6VYeONd` exist, with pages written and both IDs in the TOC (#87, #88).
+- **CI:** eight required checks on `main` and `dev`, all runnable locally but `package`.
+- **Releases:** `main` holds everything through 2026-10-01 (the release PR of that
+  date). No tags or published builds (maintainer gate).
 
 ## Next step
 
-Everything left needs someone at a keyboard in a game client:
-- **Phase 2, Forever client (#12):** the verification checklist, then `Data/Inns` per
-  [collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices),
-  then `Sign` and `UI/Book` (Share window per
-  [export.md §8](specs/export.md#8-contract-for-later-slices)). File their tickets once
-  #12 answers the gossip and frame questions.
-- **Phase 1.5 (optional), retail:** gossip/NPC-ID detection, `IsResting()`, addon-message
-  round-trips, recorded as "retail-observed" in [platform-forever.md](platform-forever.md).
+- **#81, the last bit (agent):** run *Actions → release → Run workflow* on `main` (the
+  manual dry run) and attach it to #81; close #81 once the Wago token is in.
+- **In the client (maintainer, as you play):** keep ILProbe enabled, talk to every
+  innkeeper you pass and `/reload` now and then. Then the `Sign` and `UI/Book` tickets.
 
 ## Client access plan
 
-- **Beta window:** 2026-09-17 → **2026-10-21**. Launch: **2026-11-04**.
-- **Default route:** the free beta opt-in (invites in waves). The paid pre-purchase route
-  is the maintainer's call only, never bought for the project.
-- **Beta access by ~2026-10-03:** Phase 2 during the beta, release at launch. **No beta
-  access:** retail prototyping now, Phase 2 on launch day, release ~1–2 weeks after.
+- In the beta since 2026-09-30, until **2026-10-21**. Launch: **2026-11-04**. Phase 2
+  during the beta, release at launch. Beta client: `World of Warcraft\_classic_beta_`,
+  probe installed and enabled.
 
 ## Open questions (maintainer to decide)
 
 None block work; drafts ship and get retuned ([decisions.md](decisions.md) →
 *Maintainer-gated content ships as a DRAFT*).
-- **Beta access (#1, #2), time-sensitive:** not opted in as of 2026-09-28. Free; decides
-  the plan branch by ~2026-10-03.
-- **Phrase wording (#62):** the DRAFT in
-  [phrase.md §9](specs/phrase.md#9-draft-phrase-set-draft): ship or redirect? Keep the
-  alcohol words ("a mug of ale", "spiced cider")? Keep "the murlocs" or stay generic?
+- **Phrase wording (#62):** the DRAFT in [phrase.md §9](specs/phrase.md#9-draft-phrase-set-draft):
+  ship or redirect? Alcohol words? "the murlocs"?
 - **Cosmetic catalog (#63):** the DRAFT in
   [collection-cosmetics.md §9](specs/collection-cosmetics.md#9-draft-catalog-draft):
-  set, names, thresholds (retuned after #12 counts inns). Also: "every inn" = every inn
-  your faction can use? Keep a zone seal when a patch adds an inn to that zone? Later:
-  continent seals, a "home inn" reward, a badge kind?
-- **Export (#64):** add `me.region` (Forever names are unique only per region)? Ever
-  want an import or backup restore ([export.md → Open questions](specs/export.md#open-questions-maintainer))?
+  set, names, thresholds; "every inn" = your faction's? Keep a zone seal when a patch
+  adds an inn? World-map groups count toward the `continent` quill (#76).
+- **Export (#64):** `me.region`? An import or backup restore
+  ([export.md → Open questions](specs/export.md#open-questions-maintainer))?
+- **In-game blurb:** the TOC's `## Notes:` still reads "Sign the ledger at every inn you
+  rest in…"; the download pages say "Sign a guestbook at every inn…". Match them?
 
-## Waiting on the maintainer in the client
+## Waiting on the maintainer
 
-Batched in #12; the list is
-[platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
+**In the client** (batched in #12; the unticked items in
+[platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)):
+any innkeeper (gossip, NPC ID, `IsResting()`, the button's look); solo after login,
+`/ledger debug` ends `names two-part` (#80); a second character in a party (round-trips,
+`got hello PARTY` not `drop unresolved`, `UnitFullName("partyN")`, also in a cross-realm or group-finder group); a guild round-trip;
+one dungeon run; copying out an export string (once the Share window exists).
 
-## Waiting on the maintainer's accounts
-
-- GitHub 2FA: ✅ on. Account email settings stay as they are
-  ([decisions.md](decisions.md), 2026-09-28).
-- **At release time, not before:** the maintainer creates the CurseForge and Wago
-  accounts (none exist yet) with 2FA from the start, then the project pages and upload
-  tokens
+**Accounts:**
+- `WAGO_API_TOKEN` into the `release` environment's **secrets** (key from Wago's
+  account API-keys page). `CF_API_TOKEN` is in.
+- Confirm 2-Step Verification on the Google account CurseForge signs in with
   ([security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)).
 
 ## Follow-ups
 
-- **Revisit if #12 shows it:** forward server-clock jumps in `SyncSchedule`; hidden
-  addon traffic from other AddOns counted as `hidden` drops; group-map rescan budget
-  (#54 review); a dropped `C_Timer.After`; export build time, edit-box capacity and the
-  ~5 MB AceSerializer keeps after an opted-in export.
-- **Code tidy (low):** `isInt` / name allow-lists are copied across `Collection`,
-  `Cosmetics` and `Export` (share one if they start to drift); `Phrase` could assert
-  `Ledger.LIMITS` numbers at load and require a space before `{w}` in templates (#62
-  review nits).
-- Publish `Data/Inns`, `Data/Phrases` and `Data/Cosmetics` as a generated reference for
-  export consumers; needs #12's inn data.
-- **Before the first tag (packager setup):** name tags plainly (`vX.Y.Z`), since the
-  packaged `## Version` must match `[A-Za-z0-9._+-]{1,32}` or every export refuses
-  (security-checklist item 13); add a CI step that checks it when the packager workflow
-  lands. Follow
-  [Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)
-  (tag ruleset, protected Environment, the packager allowed by exact pattern). Answer
-  the phrase and catalog questions first: IDs freeze at the first public release.
-- **`UI/Book`:** the book's in-game help says what sync shares, in the README's words
-  (decisions.md, 2026-09-28, guild sync disclosure).
-- Export golden string (`GOLDEN_F`): regenerate if a library or interpreter change breaks
-  it while its decode still matches, and say so in the PR.
-- `Ledger`'s load-time cap pass is quadratic on a tampered file (40 000 entries ≈ 4 s);
-  batch evictions if it ever matters.
-- Harness: a ChatThrottleLib-callback option for `"defer"` mode would make the raid run
-  more realistic.
+- **Before the first tag:** `CHANGELOG.md` gets its `## vX.Y.Z` notes (the release check
+  requires them); answer #62 and #63 (IDs freeze at the first public release). Whether
+  CurseForge and Wago map interface `16001` to Forever is unverified until the first
+  upload; the packager's `-g` overrides it.
+- **Revisit once in groups (#12):** server-clock jumps in `SyncSchedule`; other AddOns'
+  hidden traffic counted as `hidden`; group-map rescan budget; a dropped
+  `C_Timer.After`; export build time and AceSerializer's ~5 MB after an opted-in export.
+- **Weekly reset fallback:** the beta (region 90) resets Tuesday 16:00 UTC, an hour off
+  the US row; fill the live regions' rows after launch.
+- **`UI/Book`:** its in-game help says what sync shares, in the README's words.
+- **Code tidy (low):** `isInt` / name allow-lists copied across `Collection`,
+  `Cosmetics`, `Export`; `Phrase` load-time asserts (#62 review nits).
+- Publish `Data/*` as a generated reference for export consumers (needs the inn data).
+- `GOLDEN_F` export string: regenerate if a library or interpreter change breaks it while
+  its decode still matches, and say so in the PR.
+- `Ledger`'s load-time cap pass is quadratic on a tampered file; batch evictions if needed.
+- Harness: a ChatThrottleLib-callback option for `"defer"` mode.
 - CI pins only top-level rocks; pin dependencies if an upstream release breaks CI.
 - Delete GitHub's default labels (maintainer call: deletion).
-- `decisions.md` is ~1 070 lines: early October, move September entries to
-  `docs/archive/decisions-2026-09.md` with an index line.
+- `decisions.md` is ~1 350 lines: move September entries to
+  `docs/archive/decisions-2026-09.md` with an index line (early October).
 - Move [kickoff.md](kickoff.md) to `docs/archive/` once v1 ships.

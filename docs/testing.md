@@ -48,10 +48,20 @@ Proportional, not ceremonial:
   `c.groupArgs` (the group calls' argument) and `w:timersOf(c)`. The send cases and the
   end-to-end runs live in `spec/sync_send_spec.lua`; the receive cases in
   `spec/sync_spec.lua`.
+- **Forever names** (two-part `"First Surname"` names, the surname in the realm slot;
+  [platform-forever.md](platform-forever.md)): `harness.new({ forever = true })` and
+  `harness.twoPart(name, guid)` in the harness, `wow.foreverNames(first, surname)` as
+  stub overrides. The cases live in `spec/sync_names_spec.lua`. Our own name is read
+  through `UnitFullName("player")` first (`Sync.readOwnName`, `UnitName` only when it's
+  missing), so a test that changes the player's name stubs both, or it tests nothing.
 - **Place fixtures** (`spec/helpers/places.lua`): the fixture places, own entries and
   catalog of [specs/collection-cosmetics.md §6](specs/collection-cosmetics.md#6-test-plan),
   the two hidden-value stand-ins, a raw snapshot (nothing written) and a seeded shuffle,
-  shared by `spec/collection_spec.lua` and `spec/cosmetics_spec.lua`.
+  shared by `spec/collection_spec.lua` and `spec/cosmetics_spec.lua`. A hand-built place
+  table keeps zone keys apart from continent keys (zones 10, 11, … or 1001.., continents
+  1, 2): a key in both is excluded with everything under it
+  ([§3.2 rule 6](specs/collection-cosmetics.md#32-record-rules)), so a test that doesn't
+  assert `invalid` empty can pass on an empty atlas (#76 caught two).
 - **Export helpers** ([specs/export.md §3.8](specs/export.md#38-the-test-only-decoder)):
   `spec/helpers/export_libs.lua` loads the real vendored LibStub, AceSerializer-3.0 and
   LibDeflate into a private environment (standard library names only; no `LibStub`
@@ -78,6 +88,17 @@ Proportional, not ceremonial:
 - **Test by hand in the client:** signing flow, gossip integration, UI, real
   addon messages between two accounts/characters. These go on the in-client batch in
   [status.md](status.md) rather than blocking other work.
+- **The in-client probe (#12):** a throwaway AddOn, `!ILProbe`, on branch
+  `spike/12-probe`, never merged. `sh spike/probe/install.sh "<client folder>"` copies
+  it, plus the working-tree AddOn with the TOC's interface number, into the client's
+  `Interface/AddOns`. A new AddOn folder needs a full client restart. In game, `/ilp`
+  runs every automatic check; talking to any NPC records its GUID, gossip and map chain;
+  every addon message, rest-state change and Lua error is logged too. `/reload` or
+  logging out writes the log to
+  `WTF/Account/<account>/SavedVariables/!ILProbe.lua`, which a session reads straight
+  from disk. Extend the probe on that branch when a new client question comes up; the
+  results go into [platform-forever.md](platform-forever.md), never the raw log (it holds
+  the character's name).
 - **CI:** every check runs on every push and PR, and each has a local command
   ([CONTRIBUTING.md → Development setup](../CONTRIBUTING.md#development-setup)). Pure
   modules have coverage floors (95% for `Ledger`, `SyncProtocol`, `SyncSchedule`; 90% the rest).

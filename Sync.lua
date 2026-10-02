@@ -87,13 +87,26 @@ local function channelName(channel)
   return "other"
 end
 
--- One form per character: "Name-Realm". A name that has a realm is used as is; without a
+-- A realm client's form: "Name-Realm". A name that has a realm is used as is; without a
 -- readable realm, the name stays as it is.
 local function fullName(name, realm)
   if realm == nil or find(name, "-", 1, true) then
     return name
   end
   return name .. "-" .. realm
+end
+
+-- One form per character (spec 3.4). A realm client: fullName. A two-part client
+-- (Forever): the name as the server sends it, "First Surname", with our own realm's
+-- suffix removed when one is there.
+local function keyOf(name, realm, twoPart)
+  if not twoPart then
+    return fullName(name, realm)
+  end
+  if realm ~= nil and #name > #realm + 1 and sub(name, -(#realm + 1)) == "-" .. realm then
+    return sub(name, 1, #name - #realm - 1)
+  end
+  return name
 end
 
 -- The 1st and 17th returns of a pcall'd GetGuildRosterInfo (the GUID is the 17th).
@@ -109,6 +122,19 @@ local function newStats()
     received = {}, dropped = {}, added = 0, dup = 0, rejected = 0, evicted = 0,
     sent = {}, sendFailed = 0, errors = 0,
   }
+end
+
+-- The surname in the realm slot of our own player unit's name, or nil. Forever's names
+-- are two-part, and its UnitName / UnitFullName("player") give "First", "Surname" where
+-- retail gives the name and our realm (or nil). `realm` is GetNormalizedRealmName's;
+-- without it the two can't be told apart, so nil. Only ever given our own unit's values,
+-- never a peer's (spec 3.4).
+function Sync.surname(second, realm)
+  if type(second) ~= "string" or type(realm) ~= "string" or realm == "" or second == ""
+    or #second > REALM_MAX or find(second, "[%s%-]") or second == realm then
+    return nil
+  end
+  return second
 end
 
 local Client = {}
@@ -141,6 +167,7 @@ function Sync.new(deps)
     members = {},          -- GUIDs of the other group members, from our unit scan
     group = {},            -- full name -> GUID, from the same scan (us included)
     rescanAt = nil,        -- when a group map miss last rescanned
+    surnames = nil,        -- two-part names (Forever): true / false once decided
     guildOn = false,       -- the GUILD channel is available
     timerGen = 0,          -- the live pump timer's generation; older timers are stale
     timerLive = false,     -- a pump timer is armed and hasn't fired
@@ -479,12 +506,94 @@ local function unitName(api, unit)
   return name, realm
 end
 
+-- Our own name and this client's name form, from one reading of our player unit (spec
+-- 3.2 step 2, 3.4). `name`, `second`: UnitFullName("player")'s returns; `realm`:
+-- GetNormalizedRealmName's; a hidden value is passed as nil. Returns the display name (nil
+-- unless `name` is a string; "First Surname" on a two-part client) and the form: true
+-- (two-part), false (realm), or nil (undecided: no readable realm, or no non-empty string
+-- in the slot). Core's owner name and Client:twoPart both come from here.
+function Sync.ownName(name, second, realm)
+  if type(realm) ~= "string" or #realm > REALM_MAX then
+    realm = nil
+  end
+  local twoPart
+  if realm ~= nil and realm ~= "" and type(second) == "string" and second ~= "" then
+    twoPart = Sync.surname(second, realm) ~= nil
+  end
+  if type(name) ~= "string" then
+    return nil, twoPart
+  end
+  if twoPart then
+    return name .. " " .. second, twoPart
+  end
+  return name, twoPart
+end
+
+-- Reads our player unit for Sync.ownName: UnitFullName (UnitName where it's missing) and
+-- GetNormalizedRealmName from `api`, each in pcall; a value `isHidden` flags counts as
+-- nil. The one read of our own name.
+function Sync.readOwnName(api, isHidden)
+  local name, second = unitName(api, "player")
+  local realm = call(api.GetNormalizedRealmName)
+  local function shown(v)
+    if isHidden(v) then
+      return nil
+    end
+    return v
+  end
+  return Sync.ownName(shown(name), shown(second), shown(realm))
+end
+
+-- Whether this client's names are two-part (Forever): our own player unit's realm slot
+-- holds a surname (Sync.readOwnName). Read from our unit, never from a peer, and decided
+-- once both it and our realm are readable; until then false, so a two-part sender fails
+-- closed. The decision is logged once. Deciding true empties the group and guild maps,
+-- which were built in the realm form, so keys of the two forms never mix (a miss then
+-- rescans or requests the roster, both at once: their gates are cleared too).
+function Client:twoPart()
+  if self.surnames == nil then
+    local _, twoPart = Sync.readOwnName(self.api, function(v) return self:hidden(v) end)
+    if twoPart ~= nil then
+      self.surnames = twoPart
+      self:debug(twoPart and "sync: names two-part" or "sync: names realm")
+      if twoPart then
+        self.group, self.guild, self.rescanAt, self.rosterAt = {}, {}, nil, nil
+      end
+    end
+  end
+  return self.surnames == true
+end
+
+-- A two-part client's key for a unit (spec 3.4). The player unit gives "First",
+-- "Surname" (beta, 2026-09-30); other units are assumed to until #12 sees one. A realm
+-- slot that's empty or holds our realm keeps a name that's already two-part as is, so
+-- "First Surname" with nil or our realm gives the same key; a one-word name there is
+-- skipped (a key of the first name alone could match another member's sender).
+-- Anything else is skipped too.
+local function twoPartKey(name, realm, ourRealm)
+  if realm == nil or realm == "" or (type(realm) == "string"
+    and gsub(realm, "[%s%-]", "") == ourRealm) then
+    return find(name, " ", 1, true) and name or nil
+  end
+  if type(realm) ~= "string" then
+    return nil
+  end
+  if find(name, "%s") or find(realm, "[%s%-]") or #name + 1 + #realm > SENDER_MAX then
+    return nil
+  end
+  return name .. " " .. realm
+end
+
 -- The group map key for a unit's name and realm, or nil to skip the unit (spec 3.4). The
 -- realm loses its spaces and dashes (the GetNormalizedRealmName form); none means ours.
-function Client:unitKey(name, realm, ourRealm, placeholder)
+-- A two-part client's realm slot holds a surname instead (twoPartKey).
+function Client:unitKey(name, realm, ourRealm, placeholder, twoPart)
   if self:hidden(name) or self:hidden(realm) or type(name) ~= "string" or #name < 1
     or #name > SENDER_MAX or find(name, "-", 1, true) or name == placeholder then
     return nil
+  end
+  if twoPart then
+    return twoPartKey(name, realm, ourRealm)
   end
   if realm ~= nil then
     if type(realm) ~= "string" then
@@ -522,11 +631,11 @@ function Client:scanGroup()
     unit, last = "raid", n
   end
   local own = self.ledger:ownerGUID()
-  local ourRealm, placeholder = self:realm(), self:placeholder()
+  local ourRealm, placeholder, twoPart = self:realm(), self:placeholder(), self:twoPart()
   local set, map, claimed = {}, {}, {}
   local function add(u, guid)
     local name, realm = unitName(api, u)
-    local key = self:unitKey(name, realm, ourRealm, placeholder)
+    local key = self:unitKey(name, realm, ourRealm, placeholder, twoPart)
     if key == nil then
       return
     end
@@ -672,6 +781,7 @@ local function start(self)
   else
     self.schedule:setHeld(false)
   end
+  self:twoPart() -- decide the name form now if our unit can be read, even when solo
   -- A /reload inside a group or guild syncs without waiting for an event.
   self:onGroup(now)
   self:onGuild(now)
@@ -730,18 +840,26 @@ function Client:rebuildGuild(now)
     if self:hidden(n) or type(n) ~= "number" or n ~= n then
       n = 0
     end
-    local realm = self:realm()
+    local realm, twoPart = self:realm(), self:twoPart()
     for i = 1, min(n, ROSTER_ROWS) do
       local name, guid = rosterRow(pcall(rosterInfo, i))
       if not self:hidden(name) and not self:hidden(guid)
         and type(name) == "string" and #name >= 1 and #name <= SENDER_MAX
         and Ledger.validGUID(guid) then
-        local key = fullName(name, realm)
-        if claimed[key] then
-          map[key] = nil
-        else
-          claimed[key] = true
-          map[key] = guid
+        local key = keyOf(name, realm, twoPart)
+        -- A two-part client keys only "First Surname": a one-word row (the surname
+        -- missing) is skipped, as the group map skips one, so a one-word sender can't
+        -- borrow a member's GUID.
+        if twoPart and not find(key, " ", 1, true) then
+          key = nil
+        end
+        if key ~= nil then
+          if claimed[key] then
+            map[key] = nil
+          else
+            claimed[key] = true
+            map[key] = guid
+          end
         end
       end
     end
@@ -779,7 +897,7 @@ function Client:resolve(channel, sender, now)
   if type(sender) ~= "string" or #sender < 1 or #sender > SENDER_MAX then
     return nil
   end
-  local full = fullName(sender, self:realm())
+  local full = keyOf(sender, self:realm(), self:twoPart())
   local guid
   if channel == "GUILD" then
     guid = self.guild[full]
@@ -1007,6 +1125,22 @@ function Sync:Start()
     self.stats.errors = self.stats.errors + 1
     pcall(function() ns.Core:Debug("sync: error in start") end)
   end
+end
+
+-- The name form for the debug report (spec 3.8): "two-part", "realm", or "undecided"
+-- (not decided yet, or no client). Our own constant words only.
+function Sync:NameForm()
+  local client = self.client
+  if type(client) ~= "table" then
+    return "undecided"
+  end
+  local surnames = client.surnames
+  if surnames == true then
+    return "two-part"
+  elseif surnames == false then
+    return "realm"
+  end
+  return "undecided"
 end
 
 -- Sign calls this after ledger:addOwn returns "added" (spec 3.5.1): a HELLO goes out on

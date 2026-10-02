@@ -30,7 +30,7 @@ local STAT_NAMES = {
   "errors",
 }
 
--- The packager replaces @project-version@; an unpackaged checkout reports "dev".
+-- The packager fills in the TOC's Version line; an unpackaged checkout reports "dev".
 local function version()
   local v = GetAddOnMetadata(ADDON_NAME, "Version")
   if not v or v:find("@", 1, true) then
@@ -75,13 +75,18 @@ local function ownerGUID()
   return guid
 end
 
--- The owner's name for display, or nil if it's hidden or not a string.
+-- The owner's name for display, or nil if it's hidden or not a string. Forever's
+-- two-part names come back as "First", "Surname" (the surname in the realm slot), and
+-- the name is then "First Surname", the form its senders arrive in (sync-glue.md 3.4).
+-- Retail's slot holds our realm, so its name is unchanged. The same read and rule as
+-- Sync's name form (Sync.readOwnName), so the two agree whenever both read the same values.
 local function ownerName()
-  local name = call(UnitName, "player")
-  if hidden(name) or type(name) ~= "string" then
-    return nil
-  end
-  return name
+  local api = {
+    UnitFullName = UnitFullName,
+    UnitName = UnitName,
+    GetNormalizedRealmName = GetNormalizedRealmName,
+  }
+  return (ns.Sync.readOwnName(api, hidden))
 end
 
 -- The server time of a weekly reset (sync-ledger.md 8 -> Weekly reset source).
@@ -189,6 +194,15 @@ local function ledgerReport()
   return table.concat(parts, ", ")
 end
 
+-- Sync's name form: "names two-part", "names realm" or "names undecided".
+local function namesReport()
+  local ok, form = pcall(function() return ns.Sync:NameForm() end)
+  if not ok or (form ~= "two-part" and form ~= "realm") then
+    form = "undecided"
+  end
+  return "names " .. form
+end
+
 -- The totals of Sync's counters that exist; a table of counters is summed.
 local function syncReport()
   local stats = ns.Sync and ns.Sync.stats
@@ -219,7 +233,7 @@ function Core:ToggleDebug()
   if self.debugOn then
     self.debugPrinted, self.debugSkipped = {}, 0
     self:Print("Debug log on.")
-    self:Print(ledgerReport() .. "; " .. syncReport())
+    self:Print(ledgerReport() .. "; " .. syncReport() .. "; " .. namesReport())
   else
     self:Print("Debug log off.")
   end

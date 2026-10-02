@@ -388,7 +388,7 @@ present with a `nil` value. No key outside this table appears in v1.
 | `collection.faction` | string, optional | `"Alliance"` / `"Horde"` | faction counted; absent: unreadable, every inn counted | `UnitFactionGroup("player")` |
 | `collection.signed`, `.total` | integer | 0..9 999 999, `signed <= total` | open inns signed / all open inns | progress |
 | `collection.done` | time, optional | present only when `signed == total >= 1` | when the last open inn was first signed | progress |
-| `collection.byContinent` | table (map) | integer key 1..999 999 (the client's continent map ID) → `{ signed, total, done? }`; `signed`/`total` ranges as `collection.signed`/`.total`; `done` a time, present only when `signed == total >= 1` | continents with at least one open inn | progress |
+| `collection.byContinent` | table (map) | integer key 1..999 999 (the client's continent map ID: a Continent map, or the World map above a zone with no Continent, e.g. 947 Azeroth) → `{ signed, total, done? }`; `signed`/`total` ranges as `collection.signed`/`.total`; `done` a time, present only when `signed == total >= 1` | continents with at least one open inn | progress |
 | `collection.byZone` | table (map) | integer key 1..999 999 (zone map ID) → `{ signed, total, continent, done? }`; `signed`/`total` ranges as `collection.signed`/`.total`; `done` a time, present only when `signed == total >= 1` | zones with at least one open inn; `continent` is a `byContinent` key | progress |
 | `cosmetics` | array | `{ id = 1..9 999, t = time }`, `(t, id)` ascending, `id` unique | unlocked quills, inks and seals and when each was earned | `Cosmetics.unlocked(own, faction, ledger:earned())` |
 | `entries` | array | entry (below), `(t, inn)` ascending, `(inn, t)` unique | your own signatures; each inn's first is its stamp | `ledger:own()` |
@@ -748,6 +748,12 @@ Where this spec was silent, the build took the fail-closed reading. Each is also
   coverage run keeps it. The traveler and limits size rows are tagged `#sim`.
 - `Core.ExportString(_, includeTravelers)` is defined with a dot so luacheck doesn't flag
   the unused `self`; callers still write `ns.Core:ExportString(opted)`.
+- **Checked for #76 (2026-09-30):** a zone with no Continent map above it is grouped
+  under its World map ([collection-cosmetics.md §3.1](collection-cosmetics.md#31-places-inns-zones-continents)),
+  so a `byContinent` key can be a World map ID (947, Azeroth). Nothing here assumed a
+  Continent-type map: the key is an integer in 1..`mapKeyMax` like any other, and every
+  zone still names a `byContinent` key. The format stays v1 and `build` is unchanged;
+  only the key's description in §4.1 and export-format.md widened.
 
 ## Open questions (maintainer)
 

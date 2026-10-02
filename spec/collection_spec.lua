@@ -399,6 +399,89 @@ describe("Collection.bind", function()
     assert.same({ 20, 21 }, atlas.zoneKeys())
   end)
 
+  -- #76: Zephras Isle (zone 2521) sits right under the Azeroth world map (947), with no
+  -- Continent map between, so its group is the World map.
+  local function withWorld()
+    local inns, zones, conts = fx.places()
+    conts[947] = cont("Azeroth")
+    zones[2521] = zone("Zephras Isle", 947, 105)
+    inns[251001] = inn("Zephras Inn", 2521)
+    return inns, zones, conts
+  end
+
+  it("accepts a zone under a World map and counts its inns there (#76)", function()
+    local atlas = Collection.bind(withWorld())
+    assert.same({}, atlas.invalid)
+    assert.same({ name = "Azeroth" }, atlas.continent(947))
+    assert.same({ name = "Zephras Isle", continent = 947, seal = 105 }, atlas.zone(2521))
+    assert.equal(251001, atlas.innOf(251001))
+    assert.same({ 10, 11, 20, 21, 2521 }, atlas.zoneKeys())
+
+    local own = fx.entries()
+    own[#own + 1] = { inn = 251001, t = T + 600, phrase = { 1 } }
+    local p = atlas.progress(own, "Alliance")
+    local want = allianceE()
+    want.signed, want.total, want.done = 5, 5, T + 600
+    want.byContinent[947] = { signed = 1, total = 1, done = T + 600 }
+    want.byZone[2521] = { signed = 1, total = 1, continent = 947, done = T + 600 }
+    want.inns[251001] = { zone = 2521, open = true, count = 1, first = T + 600, last = T + 600 }
+    assert.same(want, p)
+
+    -- Unsigned, it is one more open inn on its own group.
+    p = atlas.progress(fx.entries(), "Horde")
+    assert.same({ signed = 0, total = 1 }, p.byContinent[947])
+    assert.same({ signed = 0, total = 1, continent = 947 }, p.byZone[2521])
+    assert.equal(5, p.total)
+  end)
+
+  it("a World key reused as a zone key excludes both, and what hangs off them (#76)",
+    function()
+      local inns, zones, conts = withWorld()
+      zones[947] = zone("Azeroth", 1, 106)
+      local atlas = Collection.bind(inns, zones, conts)
+      assert.same({ "continent 947", "inn 251001", "zone 2521", "zone 947" }, atlas.invalid)
+      assert.is_nil(atlas.continent(947))
+      assert.is_nil(atlas.zone(947))
+      assert.same({ 10, 11, 20, 21 }, atlas.zoneKeys())
+      assert.same(allianceE(), atlas.progress(fx.entries(), "Alliance"))
+    end)
+
+  it("a key in both tables excludes both even when one record is junk (fail closed)",
+    function()
+      local inns, zones, conts = fx.places()
+      conts[10] = "junk" -- zone 10's key; zone 10 itself is good
+      local atlas = Collection.bind(inns, zones, conts)
+      assert.same({ "continent 10", "inn 5001", "inn 5002", "inn 5003", "zone 10" },
+        atlas.invalid)
+      inns, zones, conts = fx.places()
+      zones[1] = 7 -- continent 1's key
+      atlas = Collection.bind(inns, zones, conts)
+      assert.same({ "continent 1", "inn 5001", "inn 5002", "inn 5003", "inn 5101", "zone 1",
+        "zone 10", "zone 11" }, atlas.invalid)
+    end)
+
+  it("a zone whose chain loops back to itself is excluded (#76)", function()
+    -- Its own continent, with no continent record: an unknown continent.
+    local inns, zones, conts = fx.places()
+    zones[30] = zone("Glen", 30, 105)
+    inns[5401] = inn("Glen Inn", 30)
+    local atlas = Collection.bind(inns, zones, conts)
+    assert.same({ "inn 5401", "zone 30" }, atlas.invalid)
+    -- Its own continent, with a continent record of that key: the key is in both tables.
+    conts[30] = cont("Glen Lands")
+    atlas = Collection.bind(inns, zones, conts)
+    assert.same({ "continent 30", "inn 5401", "zone 30" }, atlas.invalid)
+    -- Two zones that are each other's continent.
+    inns, zones, conts = fx.places()
+    zones[30], zones[31] = zone("Glen", 31, 105), zone("Fen", 30, 106)
+    conts[30], conts[31] = cont("Glen Lands"), cont("Fen Lands")
+    inns[5401] = inn("Glen Inn", 30)
+    atlas = Collection.bind(inns, zones, conts)
+    assert.same({ "continent 30", "continent 31", "inn 5401", "zone 30", "zone 31" },
+      atlas.invalid)
+    assert.same(allianceE(), atlas.progress(fx.entries(), "Alliance"))
+  end)
+
   it("an alias to an excluded inn is excluded too", function()
     local inns, zones, conts = fx.places()
     inns[5401] = inn("Glen Inn", 99)
@@ -449,6 +532,7 @@ describe("Collection.bind", function()
     end
     setmetatable(inns, { __index = spy })
     setmetatable(zones, { __index = spy })
+    setmetatable(conts, { __index = spy })
     setmetatable(inns[5001], { __index = function() calls = calls + 1 return "Horde" end })
     local atlas = Collection.bind(inns, zones, conts)
     assert.same({}, atlas.invalid)
@@ -758,6 +842,12 @@ describe("Data/Inns (the shipped places)", function()
     end
     for key in pairs(DATA.Continents) do
       assert.is_true(usedConts[key] == true, "continent " .. key .. " has no zone")
+    end
+  end)
+
+  it("no map ID is both a zone and a continent", function()
+    for key in pairs(DATA.Zones) do
+      assert.is_nil(DATA.Continents[key], "map " .. key)
     end
   end)
 

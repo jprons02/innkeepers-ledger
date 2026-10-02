@@ -5,6 +5,7 @@
 ## Version: @project-version@
 ## SavedVariables: InnkeepersLedgerDB
 ## X-Curse-Project-ID: 1721704
+## X-Wago-ID: n6VYeONd
 
 Libs\embeds.xml
 

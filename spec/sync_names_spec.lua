@@ -481,6 +481,15 @@ describe("Sync with two-part names: the guild", function()
     assert.is_false(resolves(me, "Mira Vale", "GUILD"))
   end)
 
+  it("skips a one-word roster name, so a one-word sender can't borrow its GUID", function()
+    local _, me = guildOf({ "Mira Vale", "Bram Stone", "Cole Ash" },
+      { [2] = "Mira", [3] = "Bram-" .. REALM, [4] = "Cole-Farshore" })
+    assert.same({ "Ada Brook" }, keys(me.client.guild))
+    for _, sender in ipairs({ "Mira", "Bram", "Bram-" .. REALM, "Cole-Farshore", "Cole" }) do
+      assert.is_false(resolves(me, sender, "GUILD"), sender)
+    end
+  end)
+
   it("never resolves a near miss or a case change", function()
     local _, me = guildOf({ "Mira Vale" })
     for _, sender in ipairs({ "Mira Val", "mira vale", "Mira", "Mira-Vale", "Unknown" }) do

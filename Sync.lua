@@ -847,11 +847,19 @@ function Client:rebuildGuild(now)
         and type(name) == "string" and #name >= 1 and #name <= SENDER_MAX
         and Ledger.validGUID(guid) then
         local key = keyOf(name, realm, twoPart)
-        if claimed[key] then
-          map[key] = nil
-        else
-          claimed[key] = true
-          map[key] = guid
+        -- A two-part client keys only "First Surname": a one-word row (the surname
+        -- missing) is skipped, as the group map skips one, so a one-word sender can't
+        -- borrow a member's GUID.
+        if twoPart and not find(key, " ", 1, true) then
+          key = nil
+        end
+        if key ~= nil then
+          if claimed[key] then
+            map[key] = nil
+          else
+            claimed[key] = true
+            map[key] = guid
+          end
         end
       end
     end

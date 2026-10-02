@@ -10,6 +10,27 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-01 — On a two-part client, guild keys must be two words too
+
+From the `dev → main` release review. This extends *Two-part names key as the bare
+sender form* (2026-09-30) to the guild map. That entry already skips a one-word unit name
+in the group map; the guild map keyed whatever the roster gave. Now a two-part client
+also skips a roster key with no space (`"First"`, `"First-<our realm>"` reduced to
+`"First"`, or `"First-<other realm>"`). Both maps fail closed the same way, so a one-word
+sender can't resolve to a member whose roster row lost its surname. Spec:
+[specs/sync-glue.md §3.4](specs/sync-glue.md#34-sender-resolution).
+
+The same review noted that the group map reads any one-word slot as a surname, which is
+only safe while groups stay within one ruleset realm. That's now an item on #12's list
+(a cross-realm or group-finder member's `UnitFullName`).
+
+*Rejected:* holding the release for it. Both findings were low, and the guild fix is
+small enough to land first.
+
+*Reflected in:* `Sync.lua` (`rebuildGuild`), `spec/sync_names_spec.lua`,
+`docs/specs/sync-glue.md` §3.4, `docs/platform-forever.md` → Verification checklist,
+`docs/status.md`.
+
 ### 2026-10-01 — Distribution pages: CurseForge and Wago, no outbound links
 
 The maintainer created both projects (#81): CurseForge `1721704` and Wago `n6VYeONd`,

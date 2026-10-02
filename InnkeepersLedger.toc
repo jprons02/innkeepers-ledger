@@ -4,6 +4,7 @@
 ## Notes: Sign the ledger at every inn you rest in, and collect the signatures of travelers you meet along the way.
 ## Version: @project-version@
 ## SavedVariables: InnkeepersLedgerDB
+## X-Curse-Project-ID: 1721704
 
 Libs\embeds.xml
 

@@ -104,10 +104,12 @@ In short:
   administrators to bypass configured protection rules*, so each publish needs an
   approval even from the maintainer's account (#81; an agent's attempt was refused by
   its permission guard).
-- **At release time, not before:** the maintainer creates the CurseForge and Wago
-  accounts with 2FA from the start, then the project pages (send the project IDs for
-  the TOC) and upload tokens, entered only into the `release` environment as
-  `CF_API_TOKEN` and `WAGO_API_TOKEN`
+- **CurseForge:** project created (2026-10-01), ID `1721704`, now in the TOC. Still
+  to do: 2FA on the account, and the upload token entered only into the `release`
+  environment as `CF_API_TOKEN`.
+- **Wago:** the account (2FA from the start), the project (send its ID for the TOC's
+  `## X-Wago-ID`) and the token, entered only into the `release` environment as
+  `WAGO_API_TOKEN`
   ([security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag),
   [CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing)).
 

@@ -10,6 +10,27 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-02 — Players sign the inn's guestbook; the AddOn keeps the name "ledger"
+
+The maintainer saw the probe's "sign the ledger" button in the beta and asked for "sign
+the guestbook". Player-facing text now uses **guestbook** for the thing you sign at an
+inn: the `Sign` button reads "Sign the guestbook", the TOC `## Notes` line reads "Sign
+the guestbook at every inn you rest in, and collect the signatures of travelers you meet
+along the way." (this matches the download pages, which already said "guestbook"), and so
+do the README tagline and the changelog. This supersedes the wording (not the two-halves
+shape) of *AddOn list blurb names both halves of the AddOn* (2026-09-27).
+
+The AddOn's name, *Innkeeper's Ledger*, stays: the ledger is the player's own book of
+inns and signatures. `/ledger`, the `Ledger` module and the SavedVariables names are
+unchanged.
+
+*Rejected:* renaming the AddOn to match. The CurseForge and Wago projects already exist
+under this name, and "guestbook" alone would read as a housing guestbook AddOn
+([prior-art.md](prior-art.md)).
+
+*Reflected in:* `InnkeepersLedger.toc`, `README.md`, `CHANGELOG.md`, `CLAUDE.md`,
+`docs/vision.md`, `docs/architecture.md` (the `Sign` flow).
+
 ### 2026-10-01 — On a two-part client, guild keys must be two words too
 
 From the `dev → main` release review. This extends *Two-part names key as the bare

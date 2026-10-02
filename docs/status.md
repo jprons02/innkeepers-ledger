@@ -5,8 +5,9 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-02 (#81 closed: the first manual dry run on `main` passed, both
-upload tokens in; #80 done; release to `main` on 2026-10-01)
+**Updated:** 2026-10-02 (wording: players sign the inn's **guestbook**; #81 closed: the
+first manual dry run on `main` passed, both upload tokens in; #80 done; release to
+`main` on 2026-10-01)
 
 ## Current state
 
@@ -40,6 +41,10 @@ upload tokens in; #80 done; release to `main` on 2026-10-01)
 
 - **In the client (maintainer, as you play):** keep ILProbe enabled, talk to every
   innkeeper you pass and `/reload` now and then. Then the `Sign` and `UI/Book` tickets.
+  The probe's "Probe: sign the ledger" button shows on **every** gossip NPC and only
+  logs the click (by design); the real "Sign the guestbook" button comes with `Sign`.
+  The 2026-10-02 session logged one NPC (251487, seen before, not resting): still no
+  innkeeper.
 
 ## Client access plan
 
@@ -59,8 +64,6 @@ None block work; drafts ship and get retuned ([decisions.md](decisions.md) →
   adds an inn? World-map groups count toward the `continent` quill (#76).
 - **Export (#64):** `me.region`? An import or backup restore
   ([export.md → Open questions](specs/export.md#open-questions-maintainer))?
-- **In-game blurb:** the TOC's `## Notes:` still reads "Sign the ledger at every inn you
-  rest in…"; the download pages say "Sign a guestbook at every inn…". Match them?
 
 ## Waiting on the maintainer
 

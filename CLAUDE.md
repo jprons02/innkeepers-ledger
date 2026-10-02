@@ -6,7 +6,7 @@ points at `docs/` rather than repeating it.
 ## What this is
 
 A free, open-source World of Warcraft AddOn targeting **WoW: Forever** (launches
-2026-11-04). Players sign a ledger by talking to innkeepers; the ledger becomes a
+2026-11-04). Players sign each inn's guestbook at the innkeeper; their ledger becomes a
 collection of inns plus the signatures of travelers they've crossed paths with,
 synced peer-to-peer in-game. See [docs/vision.md](docs/vision.md).
 

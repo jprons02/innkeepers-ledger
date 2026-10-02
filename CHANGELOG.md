@@ -2,4 +2,4 @@
 
 ## Unreleased
 
-- Sign the ledger at the inns you visit, and collect the signatures of travelers you meet.
+- Sign the guestbook at the inns you visit, and collect the signatures of travelers you meet.

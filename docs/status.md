@@ -5,8 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-01 (#80 name form in `/ledger debug`; #81 packager, CurseForge and
-Wago projects; release to `main`)
+**Updated:** 2026-10-02 (#81 closed: the first manual dry run on `main` passed, both
+upload tokens in; #80 done; release to `main` on 2026-10-01)
 
 ## Current state
 

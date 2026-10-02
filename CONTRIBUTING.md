@@ -92,6 +92,10 @@ and publishing are the maintainer's; everything before them is checked in CI.
   approval in the `release` environment. Approving builds and checks the package once
   more and uploads it to CurseForge, Wago and a GitHub release (the file label reads
   `vX.Y.Z-forever`, the packager's game suffix), then checks the uploaded build again.
+- **Download pages** (CurseForge `1721704`, Wago `n6VYeONd`): the text and rules are in
+  [docs/decisions.md](docs/decisions.md) (2026-10-01, *Distribution pages*): no outbound
+  links. The logo's source is `media/logo.svg` (render `media/logo.png` at 500×500;
+  `media/` never ships).
 - **Before the first release:** the CurseForge and Wago projects exist, their IDs are
   in the TOC (`## X-Curse-Project-ID`, `## X-Wago-ID`), and the maintainer has put
   `CF_API_TOKEN` and `WAGO_API_TOKEN` into the `release` environment. Never paste a

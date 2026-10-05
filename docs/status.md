@@ -5,9 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-05 (`Sign` built (#96): the "Sign the guestbook" button and a DRAFT
-composer; first innkeeper met: Calmbreeze Inn is in `Data/Inns`; release to `main` on
-2026-10-01)
+**Updated:** 2026-10-05 (**first signature in the client**: `Sign` (#96) works at
+Calmbreeze Inn; first innkeeper in `Data/Inns`; release to `main` on 2026-10-01)
 
 ## Current state
 
@@ -22,7 +21,8 @@ composer; first innkeeper met: Calmbreeze Inn is in `Data/Inns`; release to `mai
   custom-channel addon messages allowed, 255-byte message cap.
   - **Two-part names** (`"First Surname"`) are handled (#75), and `/ledger debug`'s report
     ends with `names two-part` / `realm` / `undecided`; Core and Sync read our own name
-    through one helper (#80). Still to confirm with a second character (#12).
+    through one helper (#80). Solo it reports `names two-part` (2026-10-05); still to
+    confirm with a second character (#12).
   - **Zones with no continent** group under their World map (#76).
 - **First innkeeper met (2026-10-05):** Coriella Calmbreeze (NPC `254089`), Calmbreeze
   Inn, Shen'dar Village, Zephras Isle; neutral; `IsResting()` true; the gossip button
@@ -33,7 +33,10 @@ composer; first innkeeper met: Calmbreeze Inn is in `Data/Inns`; release to `mai
   under the gossip frame at every known innkeeper; a click either says why it can't sign
   (one chat line) or opens a plain DRAFT composer; signing stores an own entry, records
   earned cosmetics and tells `Sync`. The decisions live in a new pure module, `SignFlow`
-  (90% floor); `Core` records unlocks at login. Untried in the client (batch below).
+  (90% floor); `Core` records unlocks at login. **Works in the client (2026-10-05):** the
+  button shows only at Coriella, the composer renders, a signature was stored and
+  survived a restart, and a second click names the reset (Tuesday 16:00 UTC). The
+  probe no longer adds its own button (it stacked on ours).
 - **Not built:** `UI/Book` (its ticket is next). Phrase and cosmetic sets, the composer's
   look and the signing messages are DRAFTs.
 - **Releasing is wired up (#81, #86):** `release.yml` dry-runs the BigWigs packager on
@@ -51,9 +54,7 @@ composer; first innkeeper met: Calmbreeze Inn is in `Data/Inns`; release to `mai
 - **Agents:** write and build the `UI/Book` ticket.
 - **In the client (maintainer, as you play):** keep ILProbe enabled, talk to every
   innkeeper you pass and `/reload` now and then; each one becomes a `Data/Inns` record.
-  The probe's "Probe: sign the ledger" button shows on **every** gossip NPC and only
-  logs the click (by design). With the AddOn updated from `dev`, the real "Sign the
-  guestbook" button shows at Coriella Calmbreeze: try the signing checks below.
+  The installed AddOn is a copy of `dev` (agents refresh it after merges).
 
 ## Client access plan
 
@@ -82,10 +83,10 @@ None block work; drafts ship and get retuned ([decisions.md](decisions.md) →
 
 **In the client** (batched in #12; the unticked items in
 [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)):
-more innkeepers (each one a `Data/Inns` record); **signing at Coriella Calmbreeze**
-(the eight checks of [sign.md §8](specs/sign.md#8-in-client-checks-for-12), with a
-screenshot of the DRAFT composer); solo after login,
-`/ledger debug` ends `names two-part` (#80); a second character in a party (round-trips,
+more innkeepers (each one a `Data/Inns` record); the rest of the signing checks
+([sign.md §8](specs/sign.md#8-in-client-checks-for-12): the composer closing with the
+gossip or the vendor option, cycling and the second line, a sealed signature after
+Tuesday 2026-10-06 16:00 UTC); a second character in a party (round-trips,
 `got hello PARTY` not `drop unresolved`, `UnitFullName("partyN")`, also in a cross-realm or group-finder group); a guild round-trip;
 one dungeon run; copying out an export string (once the Share window exists).
 
@@ -99,6 +100,14 @@ one dungeon run; copying out an export string (once the Share window exists).
   requires them); answer #62 and #63 (IDs freeze at the first public release). Whether
   CurseForge and Wago map interface `16001` to Forever is unverified until the first
   upload; the packager's `-g` overrides it.
+- **Release gate: `Data/Inns` must be complete for what it ships.** Earned cosmetics are
+  never taken away, and the `zone`, `continent` and `all` rules count only the inns the
+  data knows. In the beta the first signature at Calmbreeze (the only inn) earned 1101,
+  101, 1003 *and* 2 at once (2026-10-05). Beta SavedVariables don't carry to live, but a
+  release with a partial atlas would hand out "every inn" for good. Before the first
+  tag: either every Forever inn is in the data, or the rules gain a guard (e.g. a
+  per-zone "complete" mark, so a zone seal and the continent/all rules wait for it), a
+  `collection-cosmetics.md` change.
 - **Revisit once in groups (#12):** server-clock jumps in `SyncSchedule`; other AddOns'
   hidden traffic counted as `hidden`; group-map rescan budget; a dropped
   `C_Timer.After`; export build time and AceSerializer's ~5 MB after an opted-in export.

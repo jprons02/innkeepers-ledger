@@ -1,6 +1,7 @@
 -- Core (glue): AceAddon setup, AceDB SavedVariables, opening the character's ledger at
 -- login, the /ledger command, the debug log and the export string's glue.
--- Specs: docs/specs/sync-glue.md (sections 3.2 and 3.8), docs/specs/export.md (3.7).
+-- Specs: docs/specs/sync-glue.md (sections 3.2 and 3.8), docs/specs/export.md (3.7),
+-- docs/specs/sign.md (3.5).
 local ADDON_NAME, ns = ...
 
 local Core = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME, "AceConsole-3.0", "AceEvent-3.0")
@@ -136,7 +137,8 @@ function Core:OnEnable()
   self:OpenLedger()
 end
 
--- Opens db.global.ledgers[guid] as ns.ledger, then starts Sync (spec 3.2). An unreadable
+-- Opens db.global.ledgers[guid] as ns.ledger, records unlocks for a writable ledger
+-- (docs/specs/sign.md 3.5), then starts Sync (spec 3.2). An unreadable
 -- GUID is retried every 2 s, 5 attempts in all; after that there's no ledger this session.
 function Core:OpenLedger(attempt)
   attempt = attempt or 1
@@ -160,8 +162,15 @@ function Core:OpenLedger(attempt)
   if ok then
     ns.ledger = ledger
     self.ledgerState = "open"
-    if not ledger.readOnly and Ledger.validName(name) then
-      ledger:setOwnerName(name)
+    if not ledger.readOnly then
+      if Ledger.validName(name) then
+        ledger:setOwnerName(name)
+      end
+      -- Unlocks a data update made are recorded now (sign.md 3.5); opening the ledger
+      -- and starting Sync never depend on it.
+      if not pcall(function() ns.Sign:RecordUnlocks() end) then
+        self:Debug("sign: error in login")
+      end
     end
   else
     self.ledgerState = "open failed"

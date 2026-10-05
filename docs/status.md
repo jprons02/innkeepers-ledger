@@ -5,8 +5,9 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-05 (first innkeeper met: Calmbreeze Inn is in `Data/Inns`; wording:
-players sign the inn's **guestbook**; #81 closed; release to `main` on 2026-10-01)
+**Updated:** 2026-10-05 (`Sign` built (#96): the "Sign the guestbook" button and a DRAFT
+composer; first innkeeper met: Calmbreeze Inn is in `Data/Inns`; release to `main` on
+2026-10-01)
 
 ## Current state
 
@@ -28,8 +29,13 @@ players sign the inn's **guestbook**; #81 closed; release to `main` on 2026-10-0
   works there ([platform-forever.md](platform-forever.md)). She is `Data/Inns`' first
   record (zone 2521, seal 101, under Azeroth 947). Her *Make this inn your home.* option
   (icon 132052) is how the probe's log tells innkeepers apart.
-- **Not built:** `Sign` and `UI/Book`; their tickets are next (contracts in each spec's
-  §8). Phrase and cosmetic sets are DRAFTs.
+- **`Sign` is built (#96, [specs/sign.md](specs/sign.md)):** a "Sign the guestbook" button
+  under the gossip frame at every known innkeeper; a click either says why it can't sign
+  (one chat line) or opens a plain DRAFT composer; signing stores an own entry, records
+  earned cosmetics and tells `Sync`. The decisions live in a new pure module, `SignFlow`
+  (90% floor); `Core` records unlocks at login. Untried in the client (batch below).
+- **Not built:** `UI/Book` (its ticket is next). Phrase and cosmetic sets, the composer's
+  look and the signing messages are DRAFTs.
 - **Releasing is wired up (#81, #86):** `release.yml` dry-runs the BigWigs packager on
   every PR (`package`, a required check) and publishes a `v*` tag only after the
   maintainer approves the `release` environment
@@ -42,12 +48,12 @@ players sign the inn's **guestbook**; #81 closed; release to `main` on 2026-10-0
 
 ## Next step
 
-- **Agents:** write and build the `Sign` ticket (it has a real innkeeper to test at), then
-  `UI/Book`.
+- **Agents:** write and build the `UI/Book` ticket.
 - **In the client (maintainer, as you play):** keep ILProbe enabled, talk to every
   innkeeper you pass and `/reload` now and then; each one becomes a `Data/Inns` record.
   The probe's "Probe: sign the ledger" button shows on **every** gossip NPC and only
-  logs the click (by design); the real "Sign the guestbook" button comes with `Sign`.
+  logs the click (by design). With the AddOn updated from `dev`, the real "Sign the
+  guestbook" button shows at Coriella Calmbreeze: try the signing checks below.
 
 ## Client access plan
 
@@ -67,12 +73,18 @@ None block work; drafts ship and get retuned ([decisions.md](decisions.md) →
   adds an inn? World-map groups count toward the `continent` quill (#76).
 - **Export (#64):** `me.region`? An import or backup restore
   ([export.md → Open questions](specs/export.md#open-questions-maintainer))?
+- **Signing (#96):** the composer's look (a plain dark panel with arrow cyclers right of
+  the gossip frame) and the chat lines, all in `SignFlow.TEXT`; announce earned
+  cosmetics on signing, or leave it to the book? Recent phrases worth a follow-up?
+  ([sign.md → Open questions](specs/sign.md#open-questions-maintainer)).
 
 ## Waiting on the maintainer
 
 **In the client** (batched in #12; the unticked items in
 [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)):
-more innkeepers (each one a `Data/Inns` record); solo after login,
+more innkeepers (each one a `Data/Inns` record); **signing at Coriella Calmbreeze**
+(the eight checks of [sign.md §8](specs/sign.md#8-in-client-checks-for-12), with a
+screenshot of the DRAFT composer); solo after login,
 `/ledger debug` ends `names two-part` (#80); a second character in a party (round-trips,
 `got hello PARTY` not `drop unresolved`, `UnitFullName("partyN")`, also in a cross-realm or group-finder group); a guild round-trip;
 one dungeon run; copying out an export string (once the Share window exists).
@@ -94,7 +106,8 @@ one dungeon run; copying out an export string (once the Share window exists).
   the US row; fill the live regions' rows after launch.
 - **`UI/Book`:** its in-game help says what sync shares, in the README's words.
 - **Code tidy (low):** `isInt` / name allow-lists copied across `Collection`,
-  `Cosmetics`, `Export`; `Phrase` load-time asserts (#62 review nits).
+  `Cosmetics`, `Export`, `SignFlow` (and `Core`'s `hidden` in `Sign`); `Phrase` load-time
+  asserts (#62 review nits).
 - Publish `Data/*` as a generated reference for export consumers (needs the inn data).
 - `GOLDEN_F` export string: regenerate if a library or interpreter change breaks it while
   its decode still matches, and say so in the PR.

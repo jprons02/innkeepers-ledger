@@ -35,6 +35,21 @@ Proportional, not ceremonial:
   messages, queued timers and errors the libraries catch. It supplies the client's
   `xpcall`, which passes extra arguments to the function; stock Lua 5.1's drops them,
   and Ace3 then calls `OnInitialize` without `self` and swallows the error.
+  **Frames** (for `Sign`, [specs/sign.md §6.1](specs/sign.md#61-stub-and-helpers)):
+  `CreateFrame(kind, name, parent, template)` records `kind`, `parent` and `template`
+  (a hidden parent doesn't hide its children); frames have a real `Show` / `Hide` /
+  `IsShown`, recorded `SetPoint` (`frame.points`), sizes and text, `Enable` / `Disable`,
+  `Click()` (runs `OnClick` when enabled), `CreateFontString` and `CreateTexture`
+  (`SetColorTexture` lands in `.color`). `GossipFrame` is a stub frame; set it to `nil`
+  for a client without one. `wow.children(parent)` lists the frames made under a parent.
+  `UnitGUID("npc")` is `nil` unless a case overrides `UnitGUID`.
+- **Sign** (`spec/sign_flow_spec.lua`, pure; `spec/sign_spec.lua`, the glue): the pure
+  cases build flows over the place fixtures, the phrase fixture of
+  [specs/phrase.md §6](specs/phrase.md#6-test-plan) and a real `Ledger`, plus the real
+  data for the draft; NPC GUIDs are `"Creature-0-4615-2991-62-<id>-0000ABCDEF"`. The glue
+  cases log in at Coriella Calmbreeze (`254089`), resting, and drive the button and the
+  composer through `Sign.ui` (`button`, `composer`, `rows.<field>.prev/label/next`,
+  `toggle`, `sign`, `cancel`, `preview`, `title`, `inn`) and `Sign.session`.
 - **The sync harness** (`spec/helpers/sync_harness.lua`): N `Sync` clients in one Lua
   state, each with its own `ns`, ledger, GUID and fake `api` (no stub, no `_G`), sharing
   a clock, a timer queue, an addon-message bus that echoes to the sender, and the group
@@ -85,7 +100,8 @@ Proportional, not ceremonial:
   their send logs must match. That is how #45's review found a wake time that was too
   late, which every named test had missed.
 - **Lint:** `luacheck` clean.
-- **Test by hand in the client:** signing flow, gossip integration, UI, real
+- **Test by hand in the client:** signing flow (the checks of
+  [specs/sign.md §8](specs/sign.md#8-in-client-checks-for-12)), gossip integration, UI, real
   addon messages between two accounts/characters. These go on the in-client batch in
   [status.md](status.md) rather than blocking other work.
 - **The in-client probe (#12):** a throwaway AddOn, `!ILProbe`, on branch
@@ -101,4 +117,5 @@ Proportional, not ceremonial:
   the character's name).
 - **CI:** every check runs on every push and PR, and each has a local command
   ([CONTRIBUTING.md → Development setup](../CONTRIBUTING.md#development-setup)). Pure
-  modules have coverage floors (95% for `Ledger`, `SyncProtocol`, `SyncSchedule`; 90% the rest).
+  modules have coverage floors (95% for `Ledger`, `SyncProtocol`, `SyncSchedule`; 90% the
+  rest, `SignFlow` included).

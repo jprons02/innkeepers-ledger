@@ -28,7 +28,8 @@ vs **client glue** (events, frames, API calls).
 | `Data/Inns` | data | Innkeeper NPC ID → inn record (name, zone, faction) or alias of one; zones and continents keyed by the client's map IDs, each zone with its seal ID ([spec](specs/collection-cosmetics.md#31-places-inns-zones-continents)). One table per game flavor. |
 | `Data/Phrases` | data | Phrase templates + word lists, each with a stable numeric ID |
 | `Data/Cosmetics` | data | The cosmetic catalog: milestone seals, quills and inks, each with a stable numeric ID and its unlock rule ([spec](specs/collection-cosmetics.md#35-cosmetic-ids)) |
-| `Sign` | glue | Detects an innkeeper interaction, offers "Sign the guestbook", creates the entry |
+| `Sign` | glue | The "Sign the guestbook" button under the gossip frame, the phrase composer, the client reads (hidden-value checked), chat lines, `Sync:WindowChanged()` after a signature ([spec](specs/sign.md)) |
+| `SignFlow` | pure | Every signing decision: when to offer signing, the checks and their reasons, the seals a signature may carry, the commit (`addOwn`, then unlocks recorded), the composer's state ([spec](specs/sign.md)) |
 | `Ledger` | pure | The entry store: add, dedupe, query by inn/signer, prune, storage caps |
 | `Phrase` | pure | Builds, renders and validates phrase IDs → text ([spec](specs/phrase.md)) |
 | `Collection` | pure | Progress over your own signatures: signed/total by continent and zone, per inn ([spec](specs/collection-cosmetics.md)) |
@@ -48,15 +49,20 @@ arguments, so tests don't need a WoW stub. That includes libraries: `Export` can
 1. On `GOSSIP_SHOW`, read `UnitGUID("npc")` and parse the NPC ID from the creature
    GUID. NPC IDs don't depend on the client's language, whereas zone/subzone names
    differ in every locale, so **never match inns by name**.
-2. If the NPC ID is in `Data/Inns` for the current flavor, add a "Sign the guestbook"
-   option to the gossip frame **(verify: how gossip options can be added or overlaid
-   in the Forever client)**.
-3. The player composes a phrase with the phrase builder (or picks a recent one) and
-   confirms.
-4. Conditions: `IsResting()` must be true. "Must be sitting" is desired for the
-   ritual feel **(verify: there may be no API that reports sitting; drop the
-   requirement if so)**.
-5. Create the entry and store it in `Ledger`.
+2. If the NPC ID is in `Data/Inns` for the current flavor (and `Collection` kept the
+   record), a "Sign the guestbook" button shows under the gossip frame (verified in the
+   beta: a `UIPanelButtonTemplate` button parented to `GossipFrame`). It shows at every
+   known innkeeper; a click that can't sign says why in one chat line (no ledger,
+   read-only, signed this week, not resting).
+3. The player composes a phrase in the composer (arrow cyclers over templates,
+   categories, words and conjunctions, an optional second line and an optional seal) and
+   confirms. No recent phrases in v1.
+4. Conditions: `IsResting()` must be exactly `true`, and the ledger's weekly rule must
+   allow the inn. There is no sitting requirement: the client has no query for it
+   ([platform-forever.md](platform-forever.md) → *Sitting detection*).
+5. Every check runs again at confirm, then the entry is stored through `Ledger:addOwn`,
+   new unlocks are recorded in `earned`, and `Sync:WindowChanged()` announces it.
+   `Core` also records unlocks once at login. Details: [specs/sign.md](specs/sign.md).
 
 ## Data model
 

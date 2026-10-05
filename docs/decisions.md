@@ -10,6 +10,41 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-05 — Sign: a pure SignFlow, the button at every known innkeeper, reasons on click, no sitting or combat check
+
+The `Sign` slice (#96, [specs/sign.md](specs/sign.md)) settles how signing works:
+
+- **The decisions live in a new pure module, `SignFlow`,** with a **90% coverage floor**
+  (`scripts/check-coverage.sh`, like the other non-boundary pure modules): when the button
+  shows, the checks and their order, the seals offered, the commit, unlock recording, the
+  composer's state and the chat lines. `Sign.lua` is thin glue: events, frames, client
+  reads (each hidden-value checked first) and chat output. The `SyncSchedule` split again.
+- **The button shows at every innkeeper in `Data/Inns`** (that `Collection` kept), whether
+  or not signing is possible right now. A click that can't sign prints one chat line with
+  the reason (no ledger, read-only, signed this week with the time to the reset, not
+  resting); `too_soon` is reported before `not_resting`.
+- **Every check runs again at commit,** including the NPC (`changed` if the player is
+  talking to someone else); a seal that stopped being allowed is refused, never dropped.
+- **No sitting requirement** (the client has no query for it) and **no faction check**
+  (the client already keeps players from the other faction's innkeepers).
+- **No combat check:** the button and composer are unprotected frames, and signing sends
+  nothing itself (`Sync`'s combat hold already covers the HELLO). `Sign.lua` stays out of
+  the `combat state` allow-list of `check-apis.sh`.
+- **`Core` records unlocks once at login** for a writable ledger, before `Sync` starts; an
+  error there is logged and changes nothing else.
+- The composer's look and every player-facing line are a **DRAFT** (all in
+  `SignFlow.TEXT`); the maintainer decides them (status.md → Open questions).
+
+*Rejected:* all the logic in `Sign.lua` with injected client functions (no coverage
+floor, no strict environment); hiding or disabling the button when signing isn't possible
+(a missing button reads as a bug; a disabled one needs an unverified tooltip); injecting a
+gossip option into the option list (needs a hook, which is forbidden); dropdowns (the
+modern menu API is unverified on Forever); checking only when the composer opens.
+
+*Reflected in:* `SignFlow.lua`, `Sign.lua`, `Core.lua`, `scripts/check-coverage.sh`,
+`.luacov`, `docs/architecture.md` (Modules, Signing flow), `docs/testing.md`,
+`docs/platform-forever.md` (checklist).
+
 ### 2026-10-02 — Players sign the inn's guestbook; the AddOn keeps the name "ledger"
 
 The maintainer saw the probe's "sign the ledger" button in the beta and asked for "sign

@@ -13,18 +13,84 @@ local lua_xpcall = xpcall
 local saved      -- globals as they were before install (name -> value)
 local frames     -- every frame CreateFrame has made since install
 
-local function new_frame(name)
-  local frame = { name = name, events = {}, scripts = {} }
+-- What frames, font strings and textures share: a shown flag, points, a size and text.
+local function region(kind)
+  local r = { kind = kind, shown = true, points = {}, text = nil }
+  function r:Show() self.shown = true end
+  function r:Hide() self.shown = false end
+  function r:IsShown() return self.shown end
+  function r:SetPoint(...) self.points[#self.points + 1] = { ... } end
+  function r:SetAllPoints(...) self.allPoints = { ... } end
+  function r:SetSize(w, h) self.width, self.height = w, h end
+  function r:SetWidth(w) self.width = w end
+  function r:SetHeight(h) self.height = h end
+  function r:SetText(text) self.text = text end
+  function r:GetText() return self.text end
+  return r
+end
+
+local function new_font_string(layer, template)
+  local fs = region("FontString")
+  fs.layer, fs.template = layer, template
+  function fs:SetJustifyH(j) self.justifyH = j end
+  function fs:SetWordWrap(on) self.wordWrap = on end
+  return fs
+end
+
+local function new_texture(layer)
+  local tex = region("Texture")
+  tex.layer = layer
+  function tex:SetColorTexture(...) self.color = { ... } end
+  return tex
+end
+
+-- CreateFrame(kind, name, parent, template): `parent` and `template` are recorded, not
+-- modeled (a hidden parent doesn't hide its children here). Click() runs OnClick, as the
+-- client does for an enabled button.
+local function new_frame(name, kind, parent, template)
+  local frame = region(kind or "Frame")
+  frame.name, frame.parent, frame.template = name, parent, template
+  frame.events, frame.scripts, frame.enabled = {}, {}, true
+  frame.fontStrings, frame.textures = {}, {}
   function frame:RegisterEvent(event) self.events[event] = true end
   function frame:UnregisterEvent(event) self.events[event] = nil end
   function frame:UnregisterAllEvents() self.events = {} end
   function frame:IsEventRegistered(event) return self.events[event] == true end
-  function frame:SetScript(kind, fn) self.scripts[kind] = fn end
-  function frame:GetScript(kind) return self.scripts[kind] end
-  frame.Show = function() end
-  frame.Hide = function() end
+  function frame:SetScript(kind_, fn) self.scripts[kind_] = fn end
+  function frame:GetScript(kind_) return self.scripts[kind_] end
+  function frame:EnableMouse(on) self.mouse = on end
+  function frame:Enable() self.enabled = true end
+  function frame:Disable() self.enabled = false end
+  function frame:IsEnabled() return self.enabled end
+  function frame:Click(...)
+    local handler = self.scripts.OnClick
+    if self.enabled and handler then
+      handler(self, ...)
+    end
+  end
+  function frame:CreateFontString(_, layer, fsTemplate)
+    local fs = new_font_string(layer, fsTemplate)
+    self.fontStrings[#self.fontStrings + 1] = fs
+    return fs
+  end
+  function frame:CreateTexture(_, layer)
+    local tex = new_texture(layer)
+    self.textures[#self.textures + 1] = tex
+    return tex
+  end
   frames[#frames + 1] = frame
   return frame
+end
+
+-- Every frame CreateFrame made since install whose parent is `parent`.
+function M.children(parent)
+  local out = {}
+  for _, frame in ipairs(frames or {}) do
+    if rawequal(frame.parent, parent) then
+      out[#out + 1] = frame
+    end
+  end
+  return out
 end
 
 local function defaults()
@@ -102,7 +168,11 @@ local function defaults()
   api.SendChatMessage = function() end
   api.Enum = {}
 
-  api.CreateFrame = function(_, name) return new_frame(name) end
+  api.CreateFrame = function(kind, name, parent, template)
+    return new_frame(name, kind, parent, template)
+  end
+  -- The gossip frame Sign anchors to. UnitGUID("npc") stays nil unless a case sets it.
+  api.GossipFrame = new_frame("GossipFrame")
 
   -- Chat output lands in wow.chat.
   M.chat = {}

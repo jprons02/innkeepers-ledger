@@ -182,6 +182,27 @@ in the sections above. **Partly** means the rest of the item is still open.
       edit box holds a 256 000-byte string (`SetText` 2.3 ms). Still open: copying it
       out; build time and memory of an opted-in export at the foreign cap
 - [x] Sitting detection ✅: none (no query API)
+- [ ] Signing the guestbook ([specs/sign.md §8](specs/sign.md#8-in-client-checks-for-12)),
+      at Coriella Calmbreeze (`254089`) with `/ledger debug` on, reading
+      `InnkeepersLedger.lua` from disk after a `/reload`:
+  - [ ] "Sign the guestbook" shows under her gossip frame, not under a vendor's or a quest
+        giver's, and hides when the gossip closes
+  - [ ] a click opens the composer right of the gossip frame; its background
+        (`SetColorTexture`), font strings (`CreateFontString`) and `<` `>` buttons render;
+        cycling, the second line and the preview work. **A screenshot for the maintainer**
+        (the DRAFT look)
+  - [ ] Sign → the `added` line; the saved file holds one own entry at `254089`, and
+        `earned` holds 1101, 1003, 2 and 101
+  - [ ] a second click the same week → the `too_soon` line, naming the beta's reset
+        (Tuesday 16:00 UTC)
+  - [ ] closing the gossip mid-compose hides the composer; talking to another NPC with it
+        open closes it; *I would like to buy from you.* closes it too (`GOSSIP_CLOSED`)
+  - [ ] after the next weekly reset (2026-10-13 or 10-20): the seal row offers Zephras
+        Isle's seal and the Innkeeper's seal; a sealed signature is stored with `seal = 101`
+  - [ ] with a second character in a party, the signature reaches them (with the
+        round-trip item above)
+  - [ ] at any innkeeper whose rest area doesn't cover where you talk to them: the
+        `not_resting` line
 
 ## Sources
 

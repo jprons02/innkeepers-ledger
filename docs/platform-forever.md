@@ -140,7 +140,8 @@ in the sections above. **Partly** means the rest of the item is still open.
       2026-09-30); confirm with a second character that a party member's messages
       resolve (`/ledger debug` shows `got hello PARTY`, not `drop unresolved`). First,
       logged in solo, `/ledger debug`'s report must end `names two-part` (#80: the form
-      is decided at login and kept for the session)
+      is decided at login and kept for the session). **Partly** ✅: solo, it ends
+      `names two-part` (2026-10-05); the party half is still open
 - [ ] Sync glue ([specs/sync-glue.md §8](specs/sync-glue.md#8-unverified-client-facts-this-spec-relies-on)).
       **Partly** ✅: the `CHAT_MSG_ADDON` sender is `"First Surname"` (a space, no realm
       suffix); `GetNormalizedRealmName()` is `ClassicBetaPvP`; `UnitGUID("player")` and
@@ -185,19 +186,21 @@ in the sections above. **Partly** means the rest of the item is still open.
 - [ ] Signing the guestbook ([specs/sign.md §8](specs/sign.md#8-in-client-checks-for-12)),
       at Coriella Calmbreeze (`254089`) with `/ledger debug` on, reading
       `InnkeepersLedger.lua` from disk after a `/reload`:
-  - [ ] "Sign the guestbook" shows under her gossip frame, not under a vendor's or a quest
-        giver's, and hides when the gossip closes
-  - [ ] a click opens the composer right of the gossip frame; its background
-        (`SetColorTexture`), font strings (`CreateFontString`) and `<` `>` buttons render;
-        cycling, the second line and the preview work. **A screenshot for the maintainer**
-        (the DRAFT look)
-  - [ ] Sign → the `added` line; the saved file holds one own entry at `254089`, and
-        `earned` holds 1101, 1003, 2 and 101
-  - [ ] a second click the same week → the `too_soon` line, naming the beta's reset
-        (Tuesday 16:00 UTC)
+  - [x] "Sign the guestbook" shows under her gossip frame, not under other NPCs' ✅
+        (2026-10-05). Still to watch: it hides when the gossip closes
+  - [x] a click opens the composer right of the gossip frame; background, font strings
+        and `<` `>` buttons render; the preview reads "Rested here, dreaming of home." ✅
+        (maintainer's screenshot, 2026-10-05). Cycling and the second line: not yet
+        exercised
+  - [x] Sign → "You signed the guestbook of Calmbreeze Inn."; after a restart the saved
+        file holds one own entry `{ inn = 254089, phrase = { 1, 1306 } }` (20:45 UTC) and
+        `earned` holds 1101, 1003, 2 and 101 ✅. That all four unlock at once is the
+        partial-data effect in [status.md](status.md) → Follow-ups (release gate)
+  - [x] a second click the same week → "You've signed this guestbook this week. Sign
+        again after the weekly reset (in 19 hours)." ✅, i.e. Tuesday 16:00 UTC
   - [ ] closing the gossip mid-compose hides the composer; talking to another NPC with it
         open closes it; *I would like to buy from you.* closes it too (`GOSSIP_CLOSED`)
-  - [ ] after the next weekly reset (2026-10-13 or 10-20): the seal row offers Zephras
+  - [ ] after the next weekly reset (Tuesday 2026-10-06 16:00 UTC): the seal row offers Zephras
         Isle's seal and the Innkeeper's seal; a sealed signature is stored with `seal = 101`
   - [ ] with a second character in a party, the signature reaches them (with the
         round-trip item above)

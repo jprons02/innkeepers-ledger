@@ -337,8 +337,8 @@ local function onGossipShow()
   end
   db.npcs[str(lastNpc)] = e
   record("gossip", { npcId = str(lastNpc), name = e.name })
-  ensureButton()
-  if probeButton then probeButton:Show() end
+  -- The button test is done (2026-10-05); the real AddOn's "Sign the guestbook" button
+  -- now sits in this spot, so the probe no longer adds its own.
   say("gossip recorded: " .. e.name .. " (NPC " .. str(lastNpc) .. ")")
 end
 

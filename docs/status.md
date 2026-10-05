@@ -5,9 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-02 (wording: players sign the inn's **guestbook**; #81 closed: the
-first manual dry run on `main` passed, both upload tokens in; #80 done; release to
-`main` on 2026-10-01)
+**Updated:** 2026-10-05 (first innkeeper met: Calmbreeze Inn is in `Data/Inns`; wording:
+players sign the inn's **guestbook**; #81 closed; release to `main` on 2026-10-01)
 
 ## Current state
 
@@ -24,9 +23,13 @@ first manual dry run on `main` passed, both upload tokens in; #80 done; release 
     ends with `names two-part` / `realm` / `undecided`; Core and Sync read our own name
     through one helper (#80). Still to confirm with a second character (#12).
   - **Zones with no continent** group under their World map (#76).
-- **Not built:** `Sign` and `UI/Book`. **No innkeeper has been seen yet**; file their
-  tickets once one has (contracts in each spec's §8). `Data/Inns` is empty (it fills from
-  the probe's logs). Phrase and cosmetic sets are DRAFTs.
+- **First innkeeper met (2026-10-05):** Coriella Calmbreeze (NPC `254089`), Calmbreeze
+  Inn, Shen'dar Village, Zephras Isle; neutral; `IsResting()` true; the gossip button
+  works there ([platform-forever.md](platform-forever.md)). She is `Data/Inns`' first
+  record (zone 2521, seal 101, under Azeroth 947). Her *Make this inn your home.* option
+  (icon 132052) is how the probe's log tells innkeepers apart.
+- **Not built:** `Sign` and `UI/Book`; their tickets are next (contracts in each spec's
+  §8). Phrase and cosmetic sets are DRAFTs.
 - **Releasing is wired up (#81, #86):** `release.yml` dry-runs the BigWigs packager on
   every PR (`package`, a required check) and publishes a `v*` tag only after the
   maintainer approves the `release` environment
@@ -39,12 +42,12 @@ first manual dry run on `main` passed, both upload tokens in; #80 done; release 
 
 ## Next step
 
+- **Agents:** write and build the `Sign` ticket (it has a real innkeeper to test at), then
+  `UI/Book`.
 - **In the client (maintainer, as you play):** keep ILProbe enabled, talk to every
-  innkeeper you pass and `/reload` now and then. Then the `Sign` and `UI/Book` tickets.
+  innkeeper you pass and `/reload` now and then; each one becomes a `Data/Inns` record.
   The probe's "Probe: sign the ledger" button shows on **every** gossip NPC and only
   logs the click (by design); the real "Sign the guestbook" button comes with `Sign`.
-  The 2026-10-02 session logged one NPC (251487, seen before, not resting): still no
-  innkeeper.
 
 ## Client access plan
 
@@ -69,7 +72,7 @@ None block work; drafts ship and get retuned ([decisions.md](decisions.md) →
 
 **In the client** (batched in #12; the unticked items in
 [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)):
-any innkeeper (gossip, NPC ID, `IsResting()`, the button's look); solo after login,
+more innkeepers (each one a `Data/Inns` record); solo after login,
 `/ledger debug` ends `names two-part` (#80); a second character in a party (round-trips,
 `got hello PARTY` not `drop unresolved`, `UnitFullName("partyN")`, also in a cross-realm or group-finder group); a guild round-trip;
 one dungeon run; copying out an export string (once the Share window exists).

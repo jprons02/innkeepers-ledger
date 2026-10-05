@@ -77,7 +77,17 @@ merged) run in the Forever beta, build **1.60.1.70124** (2026-09-29), on 2026-09
 - ✅ **Gossip:** `GOSSIP_SHOW` fires; `C_GossipInfo.GetOptions()` / `GetText()` work;
   `GossipFrame` is the retail frame (`GossipFrame.GreetingPanel.ScrollBox`, 338×496).
   A `UIPanelButtonTemplate` button parented to `GossipFrame` and anchored under it shows
-  and takes clicks. ❓ Not yet seen at an innkeeper (none met so far).
+  and takes clicks.
+- ✅ **At an innkeeper (2026-10-05):** the first one met is *Coriella Calmbreeze*
+  (NPC `254089`, Calmbreeze Inn, Shen'dar Village, Zephras Isle; GUID
+  `Creature-0-4615-2991-62-254089-…`). `GOSSIP_SHOW` fires, her GUID and name read
+  normally, the probe's button shows under the frame and takes clicks, and
+  **`IsResting()` is `true`** at her. `UnitFactionGroup("npc")` returns nothing
+  (neutral; Zephras Isle mixes Alliance and Horde NPCs). Her greeting is "Welcome to the
+  Calmbreeze Inn, traveler…", and her options are *Make this inn your home.*
+  (`gossipOptionID` 137079, icon 132052, the binder icon) and *I would like to buy from
+  you.* (icon 132060). The binder option is what marks an innkeeper in the probe's log;
+  no other NPC logged so far has it.
 - ✅ **Sitting detection: no query API.** Only actions exist (`ToggleSit`,
   `SitStandOrDescendStart`); nothing reports the stand state.
 - ✅ **Addon messages on custom channels are allowed** (retail behavior): `"CHANNEL"` to a
@@ -99,15 +109,16 @@ merged) run in the Forever beta, build **1.60.1.70124** (2026-09-29), on 2026-09
 
 ## Verification checklist (needs a Forever client: beta until 2026-10-21, or launch 2026-11-04)
 
-Ticked items were checked in the beta on 2026-09-30 (build 1.60.1.70124); the results are
+Ticked items were checked in the beta on 2026-09-30 and 2026-10-05 (build 1.60.1.70124); the results are
 in the sections above. **Partly** means the rest of the item is still open.
 
 - [x] TOC interface number (`16001`); AddOn loads ✅
-- [ ] `GOSSIP_SHOW` fires for innkeepers; `UnitGUID("npc")` yields a creature GUID with
-      NPC ID. **Partly** ✅: both hold for every NPC tried, but no innkeeper yet
+- [x] `GOSSIP_SHOW` fires for innkeepers; `UnitGUID("npc")` yields a creature GUID with
+      NPC ID ✅ (Coriella Calmbreeze, 2026-10-05)
 - [x] Gossip option injection approach works ✅ (a button parented to `GossipFrame`,
-      anchored under it). Re-check the look at an innkeeper
-- [ ] `IsResting()` true inside inns (it's `false` outside, and readable)
+      anchored under it; shows and clicks at an innkeeper too)
+- [x] `IsResting()` true inside inns ✅ (`true` at the Calmbreeze Inn, `false` outside,
+      readable)
 - [x] Embedded libraries (see [libraries.md](libraries.md)) load without errors ✅
 - [ ] Addon message PARTY / RAID / GUILD round-trip between two characters
 - [ ] Addon messages inside an instance / during an encounter, and which chat type
@@ -116,8 +127,8 @@ in the sections above. **Partly** means the rest of the item is still open.
       **Partly** ✅: 255 bytes, longer messages truncated silently; 30 whispers in one
       frame all arrived. Group and guild throttles untested
 - [x] Hidden values outside combat: `UnitGUID("npc")`, NPC names and the
-      `CHAT_MSG_ADDON` sender all arrive as normal values ✅ (at an innkeeper: re-check
-      with the first one)
+      `CHAT_MSG_ADDON` sender all arrive as normal values ✅ (at an innkeeper too,
+      2026-10-05)
 - [x] Addon messages to a custom channel (`"CHANNEL"`): **allowed** ✅
 - [x] Player GUID and name format on the mega-realm ✅: retail GUID, **two-part names**
       whose surname fills the realm slot of `UnitName`/`UnitFullName`
@@ -156,7 +167,8 @@ in the sections above. **Partly** means the rest of the item is still open.
       both can use it); whether another innkeeper serves the same inn (an alias). Zone
       seals are numbered 101, 102, … in the order zones are added
       ([specs/collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
-      The probe logs every NPC talked to, so this fills in during normal play
+      The probe logs every NPC talked to, so this fills in during normal play.
+      **Partly** ✅: 1 inn so far (Calmbreeze Inn, Zephras Isle; zone seal 101)
 - [ ] Map IDs readable at each inn (`C_Map.GetBestMapForUnit("player")`, then the
       `C_Map.GetMapInfo(id).parentMapID` chain up to the first *Zone*- and
       *Continent*-type maps, or a *World* map if it comes first); a capital city is its

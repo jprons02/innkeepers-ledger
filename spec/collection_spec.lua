@@ -160,7 +160,12 @@ describe("Collection module", function()
       assert.equal(Collection.atlas[name], Collection[name])
     end
     assert.same({}, Collection.invalid)
-    assert.same({}, Collection.zoneKeys())
+    local zones = {}
+    for key in pairs(NS.Data.Zones) do
+      zones[#zones + 1] = key
+    end
+    table.sort(zones)
+    assert.same(zones, Collection.zoneKeys())
   end)
 
   it("loads with no Data and binds an empty atlas", function()
@@ -799,7 +804,7 @@ describe("Collection progress", function()
 end)
 
 -- ---------------------------------------------------------------------------
--- 6.6 The real data (Data/Inns.lua is empty until #12; these bite once it's filled).
+-- 6.6 The real data (Data/Inns.lua fills in during #12's walk).
 
 describe("Data/Inns (the shipped places)", function()
   local DATA = NS.Data
@@ -862,6 +867,13 @@ describe("Data/Inns (the shipped places)", function()
         end
       end
     end
+  end)
+
+  it("resolves the first innkeeper seen in the beta from its real GUID", function()
+    -- Coriella Calmbreeze, Calmbreeze Inn (Zephras Isle), as UnitGUID("npc") gave it.
+    local guid = "Creature-0-4615-2991-62-254089-0000407142"
+    assert.equal(254089, NS.Ledger.innFromNpcGUID(guid, DATA.Inns))
+    assert.equal(254089, Collection.innOf(254089))
   end)
 
   it("zone seals are unique and in 101..999", function()

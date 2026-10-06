@@ -345,7 +345,7 @@ describe("Sign: signing", function()
     local n = #wow.chat
     ui.sign:Click()
     assert.same({ { inn = CALM, t = NOW, phrase = { 2, 1002, 501, 111 } } }, saved().own)
-    assert.same({ [2] = NOW, [101] = NOW, [1003] = NOW, [1101] = NOW }, saved().earned)
+    assert.same({ [2] = NOW, [101] = NOW, [1003] = NOW }, saved().earned)
     assert.equal(1, window.n)
     local lines = chatSince(n)
     assert.equal(1, #lines)
@@ -577,7 +577,7 @@ describe("Core recording unlocks at login", function()
 
   it("fills earned for a saved signature", function()
     login({ db = db(ledgerData(1)) })
-    assert.same({ [2] = T, [101] = T, [1003] = T, [1101] = T }, saved().earned)
+    assert.same({ [2] = T, [101] = T, [1003] = T }, saved().earned)
   end)
 
   it("writes nothing to a read-only ledger", function()

@@ -194,7 +194,7 @@ in the sections above. **Partly** means the rest of the item is still open.
         exercised
   - [x] Sign → "You signed the guestbook of Calmbreeze Inn."; after a restart the saved
         file holds one own entry `{ inn = 254089, phrase = { 1, 1306 } }` (20:45 UTC) and
-        `earned` holds 1101, 1003, 2 and 101 ✅. That all four unlock at once is the
+        `earned` holds 1101 (an ink, dropped 2026-10-06), 1003, 2 and 101 ✅. That all four unlock at once is the
         partial-data effect in [status.md](status.md) → Follow-ups (release gate)
   - [x] a second click the same week → "You've signed this guestbook this week. Sign
         again after the weekly reset (in 19 hours)." ✅, i.e. Tuesday 16:00 UTC

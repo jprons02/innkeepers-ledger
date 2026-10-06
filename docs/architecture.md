@@ -27,13 +27,13 @@ vs **client glue** (events, frames, API calls).
 | `Core` | glue | AceAddon setup, AceDB SavedVariables, slash command, wiring |
 | `Data/Inns` | data | Innkeeper NPC ID → inn record (name, zone, faction) or alias of one; zones and continents keyed by the client's map IDs, each zone with its seal ID ([spec](specs/collection-cosmetics.md#31-places-inns-zones-continents)). One table per game flavor. |
 | `Data/Phrases` | data | Phrase templates + word lists, each with a stable numeric ID; templates and conjunctions grouped into voices (UI only) |
-| `Data/Cosmetics` | data | The cosmetic catalog: milestone seals, quills and inks, each with a stable numeric ID and its unlock rule ([spec](specs/collection-cosmetics.md#35-cosmetic-ids)) |
+| `Data/Cosmetics` | data | The cosmetic catalog: milestone seals and quills, each with a stable numeric ID and its unlock rule ([spec](specs/collection-cosmetics.md#35-cosmetic-ids)) |
 | `Sign` | glue | The "Sign the guestbook" button under the gossip frame, the phrase composer, the client reads (hidden-value checked), chat lines, `Sync:WindowChanged()` after a signature ([spec](specs/sign.md)) |
 | `SignFlow` | pure | Every signing decision: when to offer signing, the checks and their reasons, the seals a signature may carry, the commit (`addOwn`, then unlocks recorded), the composer's state ([spec](specs/sign.md)) |
 | `Ledger` | pure | The entry store: add, dedupe, query by inn/signer, prune, storage caps |
 | `Phrase` | pure | Builds, renders and validates phrase IDs → text ([spec](specs/phrase.md)) |
 | `Collection` | pure | Progress over your own signatures: signed/total by continent and zone, per inn ([spec](specs/collection-cosmetics.md)) |
-| `Cosmetics` | pure | The catalog, unlocked quills/inks/seals and when each was earned, `SEALS` for peer validation, the seal check on signing ([spec](specs/collection-cosmetics.md)) |
+| `Cosmetics` | pure | The catalog, unlocked quills and seals and when each was earned, `SEALS` for peer validation, the seal check on signing ([spec](specs/collection-cosmetics.md)) |
 | `SyncProtocol` | pure | Own fixed-format message codec, digest comparison, **all validation** |
 | `SyncSchedule` | pure | What `Sync` sends and when: send budget, HELLO / WANT / reply gates, pending queues, combat hold state, the pump ([spec](specs/sync-glue.md#35-send-path-syncschedule)) |
 | `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers, the pump that drives `SyncSchedule`, the combat hold ([spec](specs/sync-glue.md)) |

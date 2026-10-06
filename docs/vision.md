@@ -42,7 +42,7 @@ AddOn through stretches when the social part isn't happening.
   dates. The ledger should be something you *open*, not something you scan.
 - **Warm, never noisy.** Sync is quiet. No chat spam, no pop-ups when strangers' entries
   arrive. You discover them when you open the book.
-- **Earned, never bought.** Quills, inks and wax seals unlock through the collection
+- **Earned, never bought.** Quills and wax seals unlock through the collection
   (e.g. ten inns signed → a new quill; every inn in a zone → that zone's seal).
 
 ## Why WoW: Forever specifically

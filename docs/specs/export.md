@@ -248,8 +248,8 @@ their limits instead of repeating literals.
 
 **Why these limits.** `ownMax` 10 000: an honest ledger holds at most one entry per inn
 per week, and 10 000 means signing about 14 inns every day for two years. `cosmeticsMax`
-1 200 covers every ID `Cosmetics` can produce (99 milestone seals + 899 zone seals + 200
-quills and inks). `mapItemsMax` 1 000 is above the 899 zones that can carry a seal.
+1 200 covers every ID `Cosmetics` can produce (99 milestone seals + 899 zone seals + 100
+quills). `mapItemsMax` 1 000 is above the 899 zones that can carry a seal.
 `serializedMax` 4 MiB is a backstop above the largest string `build` can produce
 (≈ 2.2 MB, [§3.10](#310-size-budget)), so it never refuses a `build` result; it stops a
 caller that hands `encode` some other huge table, and it is the bound consumers may
@@ -390,7 +390,7 @@ present with a `nil` value. No key outside this table appears in v1.
 | `collection.done` | time, optional | present only when `signed == total >= 1` | when the last open inn was first signed | progress |
 | `collection.byContinent` | table (map) | integer key 1..999 999 (the client's continent map ID: a Continent map, or the World map above a zone with no Continent, e.g. 947 Azeroth) → `{ signed, total, done? }`; `signed`/`total` ranges as `collection.signed`/`.total`; `done` a time, present only when `signed == total >= 1` | continents with at least one open inn | progress |
 | `collection.byZone` | table (map) | integer key 1..999 999 (zone map ID) → `{ signed, total, continent, done? }`; `signed`/`total` ranges as `collection.signed`/`.total`; `done` a time, present only when `signed == total >= 1` | zones with at least one open inn; `continent` is a `byContinent` key | progress |
-| `cosmetics` | array | `{ id = 1..9 999, t = time }`, `(t, id)` ascending, `id` unique | unlocked quills, inks and seals and when each was earned | `Cosmetics.unlocked(own, faction, ledger:earned())` |
+| `cosmetics` | array | `{ id = 1..9 999, t = time }`, `(t, id)` ascending, `id` unique | unlocked quills and seals and when each was earned | `Cosmetics.unlocked(own, faction, ledger:earned())` |
 | `entries` | array | entry (below), `(t, inn)` ascending, `(inn, t)` unique | your own signatures; each inn's first is its stamp | `ledger:own()` |
 | `travelers` | array, optional | present only when opted in (may be empty); `met` descending, then `guid` byte order; `guid` unique, never `me.guid` | travelers whose signatures you hold | `ledger:travelers()` |
 | `travelers[i]` | table | `{ guid, name, met = time, entries }`; `guid`/`name` as `me.guid`/`me.name` (`name` required); `entries` 1..40 entries, `(t, inn)` ascending, `(inn, t)` unique | one traveler and **their own** signatures | `ledger:signerEntries(guid)` |

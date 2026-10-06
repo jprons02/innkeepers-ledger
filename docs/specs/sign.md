@@ -68,7 +68,7 @@ one plain reason, so the player is never left guessing.
 - **Sitting** as a condition: the client has no query for it
   ([platform-forever.md](../platform-forever.md) → *Sitting detection*), so the
   architecture's "drop it if so" applies.
-- Quills and inks on the composer (they're the book's look, not part of an entry).
+- Quills on the composer (they're the book's look, not part of an entry).
 - Camps, non-innkeeper NPCs, signing from anywhere but the gossip frame.
 - Localization: the DRAFT text is English, like phrases and place names.
 
@@ -468,8 +468,8 @@ for these, and say so in the review:
   `false`, `nil`, `1`, `"true"` → `not_resting`; all good → `ok` with the inn and name;
   another inn signed this week doesn't block this one.
 - **`seals`:** none unlocked → `{}`; a seal earned by the latest entry is offered only
-  when `now` ≥ its time (canSeal), so the signature that earns it can't use it; a quill or
-  ink ID in `unlocked` is never offered; a kept `earned` floor (a zone seal kept after its
+  when `now` ≥ its time (canSeal), so the signature that earns it can't use it; a quill ID
+  in `unlocked` is never offered; a kept `earned` floor (a zone seal kept after its
   zone gained an inn) is offered; `check` failing → `{}`; hostile `faction` → counted as
   `nil`.
 - **`commit`:**
@@ -541,7 +541,7 @@ Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
 - **Sign end to end:** click → composer shown with the preview `Rested here, dreaming of
   home.`; step `t1` and `w1` through the row buttons and toggle the second line → the
   preview follows; Sign → one own entry in `db.global.ledgers[guid].own` with the
-  composed IDs and no seal; `earned` holds 1101, 1003, 2 and 101 at the entry's time;
+  composed IDs and no seal; `earned` holds 1003, 2 and 101 at the entry's time;
   `ns.Sync.WindowChanged` called once (spy); one `added` chat line naming *Calmbreeze
   Inn*; composer hidden.
 - **Next week with a seal:** advance `wow.now` past the reset; click → the seal row shows;
@@ -558,7 +558,7 @@ Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
   prints, no error escapes; `flow.commit` stubbed to raise → `Nothing was signed.`, no
   error escapes; `wow.errors` stays empty in every case.
 - **Core at login:** a saved ledger with one own entry at `254089` and an empty `earned`
-  → after login `earned` = `{ [2] = t, [101] = t, [1003] = t, [1101] = t }`; a read-only
+  → after login `earned` = `{ [2] = t, [101] = t, [1003] = t }`; a read-only
   ledger → the saved table is unchanged (deep compare); `Sign.RecordUnlocks` raising →
   the ledger still opens and `Sync` still starts.
 - `spec/addon_load_spec.lua`: `ns.SignFlow` is a table; the TOC, `load.PURE` and
@@ -606,7 +606,8 @@ from disk after a `/reload`:
    template set; the second line's voice follows until stepped; nothing overlaps in the
    530-pixel frame.
 3. Sign → the `added` line; after `/reload`, `InnkeepersLedger.lua` holds one own entry
-   at `254089` and `earned` holds 1101, 1003, 2, 101.
+   at `254089` and `earned` holds 1003, 2, 101 (and 1101 in a
+   save from before 2026-10-06: an ink, since dropped, and ignored).
 4. A second click the same week → the `too_soon` line, and the reset it names matches the
    beta's Tuesday 16:00 UTC.
 5. Closing the gossip mid-compose hides the composer; talking to another NPC with it open
@@ -627,7 +628,7 @@ from disk after a `/reload`:
   never skips straight to the merchant window).
 - **No sitting requirement** (no client query exists) and **no faction check** (the client
   already prevents talking to the other faction's innkeepers).
-- **Signing records unlocks silently;** nothing announces a new seal, quill or ink until
+- **Signing records unlocks silently;** nothing announces a new seal or quill until
   the book shows it.
 - **Default seal is none** each time; the composer doesn't remember the last phrase or
   seal.
@@ -646,7 +647,7 @@ None blocks the build or the merge; the DRAFT ships until answered.
    parchment page, handwriting font, where it sits)?
 2. **The messages** (§3.8): wording and tone, and whether reasons belong in chat at all
    or on the frame.
-3. **Announcing earned cosmetics:** should signing say when it earns a seal, quill or ink
+3. **Announcing earned cosmetics:** should signing say when it earns a seal or quill
    (for example "Zephras Isle's seal is yours"), or leave that to the book?
 4. **Recent phrases:** worth a follow-up (the last few phrases offered first), or is the
    cycler enough?

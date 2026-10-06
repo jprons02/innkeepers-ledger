@@ -1080,8 +1080,9 @@ Logged in as `spec/core_spec.lua` does, the faction `"Alliance"`, the real data
   `signed 1 of 1`, the inn's mark shown; clicking its row → the right page reads
   `Calmbreeze Inn`, `Zephras Isle, Azeroth`, the stamp dated, `Signed once`, the own row
   with the rendered phrase.
-- **Page turns:** 9 travelers' entries at `254089` (`addForeign`, spread over weeks) →
-  two inn pages; ‹ disabled on page 1, › enabled; › → page 2 shows the rest with the
+- **Page turns:** 8 travelers' entries at `254089` (`addForeign`, spread over weeks) →
+  two inn pages (heading, note, heading and 3 entries, then the repeated heading and 5;
+  a ninth entry would open a third page); ‹ disabled on page 1, › enabled; › → page 2 shows the rest with the
   repeated heading, › disabled; the page label reads `2 / 2`.
 - **Read button:** `GOSSIP_SHOW` at Calmbreeze → two buttons under `GossipFrame` labeled
   `Sign the guestbook` and `Read the guestbook`; at a vendor → both hidden; Read → the
@@ -1102,10 +1103,11 @@ Logged in as `spec/core_spec.lua` does, the faction `"Alliance"`, the real data
   **Nudge and mark:** first share → no nudge, then `db.global.book[guid].shared` holds
   the snapshot; sign once more and reopen Share → `1 new signature since you last
   shared.`; the record's `v == 1`.
-- **Quill:** the Cosmetics tab with quill 1001 unlocked (fixture own entries over 10
-  inns, or a stubbed `unlocked`) → Use enabled; Use → `book[guid].quill == 1001`, the row
-  says `In use`, own rows on an inn page show its flourish; a saved quill that isn't
-  unlocked → the plain quill is `In use` and the saved value unchanged.
+- **Quill:** the Cosmetics tab with an unlocked quill (with the real data, one signature
+  at Calmbreeze unlocks the Cartographer's quill, 1003) → Use enabled; Use →
+  `book[guid].quill == 1003`, the row says `In use`, own rows on an inn page show its
+  flourish; a saved quill that isn't unlocked (1001) → the plain quill is `In use` and
+  the saved value unchanged.
 - **Damaged record:** `db.global.book = "x"` → the book works, Use disabled, nothing
   written (deep compare); `book[guid] = { v = 2 }` → the same; `db.global` not a table →
   the same.

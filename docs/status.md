@@ -37,8 +37,13 @@ the same day; the beta install holds it)
   was refreshed with it (the client was closed; it loads on the next start).
 - **Wording:** players sign the inn's **guestbook**. The AddOn stays *Innkeeper's Ledger*
   (decision 2026-10-02).
-- **Not built:** `UI/Book`; the list-style composer (#102, `ready`). Phrase and cosmetic
-  sets, the composer's look and the signing messages are DRAFTs.
+- **`UI/Book` is built (#106, [specs/book.md](specs/book.md)):** the parchment book with
+  four tabs, a pure `BookView` module (90% floor), `/ledger` toggling it, `/ledger share`,
+  and a "Read the guestbook" button beside "Sign the guestbook". Its wording, look,
+  layout and textures are a **DRAFT** (maintainer gate); its in-client checks are on
+  [platform-forever.md](platform-forever.md)'s checklist.
+- **Not built:** the list-style composer (#102, `ready`). Phrase and cosmetic sets, the
+  composer's look, the signing messages and the book's wording and look are DRAFTs.
 - **Releasing is wired up (#81, #86):** see
   [CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing). CurseForge `1721704` and
   Wago `n6VYeONd` are in the TOC.

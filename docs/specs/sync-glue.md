@@ -161,7 +161,7 @@ recomputed at every login (slice 1 §8).
 | `seals` | `ns.Cosmetics.SEALS` if it is a table, else `{}` (the Cosmetics slice must provide exactly this name, or update this row) |
 | `phraseOk` (optional) | `ns.Phrase.validIds` if it is a function, else `nil` (same rule for the Phrase slice) |
 | `debug` | `function(line) ns.Core:Debug(line) end` |
-| `onEntries` (optional) | `nil` in this slice; the UI slice may pass a function called after an ENTRIES result with `added > 0` (inside the handler's `pcall`) |
+| `onEntries` (optional) | called after an ENTRIES result with `added > 0` (inside the handler's `pcall`). Since the book ([book.md §3.12](book.md#312-changes-outside-the-book)): a function that calls `ns.Book:Changed()` in its own `pcall` when `ns.Book.Changed` is a function, so a book failure never counts as a sync error; it takes no arguments and passes no peer data |
 | `api` | a table of the client functions below |
 
 `api` fields: `GetServerTime`, `UnitGUID`, `UnitFullName`, `UnitName`,
@@ -233,7 +233,7 @@ stopping at the first failure:
 | `hello` | `schedule:onHello(sender.guid, channel, count, digest, now)` (`channel` is the wire channel it came on); request a pump |
 | `want` | `schedule:onWant(channel, since, ledger:shareWindow(SHARE_MAX), now)` (wire channel); request a pump |
 | `want_seen` | nothing more (`receive` already recorded it in the memo) |
-| `entries` | add `added`, `dup`, `dropped`, `rejected` to `stats`; if `added > 0`, call `deps.onEntries` when it's a function (a hook for the future UI; `nil` in this slice) |
+| `entries` | add `added`, `dup`, `dropped`, `rejected` to `stats`; if `added > 0`, call `deps.onEntries` when it's a function (the book's quiet redraw, `Book:Changed()` in `pcall`; [book.md §3.11.5](book.md#3115-quiet-refresh)) |
 
 Receiving and validating continue during combat.
 

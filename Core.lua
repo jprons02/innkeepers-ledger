@@ -1,7 +1,7 @@
 -- Core (glue): AceAddon setup, AceDB SavedVariables, opening the character's ledger at
 -- login, the /ledger command, the debug log and the export string's glue.
 -- Specs: docs/specs/sync-glue.md (sections 3.2 and 3.8), docs/specs/export.md (3.7),
--- docs/specs/sign.md (3.5).
+-- docs/specs/sign.md (3.5), docs/specs/book.md (3.12).
 local ADDON_NAME, ns = ...
 
 local Core = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME, "AceConsole-3.0", "AceEvent-3.0")
@@ -340,11 +340,33 @@ function Core.ExportString(_, includeTravelers) -- called as Core:ExportString(o
   return result, reason
 end
 
+-- The owner's display name for the book's title page, or nil (docs/specs/book.md 3.12).
+function Core.PlayerName(_) -- called as Core:PlayerName()
+  local ok, name = pcall(ownerName)
+  if ok and Ledger.validName(name) then
+    return name
+  end
+  return nil
+end
+
+-- Calls ns.Book[method](ns.Book, arg); an error is one debug line.
+local function book(method, arg)
+  if not pcall(function() ns.Book[method](ns.Book, arg) end) then
+    Core:Debug("book: error in slash")
+  end
+end
+
+-- /ledger toggles the book; /ledger share opens its Share page; /ledger version prints the
+-- version; /ledger debug toggles the debug log. Any other word opens the book too.
 function Core:SlashCommand(input)
   local command = type(input) == "string" and input:match("^%s*(%S*)"):lower() or ""
   if command == "debug" then
     self:ToggleDebug()
-  else
+  elseif command == "version" then
     self:Print("version " .. version())
+  elseif command == "share" then
+    book("Open", "share")
+  else
+    book("Toggle")
   end
 end

@@ -59,7 +59,7 @@ one plain reason, so the player is never left guessing.
   (`GossipFrame`), stub additions, specs ([§6](#6-test-plan)), docs ([§4](#4-data-model-changes)).
 
 **Out:**
-- `UI/Book`, the Share window, `/ledger share`, any view of entries or cosmetics.
+- Any view of entries or cosmetics (the book, [book.md](book.md), built since).
 - Any change to the wire format, `SyncProtocol`, `Ledger`, `Phrase`, `Collection`,
   `Cosmetics`, the export format or the SavedVariables schema.
 - **Recent phrases**, remembering the last phrase or seal, a "random phrase" button.
@@ -306,15 +306,20 @@ else touches the value:
 (`CreateFrame("Frame")`) registered for `GOSSIP_SHOW` and `GOSSIP_CLOSED`. Every handler,
 click and `RecordUnlocks` runs inside a guard: `pcall`, and on error one debug line
 `sign: error in <where>` (never the error text). Nothing reaches the player as a Lua error.
-- **`GOSSIP_SHOW`:** `inn = flow.innAt(read().npc)`. On first need, create the button:
-  `CreateFrame("Button", nil, GossipFrame, "UIPanelButtonTemplate")`, about 180×24, its
-  `TOP` at `GossipFrame`'s `BOTTOM`, text **"Sign the guestbook"**, `OnClick` →
-  `Sign:Open()`. If `GossipFrame` isn't a table, no button and one debug line
-  (`sign: no gossip frame`). Show the button when `inn` isn't `nil`, else hide it. If a
-  session is open for another inn (or `inn` is `nil`), close it (the NPC changed while the
-  composer was open). A session for the same inn is left alone (`GOSSIP_SHOW` can repeat
-  while the frame is open).
-- **`GOSSIP_CLOSED`:** hide the button, close the composer, end the session.
+- **`GOSSIP_SHOW`:** `inn = flow.innAt(read().npc)`. On first need, create the two
+  buttons, side by side under the gossip frame, each
+  `CreateFrame("Button", nil, GossipFrame, "UIPanelButtonTemplate")`, about 160×24:
+  **"Sign the guestbook"** with its `TOPRIGHT` at `GossipFrame`'s `BOTTOM` (−3, −4),
+  `OnClick` → `Sign:Open()`; and **"Read the guestbook"** (`SignFlow.TEXT.read`) with its
+  `TOPLEFT` at `GossipFrame`'s `BOTTOM` (3, −4), `OnClick` → `Sign:Read()`, which runs
+  `ns.Book:OpenInn(flow.innAt(read().npc))` in a guard (`sign: error in read`) and never
+  signs, checks resting or selects a gossip option ([book.md §3.12](book.md#312-changes-outside-the-book)).
+  If `GossipFrame` isn't a table, no buttons and one debug line (`sign: no gossip
+  frame`). Show both when `inn` isn't `nil`, else hide both. If a session is open for
+  another inn (or `inn` is `nil`), close it (the NPC changed while the composer was
+  open). A session for the same inn is left alone (`GOSSIP_SHOW` can repeat while the
+  frame is open).
+- **`GOSSIP_CLOSED`:** hide both buttons, close the composer, end the session.
 
 **`Sign:Open()`** (the gossip button):
 1. `res = flow.check(read())`. Not `ok` → print `message(res)`, debug `sign: <reason>`, stop.
@@ -328,15 +333,16 @@ click and `RecordUnlocks` runs inside a guard: `pcall`, and on error one debug l
 2. `res = flow.commit(read(), session.inn, draft:ids(), draft:seal())`.
 3. `"added"` → `session.done = true`; close the composer and end the session; then
    `pcall` `ns.Sync:WindowChanged()` (an error there gets its debug line and changes
-   nothing); print the `added` line; debug `sign: added`.
+   nothing); then `pcall` `ns.Book:Changed()` (the book redraws if it shows; an error gets
+   `sign: error in book` and changes nothing); print the `added` line; debug `sign: added`.
 4. Anything else → print its line, debug `sign: <code>`. `changed` closes the composer;
    every other failure leaves it open so the player can fix it or cancel.
 
 **`Sign:Cancel()`** closes the composer and ends the session. **`Sign:RecordUnlocks()`**
 is §3.5.
 
-**For tests,** `Sign.ui = { button, composer, rows = { t1 = { prev, label, next }, … },
-toggle, sign, cancel, preview, title }` and `Sign.session` are readable fields.
+**For tests,** `Sign.ui = { button, read, composer, rows = { t1 = { prev, label, next },
+… }, toggle, sign, cancel, preview, title }` and `Sign.session` are readable fields.
 
 **Combat:** `Sign` reads neither combat data nor combat state. The button and composer are
 plain, unprotected frames, which combat lockdown doesn't restrict, and signing sends
@@ -528,12 +534,15 @@ for these, and say so in the review:
 
 Logged in as `spec/core_spec.lua` does; `IsResting` → `true` and `UnitGUID("npc")` →
 Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
-- **Button:** `GOSSIP_SHOW` at Calmbreeze → one button, parented to `GossipFrame`, text
-  `Sign the guestbook`, shown; at a vendor's GUID, a malformed GUID, `nil`, a GUID that
-  `issecretvalue` flags (a valid-looking string, so the hidden check must come first) and
-  a raising stand-in → hidden, no error; innkeeper then vendor → hidden; `GOSSIP_CLOSED`
-  → hidden; repeated `GOSSIP_SHOW` creates no second button; no `GossipFrame` → no
-  button, no error, one debug line when debug is on.
+- **Buttons:** `GOSSIP_SHOW` at Calmbreeze → two buttons, both parented to
+  `GossipFrame`, texts `Sign the guestbook` and `Read the guestbook`, side by side
+  (`TOPRIGHT` / `TOPLEFT` at the frame's `BOTTOM`, ∓3, −4), shown; at a vendor's GUID, a
+  malformed GUID, `nil`, a GUID that `issecretvalue` flags (a valid-looking string, so the
+  hidden check must come first) and a raising stand-in → both hidden, no error; innkeeper
+  then vendor → hidden; `GOSSIP_CLOSED` → hidden; repeated `GOSSIP_SHOW` creates no more
+  buttons; no `GossipFrame` → no buttons, no error, one debug line when debug is on.
+  Read → `ns.Book:OpenInn(254089)` (spy), no entry, no session; a raising book → one
+  `sign: error in read` line, no error escapes.
 - **Click reasons (one chat line each, composer not shown):** not resting; `IsResting`
   raising or hidden; signed this week (the line says `in 3 days` with the stub's reset);
   read-only ledger (`ledgers[guid]` a string); no ledger (GUID unreadable at login);
@@ -555,7 +564,8 @@ Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
   closed; for the same innkeeper again → draft kept.
 - **Faction hidden or raising** → signing still works (counted as `nil`).
 - **Errors:** `ns.Sync.WindowChanged` raising → the entry is kept, the `added` line still
-  prints, no error escapes; `flow.commit` stubbed to raise → `Nothing was signed.`, no
+  prints, no error escapes; after `"added"`, `ns.Book.Changed` is called once (spy) and a
+  raising one gives `sign: error in book` and changes nothing; `flow.commit` stubbed to raise → `Nothing was signed.`, no
   error escapes; `wow.errors` stays empty in every case.
 - **Core at login:** a saved ledger with one own entry at `254089` and an empty `earned`
   → after login `earned` = `{ [2] = t, [101] = t, [1003] = t }`; a read-only

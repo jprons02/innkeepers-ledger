@@ -21,6 +21,7 @@ SyncProtocol.lua
 SyncSchedule.lua
 Export.lua
 SignFlow.lua
+BookView.lua
 
 Core.lua
 Sign.lua

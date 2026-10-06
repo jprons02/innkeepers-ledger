@@ -16,6 +16,7 @@ M.PURE = {
   { path = "SyncSchedule.lua", name = "SyncSchedule" },
   { path = "Export.lua", name = "Export" },
   { path = "SignFlow.lua", name = "SignFlow" },
+  { path = "BookView.lua", name = "BookView" },
 }
 M.DATA = {
   { path = "Data/Inns.lua", name = "Inns" },

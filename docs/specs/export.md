@@ -691,11 +691,14 @@ T+50, entries { { 5001, T+40, {4, 5}, seal 2 } } }, { guid "Player-1234-0CCCCCC0
   wrapping inserted. On `nil, reason`, show a neutral message (wording is a maintainer
   gate) and never the reason code's text to the player unless the debug log is on. Name
   no site or consumer anywhere. Build the string when the window opens or on a click,
-  never on a timer.
+  never on a timer. **Built:** the book's Share page and `/ledger share`
+  ([book.md §3.11.6](book.md#3116-the-share-page)).
 - **"Changed since you last shared" nudge:** compare **data**, never strings (bytes
   aren't stable, §3.2): e.g. store at share time the own-entry count, the newest own
   `t`, and the unlocked count, and compare those. Storing them is a SavedVariables
-  change for that slice's spec.
+  change for that slice's spec. **Built:** the book stores that snapshot in its own
+  record, `db.global.book[guid].shared`, when the string is built and shown, and
+  compares snapshots for the line ([book.md §3.7](book.md#37-the-share-tab-and-the-saved-record)).
 - **Export consumers (outside this repo):** follow export-format.md → Decoding: cap
   sizes before inflating, validate every field, ignore unknown fields, reject other
   majors, never trust the string.

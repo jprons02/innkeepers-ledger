@@ -73,6 +73,12 @@ whether a module is done.
 - Branch from `dev`: `feat/<slug>`, `fix/<slug>`, `chore/<slug>` or `docs/<slug>`.
 - Open the PR against `dev`. It's squash-merged once CI is green.
 - `main` only receives `dev → main` release PRs.
+- **A check that failed for GitHub's reasons** (the job log says "not acquired by Runner
+  … even after multiple attempts", a 15-minute timeout) isn't a code failure. Re-run it
+  from the Actions page; the agents' token can't (`gh run rerun` gets "Resource not
+  accessible by personal access token"), so agents push an empty commit to the branch
+  instead, which starts fresh runs. Check [githubstatus.com](https://www.githubstatus.com/)
+  first: during an Actions incident, retries keep timing out until it's mitigated.
 
 ## Releasing
 

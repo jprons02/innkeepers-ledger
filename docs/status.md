@@ -5,125 +5,117 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-05 (**first signature in the client**: `Sign` (#96) works at
-Calmbreeze Inn; first innkeeper in `Data/Inns`; release to `main` on 2026-10-01)
+**Updated:** 2026-10-06 (**signing works in the client**: `Sign` (#96) at Calmbreeze Inn,
+the first inn in `Data/Inns`; wording is "guestbook"; release to `main` on 2026-10-01)
 
 ## Current state
 
-- **Phase 1 of [kickoff.md](kickoff.md) is done:** every pure module and the sync glue
-  exist, tested (pure modules at 100% coverage) and security-reviewed. Specs:
+- **Phase 1 of [kickoff.md](kickoff.md) is done:** every pure module and the sync glue,
+  tested (pure modules at 100% coverage) and security-reviewed. Specs:
   [sync-ledger](specs/sync-ledger.md), [sync-glue](specs/sync-glue.md),
   [phrase](specs/phrase.md), [collection-cosmetics](specs/collection-cosmetics.md),
   [export](specs/export.md) (export string **v1**).
-- **Phase 2 has started (#12)** in the Forever beta. The probe's first run (2026-09-30)
-  answered most client questions ([platform-forever.md](platform-forever.md)): modern
-  API, TOC `16001`, NPC IDs from `UnitGUID("npc")`, a gossip-frame button works,
-  custom-channel addon messages allowed, 255-byte message cap.
-  - **Two-part names** (`"First Surname"`) are handled (#75), and `/ledger debug`'s report
-    ends with `names two-part` / `realm` / `undecided`; Core and Sync read our own name
-    through one helper (#80). Solo it reports `names two-part` (2026-10-05); still to
-    confirm with a second character (#12).
-  - **Zones with no continent** group under their World map (#76).
-- **First innkeeper met (2026-10-05):** Coriella Calmbreeze (NPC `254089`), Calmbreeze
-  Inn, Shen'dar Village, Zephras Isle; neutral; `IsResting()` true; the gossip button
-  works there ([platform-forever.md](platform-forever.md)). She is `Data/Inns`' first
-  record (zone 2521, seal 101, under Azeroth 947). Her *Make this inn your home.* option
-  (icon 132052) is how the probe's log tells innkeepers apart.
-- **`Sign` is built (#96, [specs/sign.md](specs/sign.md)):** a "Sign the guestbook" button
-  under the gossip frame at every known innkeeper; a click either says why it can't sign
-  (one chat line) or opens a plain DRAFT composer; signing stores an own entry, records
-  earned cosmetics and tells `Sync`. The decisions live in a new pure module, `SignFlow`
-  (90% floor); `Core` records unlocks at login. **Works in the client (2026-10-05):** the
-  button shows only at Coriella, the composer renders, a signature was stored and
-  survived a restart, and a second click names the reset (Tuesday 16:00 UTC). The
-  probe no longer adds its own button (it stacked on ours).
-- **Not built:** `UI/Book` (its ticket is next). Phrase and cosmetic sets, the composer's
-  look and the signing messages are DRAFTs.
-- **Releasing is wired up (#81, #86):** `release.yml` dry-runs the BigWigs packager on
-  every PR (`package`, a required check) and publishes a `v*` tag only after the
-  maintainer approves the `release` environment
-  ([CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing)). The first manual dry
-  run on `main` passed (2026-10-02, 36 files); #81 is closed. CurseForge `1721704`
-  and Wago `n6VYeONd` exist, with pages written and both IDs in the TOC (#87, #88).
-- **CI:** eight required checks on `main` and `dev`, all runnable locally but `package`.
-- **Releases:** `main` holds everything through 2026-10-01 (the release PR of that
-  date). No tags or published builds (maintainer gate).
+- **Phase 2 is under way (#12)** in the Forever beta, with the client facts in
+  [platform-forever.md](platform-forever.md). Two-part names are handled (#75, #80), and
+  solo `/ledger debug` ends `names two-part`. Zones with no continent group under their
+  World map (#76).
+- **First innkeeper (2026-10-05):** Coriella Calmbreeze (NPC `254089`), Calmbreeze Inn,
+  Shen'dar Village, Zephras Isle, neutral. She is `Data/Inns`' only record so far (zone
+  2521, seal 101, under Azeroth 947).
+- **`Sign` is built and works in the client (#96, [specs/sign.md](specs/sign.md)):** a
+  "Sign the guestbook" button at known innkeepers, a DRAFT composer, and a pure `SignFlow`
+  module. In the beta, the button showed only at Coriella and a signature survived a
+  restart. A second click named the Tuesday 16:00 UTC reset.
+- **Wording:** players sign the inn's **guestbook**. The AddOn stays *Innkeeper's Ledger*
+  (decision 2026-10-02).
+- **Not built:** `UI/Book`. Phrase and cosmetic sets, the composer's look and the
+  signing messages are DRAFTs.
+- **Releasing is wired up (#81, #86):** see
+  [CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing). CurseForge `1721704` and
+  Wago `n6VYeONd` are in the TOC.
+- **CI:** eight required checks on `main` and `dev`, all runnable locally except
+  `package`. **Releases:** `main` holds everything through 2026-10-01. No tags or
+  published builds yet (maintainer gate).
 
 ## Next step
 
-- **Agents:** write and build the `UI/Book` ticket.
+- **Agents:** write and build the `UI/Book` ticket (contracts in each spec's §8;
+  [collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
 - **In the client (maintainer, as you play):** keep ILProbe enabled, talk to every
   innkeeper you pass and `/reload` now and then; each one becomes a `Data/Inns` record.
-  The installed AddOn is a copy of `dev` (agents refresh it after merges).
+  After merges, agents refresh the installed copy
+  ([testing.md](testing.md#testing-posture) → *Refreshing the AddOn*).
 
 ## Client access plan
 
 - In the beta since 2026-09-30, until **2026-10-21**. Launch: **2026-11-04**. Phase 2
-  during the beta, release at launch. Beta client: `World of Warcraft\_classic_beta_`,
-  probe installed and enabled.
+  runs during the beta, and the release is at launch. Beta client:
+  `World of Warcraft\_classic_beta_`, with the probe and the `dev` AddOn installed.
 
 ## Open questions (maintainer to decide)
 
-None block work; drafts ship and get retuned ([decisions.md](decisions.md) →
-*Maintainer-gated content ships as a DRAFT*).
+None of these block work. Drafts ship and get retuned
+([decisions.md](decisions.md) → *Maintainer-gated content ships as a DRAFT*).
 - **Phrase wording (#62):** the DRAFT in [phrase.md §9](specs/phrase.md#9-draft-phrase-set-draft):
   ship or redirect? Alcohol words? "the murlocs"?
 - **Cosmetic catalog (#63):** the DRAFT in
-  [collection-cosmetics.md §9](specs/collection-cosmetics.md#9-draft-catalog-draft):
-  set, names, thresholds; "every inn" = your faction's? Keep a zone seal when a patch
-  adds an inn? World-map groups count toward the `continent` quill (#76).
-- **Export (#64):** `me.region`? An import or backup restore
+  [collection-cosmetics.md §9](specs/collection-cosmetics.md#9-draft-catalog-draft): the
+  set, names and thresholds. Does "every inn" mean your faction's inns? Should a zone
+  seal stay when a patch adds an inn?
+- **Export (#64):** include `me.region`? An import or backup restore
   ([export.md → Open questions](specs/export.md#open-questions-maintainer))?
-- **Signing (#96):** the composer's look (a plain dark panel with arrow cyclers right of
-  the gossip frame) and the chat lines, all in `SignFlow.TEXT`; announce earned
-  cosmetics on signing, or leave it to the book? Recent phrases worth a follow-up?
-  ([sign.md → Open questions](specs/sign.md#open-questions-maintainer)).
+- **Signing (#96):** the composer's look (the maintainer has a screenshot: a dark panel
+  with arrow cyclers and a lot of empty space) and the chat lines, all in
+  `SignFlow.TEXT`. Should signing announce earned cosmetics? Are recent phrases worth a
+  follow-up? ([sign.md → Open questions](specs/sign.md#open-questions-maintainer)).
 
 ## Waiting on the maintainer
 
 **In the client** (batched in #12; the unticked items in
 [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)):
-more innkeepers (each one a `Data/Inns` record); the rest of the signing checks
-([sign.md §8](specs/sign.md#8-in-client-checks-for-12): the composer closing with the
-gossip or the vendor option, cycling and the second line, a sealed signature after
-Tuesday 2026-10-06 16:00 UTC); a second character in a party (round-trips,
-`got hello PARTY` not `drop unresolved`, `UnitFullName("partyN")`, also in a cross-realm or group-finder group); a guild round-trip;
-one dungeon run; copying out an export string (once the Share window exists).
+- More innkeepers.
+- The rest of the signing checks: the composer closing with the gossip and with the
+  vendor option, cycling and the second line, and a sealed signature after
+  2026-10-06 16:00 UTC.
+- A second character in a party: round-trips; `got hello PARTY`, not `drop unresolved`;
+  `UnitFullName("partyN")`; and the same in a cross-realm or group-finder group.
+- A guild round-trip, and one dungeon run.
 
-**Accounts:** nothing waiting. Both upload tokens are in the `release` environment's
-  secrets, and every publishing account has a second factor (2026-10-01;
-  [security-checklist.md → Before the packager lands](security-checklist.md#before-the-packager-lands-first-tag)).
+**Accounts:** nothing waiting.
 
 ## Follow-ups
 
-- **Before the first tag:** `CHANGELOG.md` gets its `## vX.Y.Z` notes (the release check
-  requires them); answer #62 and #63 (IDs freeze at the first public release). Whether
-  CurseForge and Wago map interface `16001` to Forever is unverified until the first
-  upload; the packager's `-g` overrides it.
+- **Before the first tag:** write the `CHANGELOG.md` `## vX.Y.Z` notes and answer #62 and
+  #63 (IDs freeze at the first release). Interface `16001` → Forever on CurseForge and
+  Wago is unverified until the first upload (the packager's `-g` overrides it).
 - **Release gate: `Data/Inns` must be complete for what it ships.** Earned cosmetics are
   never taken away, and the `zone`, `continent` and `all` rules count only the inns the
-  data knows. In the beta the first signature at Calmbreeze (the only inn) earned 1101,
-  101, 1003 *and* 2 at once (2026-10-05). Beta SavedVariables don't carry to live, but a
-  release with a partial atlas would hand out "every inn" for good. Before the first
-  tag: either every Forever inn is in the data, or the rules gain a guard (e.g. a
-  per-zone "complete" mark, so a zone seal and the continent/all rules wait for it), a
-  `collection-cosmetics.md` change.
+  data knows. The beta's first signature, at the only known inn, earned 1101, 101, 1003
+  *and* 2 at once (2026-10-05). Beta saves don't carry over to live, but a partial atlas
+  in a release would hand out "every inn" for good. Before the first tag, either every
+  Forever inn is in the data, or the rules gain a guard (e.g. a per-zone "complete" mark,
+  a `collection-cosmetics.md` change).
+- **CI runners:** `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; watch the first
+  runs after that. A GitHub Actions incident on 2026-10-05 timed out jobs for hours
+  ([CONTRIBUTING.md → Branches](../CONTRIBUTING.md#branches-and-pull-requests) says how
+  to retry).
 - **Revisit once in groups (#12):** server-clock jumps in `SyncSchedule`; other AddOns'
   hidden traffic counted as `hidden`; group-map rescan budget; a dropped
   `C_Timer.After`; export build time and AceSerializer's ~5 MB after an opted-in export.
 - **Weekly reset fallback:** the beta (region 90) resets Tuesday 16:00 UTC, an hour off
-  the US row; fill the live regions' rows after launch.
+  the US row. Fill in the live regions' rows after launch.
 - **`UI/Book`:** its in-game help says what sync shares, in the README's words.
 - **Code tidy (low):** `isInt` / name allow-lists copied across `Collection`,
-  `Cosmetics`, `Export`, `SignFlow` (and `Core`'s `hidden` in `Sign`); `Phrase` load-time
-  asserts (#62 review nits).
+  `Cosmetics`, `Export` and `SignFlow` (and `Core`'s `hidden` in `Sign`); `Phrase`'s
+  load-time asserts.
 - Publish `Data/*` as a generated reference for export consumers (needs the inn data).
-- `GOLDEN_F` export string: regenerate if a library or interpreter change breaks it while
-  its decode still matches, and say so in the PR.
-- `Ledger`'s load-time cap pass is quadratic on a tampered file; batch evictions if needed.
-- Harness: a ChatThrottleLib-callback option for `"defer"` mode.
-- CI pins only top-level rocks; pin dependencies if an upstream release breaks CI.
+- `GOLDEN_F` export string: regenerate it if a library or interpreter change breaks it
+  while its decode still matches, and say so in the PR.
+- `Ledger`'s load-time cap pass is quadratic on a tampered file; batch the evictions if
+  needed.
+- Harness: a ChatThrottleLib-callback option for `"defer"` mode. CI pins only top-level
+  rocks; pin dependencies if an upstream release breaks CI.
 - Delete GitHub's default labels (maintainer call: deletion).
-- `decisions.md` is ~1 350 lines: move September entries to
-  `docs/archive/decisions-2026-09.md` with an index line (early October).
+- `decisions.md` is ~1 400 lines: move the September entries to
+  `docs/archive/decisions-2026-09.md` with an index line.
 - Move [kickoff.md](kickoff.md) to `docs/archive/` once v1 ships.

@@ -79,6 +79,10 @@ whether a module is done.
   accessible by personal access token"), so agents push an empty commit to the branch
   instead, which starts fresh runs. Check [githubstatus.com](https://www.githubstatus.com/)
   first: during an Actions incident, retries keep timing out until it's mitigated.
+- **When `gh pr create` or `gh pr merge` fails with "GraphQL: Something went wrong"**, the
+  REST API usually still works: `gh api repos/<owner>/<repo>/pulls -f base=dev -f head=<branch>
+  -f title=... -F body=@<file>` opens the PR, and `gh api -X PUT
+  repos/<owner>/<repo>/pulls/<n>/merge -f merge_method=squash` merges it (seen 2026-10-06).
 
 ## Releasing
 

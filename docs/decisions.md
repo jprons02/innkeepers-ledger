@@ -10,6 +10,43 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-06 — Phrase voices; free text stays out
+
+The maintainer found the first composer too narrow ("a few preselected options") and
+asked about free text up to ~200 characters. Free text was weighed again, including a
+**private note** kept only in the player's own ledger, and the maintainer chose to stay
+with canned phrases (*Canned phrases, not free text*,
+[archive](archive/decisions-2026-09.md), stands). Instead the set grows **voices** (#100):
+
+- **A voice is a temperament with its own sentence frames and connectors:** Hearthside
+  (the first draft's warm tone), Bardic, Grumbler, Scholar, Rowdy, Mystic, Sailor, Noble.
+  The terse and wide-eyed voices that were floated are folded into Grumbler and
+  Hearthside. Voices are temperaments, never races or classes (content rule 2), and no
+  voice imitates a real-world accent.
+- **A voice is a UI grouping only.** Templates and conjunctions carry an optional
+  `voice`; `ns.Data.PhraseVoices` names them. The grammar, `validIds`, the wire and the
+  export are unchanged, and any template still takes any word, so a signature may **mix
+  voices**: the composer picks a voice per line, and line 2 follows line 1's voice until
+  the player picks one for it.
+- **IDs:** voice 1 keeps the first draft's IDs (the beta's signatures still render);
+  voice `v ≥ 2` takes a block of 30 template IDs from `201 + 30(v − 2)` (slotless from
+  +20) and conjunctions `501 + 10(v − 1)`.
+- **Words:** five more per category and a ninth category, **Oddities** (gentle humor such
+  as "a suspicious stew"), under the same content rules.
+- **Content rules gain one line:** no template pays for, buys, orders or summons its slot.
+  With the Company words in the slot, a payment frame ("Paid good coin. Got {w}.") reads
+  as a provider-and-service euphemism. The tripwire adds `pay paid coin coins buy bought
+  chest meat mount goblin goblins worgen`.
+
+*Rejected:* free text, synced or private (above); typed slots per voice (the "any word
+fits" rule keeps the content argument simple); a voice stored in the entry (peers don't
+need it, and it would change the wire); one voice per signature (the maintainer asked to
+combine voices).
+
+*Reflected in:* `Data/Phrases.lua`, `Phrase.lua`, `SignFlow.lua`, `Sign.lua`,
+`docs/specs/phrase.md` (§3.1, §3.2, §3.5, §3.6, §9), `docs/specs/sign.md` (§3.6, §3.7,
+§8), `docs/architecture.md`.
+
 ### 2026-10-05 — Sign: a pure SignFlow, the button at every known innkeeper, reasons on click, no sitting or combat check
 
 The `Sign` slice (#96, [specs/sign.md](specs/sign.md)) settles how signing works:

@@ -39,6 +39,7 @@ local TEXT = {
   sign = "Sign",
   cancel = "Cancel",
   noSeal = "No seal",
+  voice = "Voice: ",
   -- The chat lines, one per result code.
   added = "You signed the guestbook of ",
   addedEnd = ".",
@@ -240,6 +241,11 @@ function SignFlow.new(deps)
   local conjunctionsOf = need(phrase, "conjunctions", "phrase")
   local categoriesOf = need(phrase, "categories", "phrase")
   local wordsOf = need(phrase, "words", "phrase")
+  -- Optional: a phrase set without voices offers every template as one group.
+  local voicesOf = rawget(phrase, "voices")
+  if type(voicesOf) ~= "function" then
+    voicesOf = emptyList
+  end
   local unlocked = need(cosmetics, "unlocked", "cosmetics")
   local canSeal = need(cosmetics, "canSeal", "cosmetics")
   local info = need(cosmetics, "info", "cosmetics")
@@ -415,12 +421,29 @@ function SignFlow.new(deps)
     return text
   end
 
+  -- The voices the composer offers, each with its templates and conjunctions (a voice
+  -- with no conjunction of its own offers them all). A voice with no template is skipped;
+  -- with none left, one unnamed group holds everything (spec 3.6).
+  local function voiceGroups()
+    local groups, all = {}, conjunctionsOf()
+    local names = voicesOf()
+    for v = 1, type(names) == "table" and #names or 0 do
+      local t, c = templatesOf(v), conjunctionsOf(v)
+      if type(names[v]) == "string" and #t > 0 then
+        groups[#groups + 1] = { name = names[v], templates = t, conjs = #c > 0 and c or all }
+      end
+    end
+    if #groups == 0 then
+      groups[1] = { templates = templatesOf(), conjs = all }
+    end
+    return groups
+  end
+
   local function newDraft(sealIds)
-    local templates = templatesOf()
-    if #templates == 0 then
+    if #templatesOf() == 0 then
       return nil
     end
-    local conjs, cats = conjunctionsOf(), categoriesOf()
+    local groups, cats = voiceGroups(), categoriesOf()
     local words = {}
     for i = 1, #cats do
       words[i] = wordsOf(i)
@@ -437,21 +460,28 @@ function SignFlow.new(deps)
       end
     end
 
-    local st = { t1 = 1, cat1 = 1, w1 = 1, c = 1, t2 = 1, cat2 = 1, w2 = 1, seal = 0 }
+    local st = {
+      v1 = 1, t1 = 1, cat1 = 1, w1 = 1, v2 = 1, c = 1, t2 = 1, cat2 = 1, w2 = 1, seal = 0,
+    }
     local second = false
+    local v2Chosen = false -- until the player picks line 2's voice, it follows line 1's
 
     -- The list a field steps over, or nil for an unknown field.
     local function listOf(field)
-      if field == "t1" or field == "t2" then
-        return templates
+      if field == "v1" or field == "v2" then
+        return groups
+      elseif field == "t1" then
+        return groups[st.v1].templates
+      elseif field == "t2" then
+        return groups[st.v2].templates
+      elseif field == "c" then
+        return groups[st.v2].conjs
       elseif field == "cat1" or field == "cat2" then
         return cats
       elseif field == "w1" then
         return words[st.cat1] or {}
       elseif field == "w2" then
         return words[st.cat2] or {}
-      elseif field == "c" then
-        return conjs
       end
       return nil
     end
@@ -462,11 +492,12 @@ function SignFlow.new(deps)
     end
 
     local function idsNow()
-      local t1 = templates[st.t1]
+      local g1, g2 = groups[st.v1], groups[st.v2]
+      local t1 = g1.templates[st.t1]
       local w1 = hasSlot(t1) and word(1) or nil
       local c, t2, w2
       if second then
-        c, t2 = conjs[st.c], templates[st.t2]
+        c, t2 = g2.conjs[st.c], g2.templates[st.t2]
         w2 = hasSlot(t2) and word(2) or nil
       end
       return compose(t1, w1, c, t2, w2)
@@ -494,6 +525,14 @@ function SignFlow.new(deps)
         st.w1 = 1
       elseif field == "cat2" then
         st.w2 = 1
+      elseif field == "v1" then
+        st.t1 = 1
+        if not v2Chosen then
+          st.v2, st.c, st.t2 = st.v1, 1, 1
+        end
+      elseif field == "v2" then
+        v2Chosen = true
+        st.c, st.t2 = 1, 1
       end
     end, none)
 
@@ -513,7 +552,9 @@ function SignFlow.new(deps)
     end, none)
 
     draft.view = safe(function()
-      local t1, t2 = templates[st.t1], templates[st.t2]
+      local g1, g2 = groups[st.v1], groups[st.v2]
+      local t1, t2 = g1.templates[st.t1], g2.templates[st.t2]
+      local c = g2.conjs[st.c]
       local w1, w2 = word(1), word(2)
       local sealLabel = TEXT.noSeal
       if st.seal ~= 0 then
@@ -523,10 +564,12 @@ function SignFlow.new(deps)
       end
       local preview = render(idsNow())
       return {
+        v1 = g1.name and TEXT.voice .. g1.name or nil,
         t1 = templateLabel(t1),
         cat1 = cats[st.cat1],
         w1 = w1 and phraseText(w1) or nil,
-        c = conjs[st.c] and phraseText(conjs[st.c]) or nil,
+        v2 = g2.name and TEXT.voice .. g2.name or nil,
+        c = c and phraseText(c) or nil,
         t2 = templateLabel(t2),
         cat2 = cats[st.cat2],
         w2 = w2 and phraseText(w2) or nil,
@@ -536,6 +579,7 @@ function SignFlow.new(deps)
         word2 = second and hasSlot(t2) == true,
         second = second,
         sealRow = #sealList > 0,
+        voiceRow = g1.name ~= nil,
       }
     end, none)
 

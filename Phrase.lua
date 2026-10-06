@@ -33,11 +33,14 @@ local RANGES = {
 local BLOCK = 100
 -- Category k allocates word IDs 900 + 100k .. 999 + 100k, so there is room for 90.
 local CATEGORIES_MAX = (RANGES.word[2] - RANGES.word[1] + 1) / BLOCK
+-- Voices are UI labels with no ID block of their own; this only bounds the bind loop.
+local VOICES_MAX = 50
 local SHAPES = { t = true, TW = true, tCt = true, tCTW = true, TWCt = true, TWCTW = true }
 -- The fields each kind's record has, exactly (spec 3.2 rule 2).
+-- `voice` is optional on a template or conjunction (a UI grouping only, spec 3.1).
 local FIELDS = {
-  template = { kind = true, text = true },
-  conj = { kind = true, text = true },
+  template = { kind = true, text = true, voice = true },
+  conj = { kind = true, text = true, voice = true },
   word = { kind = true, cat = true, text = true },
 }
 
@@ -45,6 +48,7 @@ Phrase.SLOT = SLOT
 Phrase.LIMITS = {
   idsMax = IDS_MAX, idMax = ID_MAX, templateBytes = TEMPLATE_BYTES, conjBytes = CONJ_BYTES,
   wordBytes = WORD_BYTES, categoryBytes = CATEGORY_BYTES, renderBytes = RENDER_BYTES,
+  voicesMax = VOICES_MAX,
 }
 Phrase.RANGES = {
   template = { RANGES.template[1], RANGES.template[2] },
@@ -119,12 +123,14 @@ local function cleanText(s, slotOk)
   return true, false
 end
 
-local function validCategoryName(s)
+-- A category or voice name (rule 6).
+local function validName(s)
   return cleanText(s, false) ~= nil and #s <= CATEGORY_BYTES and isUpper(byte(s, 1))
 end
 
--- The private record for (id, v), or nil if any rule fails. `ncat` = bound categories.
-local function checkRecord(id, v, ncat)
+-- The private record for (id, v), or nil if any rule fails. `ncat` and `nvoice` are the
+-- bound category and voice counts.
+local function checkRecord(id, v, ncat, nvoice)
   if not isInt(id, 1, ID_MAX) or type(v) ~= "table" then
     return nil
   end
@@ -142,9 +148,9 @@ local function checkRecord(id, v, ncat)
       return nil
     end
   end
-  local text, cat = rawget(v, "text"), rawget(v, "cat")
+  local text, cat, voice = rawget(v, "text"), rawget(v, "cat"), rawget(v, "voice")
   local ok, slot = cleanText(text, kind == "template")
-  if not ok then
+  if not ok or (voice ~= nil and not isInt(voice, 1, nvoice)) then
     return nil
   end
   local n, first, last = #text, byte(text, 1), byte(text, -1)
@@ -152,12 +158,12 @@ local function checkRecord(id, v, ncat)
     if n < 4 or n > TEMPLATE_BYTES or not isUpper(first) or not ENDS[last] then
       return nil
     end
-    return { kind = kind, text = text, slot = slot }
+    return { kind = kind, text = text, slot = slot, voice = voice }
   elseif kind == "conj" then
     if n < 4 or n > CONJ_BYTES or not isUpper(first) or sub(text, -3) ~= "..." then
       return nil
     end
-    return { kind = kind, text = text }
+    return { kind = kind, text = text, voice = voice }
   end
   if n > WORD_BYTES or not isLower(first) or not isLower(last) or not isInt(cat, 1, ncat) then
     return nil
@@ -185,50 +191,71 @@ end
 -- ---------------------------------------------------------------------------
 -- bind (spec 3.5): validate and index once, return closures over the private copy.
 
-function Phrase.bind(data, categories)
+-- Names 1..n up to the first missing or invalid one (rule 6); every other key is named
+-- in `invalid` under `prefix`.
+local function bindNames(list, max, prefix, invalid)
+  local names = {}
+  for i = 1, max do
+    local name = rawget(list, i)
+    if not validName(name) then
+      break
+    end
+    names[i] = name
+  end
+  local n = #names
+  for k in next, list do
+    if not isInt(k, 1, n) then
+      invalid[#invalid + 1] = label(prefix, k)
+    end
+  end
+  return names, n
+end
+
+function Phrase.bind(data, categories, voices)
   if type(data) ~= "table" then
     data = {}
   end
   if type(categories) ~= "table" then
     categories = {}
   end
+  if type(voices) ~= "table" then
+    voices = {}
+  end
   local invalid = {}
-
-  -- Categories: 1..n up to the first missing or invalid name (rule 6).
-  local cats = {}
-  for i = 1, CATEGORIES_MAX do
-    local name = rawget(categories, i)
-    if not validCategoryName(name) then
-      break
-    end
-    cats[i] = name
-  end
-  local ncat = #cats
-  for k in next, categories do
-    if not isInt(k, 1, ncat) then
-      invalid[#invalid + 1] = label("category", k)
-    end
-  end
+  local cats, ncat = bindNames(categories, CATEGORIES_MAX, "category", invalid)
+  local vnames, nvoice = bindNames(voices, VOICES_MAX, "voice", invalid)
 
   -- Records.
   local records = {} -- id -> private record; a plain table nobody else sees
   local templates, conjs, words = {}, {}, {}
+  local vTemplates, vConjs = {}, {} -- voice -> IDs
   for i = 1, ncat do
     words[i] = {}
   end
+  for i = 1, nvoice do
+    vTemplates[i], vConjs[i] = {}, {}
+  end
+  local function push(list, id)
+    list[#list + 1] = id
+  end
   for id, v in next, data do
-    local rec = checkRecord(id, v, ncat)
+    local rec = checkRecord(id, v, ncat, nvoice)
     if rec == nil then
       invalid[#invalid + 1] = label("id", id)
     else
       records[id] = rec
       if rec.kind == "template" then
-        templates[#templates + 1] = id
+        push(templates, id)
+        if rec.voice then
+          push(vTemplates[rec.voice], id)
+        end
       elseif rec.kind == "conj" then
-        conjs[#conjs + 1] = id
+        push(conjs, id)
+        if rec.voice then
+          push(vConjs[rec.voice], id)
+        end
       else
-        local list = words[rec.cat]
-        list[#list + 1] = id
+        push(words[rec.cat], id)
       end
     end
   end
@@ -236,6 +263,10 @@ function Phrase.bind(data, categories)
   tsort(conjs)
   for i = 1, ncat do
     tsort(words[i])
+  end
+  for i = 1, nvoice do
+    tsort(vTemplates[i])
+    tsort(vConjs[i])
   end
 
   -- The kind letter of one ID: T slotted template, t slotless, C conjunction, W word.
@@ -345,12 +376,32 @@ function Phrase.bind(data, categories)
     return letter(id) == "T"
   end
 
-  function set.templates()
-    return copyArray(templates)
+  -- No argument: every one. A bound voice: that voice's. Anything else: {}.
+  local function byVoice(all, perVoice, v)
+    if v == nil then
+      return copyArray(all)
+    elseif not isInt(v, 1, nvoice) then
+      return {}
+    end
+    return copyArray(perVoice[v])
   end
 
-  function set.conjunctions()
-    return copyArray(conjs)
+  function set.templates(v)
+    return byVoice(templates, vTemplates, v)
+  end
+
+  function set.conjunctions(v)
+    return byVoice(conjs, vConjs, v)
+  end
+
+  function set.voices()
+    return copyArray(vnames)
+  end
+
+  -- The voice number of a template or conjunction, or nil (none, or not one of those).
+  function set.voice(id)
+    local rec = isInt(id, 1, ID_MAX) and records[id] or nil
+    return rec and rec.voice or nil
   end
 
   function set.categories()
@@ -371,14 +422,14 @@ end
 -- The default set, over the shipped data (spec 3.7). Missing data binds an empty set,
 -- which rejects everything (fail closed); a bad record is excluded, never raised.
 
-local data, categories
+local data, categories, voices
 if type(ns.Data) == "table" then
-  data, categories = ns.Data.Phrases, ns.Data.PhraseCategories
+  data, categories, voices = ns.Data.Phrases, ns.Data.PhraseCategories, ns.Data.PhraseVoices
 end
-local default = Phrase.bind(data, categories)
+local default = Phrase.bind(data, categories, voices)
 for _, name in ipairs({
   "validIds", "render", "compose", "kind", "text", "hasSlot", "templates", "conjunctions",
-  "categories", "words",
+  "categories", "words", "voices", "voice",
 }) do
   Phrase[name] = default[name]
 end

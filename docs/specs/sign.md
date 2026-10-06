@@ -205,20 +205,31 @@ ledger keeps the earliest time). Returns the IDs that were `nil` before and reco
 ### 3.6 The draft model
 
 The composer's state, pure, so the glue only copies strings into frames. `flow.newDraft(seals)`
-returns `nil` when `phrase.templates()` is empty; else a draft with indexes `t1`, `cat1`,
-`w1`, `c`, `t2`, `cat2`, `w2` (all start at 1), `second = false`, and `seal = 0` (none),
-over a private copy of `seals`.
+returns `nil` when `phrase.templates()` is empty; else a draft with indexes `v1`, `t1`,
+`cat1`, `w1`, `v2`, `c`, `t2`, `cat2`, `w2` (all start at 1), `second = false`, and
+`seal = 0` (none), over a private copy of `seals`.
+
+**Voices** (amended 2026-10-06, #100): the draft builds its voice groups once, from
+`phrase.voices()` (optional in `deps.phrase`): one group per voice that has at least one
+template, holding `templates(v)` and `conjunctions(v)` (all conjunctions when the voice
+has none of its own). With no group left (no voices bound, or `voices` missing or junk),
+one unnamed group holds `templates()` and `conjunctions()`, and the voice rows hide.
+Line 1 uses group `v1` for `t1`; line 2 uses group `v2` for `c` and `t2`. Changing `v1`
+resets `t1`; changing `v2` resets `c` and `t2`. **Line 2 follows line 1's voice** (moving
+`v1` also sets `v2` and resets `c`, `t2`) until the player steps `v2` once; from then on
+the two are independent.
 
 | Method | Does |
 |---|---|
-| `draft:step(field, delta)` | `field` in `t1 cat1 w1 c t2 cat2 w2 seal`, `delta` `1` or `-1`; moves the index with wrap-around over its list (`templates()`, `categories()`, `words(cat)`, `conjunctions()`; `seal` over `0..#seals`). Changing a category resets its word to 1. A field whose list is empty, or any other argument, is a no-op |
+| `draft:step(field, delta)` | `field` in `v1 t1 cat1 w1 v2 c t2 cat2 w2 seal`, `delta` `1` or `-1`; moves the index with wrap-around over its list (the voice groups, the group's templates, `categories()`, `words(cat)`, the group's conjunctions; `seal` over `0..#seals`). Changing a category resets its word to 1. A field whose list is empty, or any other argument, is a no-op |
 | `draft:setSecond(on)` | `on == true` adds the second part; anything else removes it |
 | `draft:ids()` | `phrase.compose(T1, W1, C, T2, W2)` where `W1` is the word only if `hasSlot(T1)`, and `C, T2, W2` only if `second` (W2 only if `hasSlot(T2)`); so `nil` only for a set with an empty category or no conjunction |
 | `draft:seal()` | the chosen seal ID, or `nil` for none |
-| `draft:view()` | the strings to show: `{ t1, cat1, w1, c, t2, cat2, w2, seal, preview, word1 = bool, word2 = bool, second = bool, sealRow = bool }` |
+| `draft:view()` | the strings to show: `{ v1, t1, cat1, w1, v2, c, t2, cat2, w2, seal, preview, word1 = bool, word2 = bool, second = bool, sealRow = bool, voiceRow = bool }` |
 
 - **`view` strings:** template text with its slot shown as `___` (plain `find` + `sub`,
-  never `gsub` with data), category names, word and conjunction texts, the seal's
+  never `gsub` with data), `v1` / `v2` as the DRAFT "Voice: " plus the voice name (`nil`
+  for the unnamed group), category names, word and conjunction texts, the seal's
   `cosmetics.info(id).name` or the DRAFT "No seal" line, and `preview =
   phrase.render(ids)` (or `nil`). `word1` / `word2` say whether the word rows apply;
   `sealRow` is `#seals > 0`. All of it is our own allow-listed data (no `|`, no `%`).
@@ -229,7 +240,7 @@ over a private copy of `seals`.
 
 **Its look, layout and every label are the maintainer's to decide; this is a plain,
 functional draft.** It uses only pieces the beta has shown or that are core frame API:
-- **Frame:** `CreateFrame("Frame", nil, GossipFrame)`, about 380×470, anchored with its
+- **Frame:** `CreateFrame("Frame", nil, GossipFrame)`, about 380×530, anchored with its
   `TOPLEFT` at `GossipFrame`'s `TOPRIGHT`, mouse enabled, a background texture
   `SetColorTexture(0, 0, 0, 0.85)` (no backdrop template, nothing unverified). Parented to
   `GossipFrame`, so it hides when the gossip does; the `GOSSIP_CLOSED` handler hides it
@@ -238,9 +249,10 @@ functional draft.** It uses only pieces the beta has shown or that are core fram
   `UIPanelButtonTemplate` `<` button, a font string (`GameFontHighlight`, word-wrapped)
   and a `>` button wired to `draft:step(field, ∓1)`:
   1. title "Sign the guestbook" and the inn's name (`flow.innName`);
-  2. `t1` (the first line's template); `cat1`, `w1` (shown when `word1`);
+  2. `v1` (shown when `voiceRow`), `t1` (the first line's template); `cat1`, `w1` (shown
+     when `word1`);
   3. a toggle button, "Add a second line" / "Remove the second line" → `setSecond`;
-  4. when `second`: `c`, `t2`, and `cat2`, `w2` (when `word2`);
+  4. when `second`: `v2` (when `voiceRow`), `c`, `t2`, and `cat2`, `w2` (when `word2`);
   5. `seal` (shown when `sealRow`);
   6. the preview, word-wrapped, up to 160 bytes;
   7. **Sign** and **Cancel** buttons.
@@ -588,6 +600,9 @@ from disk after a `/reload`:
    strings and the `<` `>` buttons render (`CreateFontString`, `SetColorTexture` are
    unverified on Forever); cycling and the second line work; the preview follows.
    **A screenshot for the maintainer** (the DRAFT look).
+   The voice rows (#100): "Voice: Hearthside" over line 1; stepping it changes line 1's
+   template set; the second line's voice follows until stepped; nothing overlaps in the
+   530-pixel frame.
 3. Sign → the `added` line; after `/reload`, `InnkeepersLedger.lua` holds one own entry
    at `254089` and `earned` holds 1101, 1003, 2, 101.
 4. A second click the same week → the `too_soon` line, and the reset it names matches the

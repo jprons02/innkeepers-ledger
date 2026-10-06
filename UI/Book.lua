@@ -638,7 +638,6 @@ local function build()
   newTexture(book, "BACKGROUND", LOOK.frame)
 
   local ui = { frame = book, tabs = {} }
-  Book.ui = ui
   ui.left = buildPage(book, "left", LOOK.left, 16)
   ui.right = buildPage(book, "right", LOOK.right, BOOK_W - 16 - PAGE_W)
   newTexture(book, "ARTWORK", LOOK.spine, BOOK_W - 32 - 2 * PAGE_W, PAGE_H, 16 + PAGE_W, PAGE_TOP)
@@ -684,6 +683,9 @@ local function build()
   else
     debug("book: no special frames")
   end
+  -- Only a finished book is kept: an error above leaves Book.ui nil, so the next open
+  -- builds again (or reports) rather than showing half a book.
+  Book.ui = ui
   return ui
 end
 
@@ -904,6 +906,8 @@ end
 draw = function(fresh)
   local ui = Book.ui
   local s = read()
+  -- view.build never raises and always returns a table; this guard is belt and braces
+  -- for the glue's own contract (spec 3.11.4: a page that can't be built shows pageError).
   local ok, model = pcall(Book.view.build, s, Book.nav)
   if not ok or type(model) ~= "table" then
     model = { error = true }

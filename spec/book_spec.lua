@@ -628,6 +628,30 @@ describe("Book: the Share page", function()
     assert.equal(plain, share.edit:GetText())
   end)
 
+  it("opts in only for exactly true from the checkbox", function()
+    local ns = login()
+    wow.slash("/ledger share")
+    local check = ns.Book.ui.share.check
+    local seen = {}
+    ns.Core.ExportString = function(_, opted)
+      seen[#seen + 1] = opted
+      return "x"
+    end
+    for _, answer in ipairs({ 1, "true", "1", {}, false }) do
+      check.GetChecked = function() return answer end
+      check:Click()
+    end
+    check.GetChecked = function() return nil end
+    check:Click()
+    check.GetChecked = function() return true end
+    check:Click()
+    assert.equal(7, #seen)
+    for i = 1, 6 do
+      assert.is_true(rawequal(seen[i], false), i)
+    end
+    assert.is_true(rawequal(seen[7], true))
+  end)
+
   it("puts the built string back when anything is typed", function()
     local ns = login()
     wow.slash("/ledger share")
@@ -851,6 +875,23 @@ describe("Book: quills", function()
     assert.equal(5, ns.Core.db.global)
   end)
 
+  it("leaves other characters' records alone when it writes its own", function()
+    local OTHER = "Player-1-0000BEEF"
+    local other = { v = 1, quill = 1001, shared = { own = 3, newest = NOW - WEEK,
+      unlocked = 2 } }
+    local ns = login({ db = { global = { book = { [OTHER] = deepcopy(other),
+      ["Player-1-0000F00D"] = "damaged" } } } })
+    sign(ns)
+    wow.slash("/ledger share")
+    assert.is_table(record().shared)
+    ns.Book:SetQuill(1003)
+    assert.equal(1003, record().quill)
+    assert.is_table(record().shared)
+    local book = _G.InnkeepersLedgerDB.global.book
+    assert.same(other, book[OTHER])
+    assert.equal("damaged", book["Player-1-0000F00D"])
+  end)
+
   it("replaces a broken v1 record whole on the next write", function()
     local ns = login({ db = { global = { book = { [GUID] = { quill = "x", other = 1 } } } } })
     sign(ns)
@@ -1030,6 +1071,37 @@ describe("Book: errors stay inside", function()
     ns.Book:ShowStamp(CALM)
     ns.Book:SetQuill(1003)
     assert.equal(2, #chatSince(n))
+  end)
+
+  it("keeps no half-built book when building raises, and builds again next time", function()
+    local ns = login()
+    ns.Core:ToggleDebug()
+    local real = _G.CreateFrame
+    _G.CreateFrame = function(kind, ...)
+      if kind == "EditBox" then
+        error("raised on purpose")
+      end
+      return real(kind, ...)
+    end
+    local n = #wow.chat
+    wow.slash("/ledger")
+    assert.is_nil(ns.Book.ui)
+    assert.same({}, _G.UISpecialFrames)
+    assert.is_false(_G.InnkeepersLedgerBook:IsShown())
+    local lines = chatSince(n)
+    assert.equal(1, #lines)
+    assert.is_true(has(lines[1], "book: error in toggle"))
+    ns.Book:Changed()
+    ns.Book:ShowTab("share")
+    ns.Book:SetQuill(1003)
+    assert.is_nil(ns.Book.ui)
+
+    _G.CreateFrame = real
+    wow.slash("/ledger")
+    assert.is_table(ns.Book.ui)
+    assert.is_true(ns.Book.ui.frame:IsShown())
+    assert.equal(_G.InnkeepersLedgerBook, ns.Book.ui.frame)
+    assert.same({ "InnkeepersLedgerBook" }, _G.UISpecialFrames)
   end)
 
   it("logs an error in a click and nothing else", function()

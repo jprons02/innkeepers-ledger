@@ -309,11 +309,15 @@ Per row:
 
 **Reading the ledger for a page** (bounded, [§3.9](#39-bounds-and-readiness)): for each
 NPC ID of the group, `ledger:innEntries(id)` inside `pcall`; from its result, `own` and
-`foreign` are read with `rawget(t, i)` for `i = 1, 2, …` up to the caps. An item is used
-only if it is a table whose entry passes `Ledger.validEntry` (foreign: `rawget(item,
-"entry")`) and, for a foreign item, whose `signer` is a string; others are skipped. Past
-`ownReadMax` own or `foreignReadMax` foreign items in all, the **oldest** are dropped
-(the ledger returns both oldest first, so the newest survive).
+`foreign` are read **newest first**: the ledger returns both oldest first, so each list is
+read with `rawget(t, i)` from its raw length `#t` down, at most `ownReadMax` own and
+`foreignReadMax` foreign items **per NPC ID** (a table's `#` runs no metamethod in Lua
+5.1). An item is used only if it is a table whose entry passes `Ledger.validEntry`
+(foreign: `rawget(item, "entry")`) and, for a foreign item, whose `signer` is a string;
+others are skipped. The items of the whole group are then merged, sorted newest first
+and **trimmed to the same caps**, so the oldest are dropped and the page holds the newest
+`ownReadMax` own and `foreignReadMax` foreign entries of the group. A build reads at most
+`aliasesMax` (8) × the caps.
 
 **Selecting:** an inn row's click sets `nav.inn = key, innPage = 1`. A key whose inn the
 atlas doesn't keep normalizes to `nil`, and the right page shows `help`.
@@ -478,8 +482,8 @@ glue measures `offset` ([§3.11.2](#3112-client-reads)); the module never reads 
 | `stampCells` | 12 | stamps per page (3 × 4) |
 | `quillRows` | 6 | quill rows per page |
 | `sealRows` | 7 | seal rows per page |
-| `ownReadMax` | 1 000 | own entries read for one inn page |
-| `foreignReadMax` | 600 | foreign entries read for one inn page (4 × the ledger's per-inn cap of 150) |
+| `ownReadMax` | 1 000 | own entries read per NPC ID of an inn's group (newest first), and kept for the page after the merge |
+| `foreignReadMax` | 600 | foreign entries read per NPC ID of an inn's group (newest first), and kept for the page after the merge (4 × the ledger's per-inn cap of 150) |
 | `aliasesMax` | 8 | NPC IDs per inn group |
 | `innsReadMax` | 20 000 | `Data/Inns` keys read at `new` |
 | `nameBytes` | 64 | display bytes of a name |
@@ -898,8 +902,9 @@ were checked and what hostile input was tried.
   `string.format`, `SetFormattedText`, a pattern or a `gsub` replacement, used as a table
   key in the glue, or concatenated into anything but a font string's text.
 - **Bounded work on peer-sized data.** An inn page reads at most `foreignReadMax` (600)
-  foreign and `ownReadMax` (1 000) own entries over at most `aliasesMax` (8) NPC IDs, and
-  renders at most `innRows` (6). The list, stamps and cosmetics are sized by our own data.
+  foreign and `ownReadMax` (1 000) own entries **per NPC ID**, newest first, over at most
+  `aliasesMax` (8) NPC IDs (so at most 8 × the caps per build), trims the merged list to
+  the same caps, and renders at most `innRows` (6). The list, stamps and cosmetics are sized by our own data.
   A ledger at every storage cap (3 000 foreign entries) can't make a build loop without
   bound or throw.
 - **The `onEntries` hook** (the one change in `Sync.lua`): it carries no arguments and no

@@ -38,7 +38,9 @@ is built:
   control byte or broken UTF-8 is replaced by "A traveler", never escaped. Nothing is
   formatted with data.
 - **An inn page reads the newest entries only:** at most 1 000 own and 600 foreign per
-  NPC ID of the group (8 IDs at most), newest first, and renders only the 6 rows it shows.
+  NPC ID of the group (8 IDs at most), newest first; the merged list is then trimmed to
+  the same caps (the group's newest 1 000 own and 600 foreign), so a build reads at most
+  8 × the caps. It renders only the 6 rows it shows.
 
 *Rejected:* all the logic in `Book.lua` (no coverage floor, no strict environment);
 scrolling frames and the tab, check box and input templates (unverified on Forever);

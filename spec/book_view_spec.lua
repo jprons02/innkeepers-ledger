@@ -685,6 +685,30 @@ describe("BookView: an inn's page", function()
     assert.equal("Here's to the hearth!", m.right.rows[5].text)
   end)
 
+  it("orders own entries at one time by NPC ID, the inn before its alias", function()
+    local function texts(ledger)
+      local out = {}
+      for _, r in ipairs(newView().build(sit(ledger), { inn = 5001 }).right.rows) do
+        if r.kind == "own" then
+          out[#out + 1] = r.text
+        end
+      end
+      return out
+    end
+    local ledger = newLedger()
+    assert.equal("added", ledger:addOwn({ inn = 5003, t = T, phrase = { 1, 1000 } }))
+    assert.equal("added", ledger:addOwn({ inn = 5001, t = T, phrase = { 2 } }))
+    assert.same({ "Rest well.", "Here's to the hearth!" }, texts(ledger))
+    -- Read in the other order (each ID answers with the other's entry): the same result.
+    local fake = { readOnly = false, own = function() return {} end,
+      innEntries = function(_, id)
+        local e = id == 5001 and { inn = 5003, t = T, phrase = { 1, 1000 } }
+          or { inn = 5001, t = T, phrase = { 2 } }
+        return { own = { e }, foreign = {} }
+      end }
+    assert.same({ "Rest well.", "Here's to the hearth!" }, texts(fake))
+  end)
+
   it("says so when nobody signed: both headings, both notes", function()
     local m = newView().build(sit(newLedger()), { inn = 5001 })
     assert.same({

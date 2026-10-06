@@ -33,6 +33,7 @@ local FACTIONS = { Alliance = true, Horde = true }
 local TEXT = {
   -- The composer (Sign.lua).
   button = "Sign the guestbook",
+  read = "Read the guestbook", -- settled (docs/specs/book.md 3.12): opens the book
   title = "Sign the guestbook",
   addSecond = "Add a second line",
   removeSecond = "Remove the second line",

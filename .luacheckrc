@@ -37,6 +37,10 @@ local wow = {
   "GetNumGroupMembers",
   "GetNumGuildMembers",
   "GetServerTime",
+  "GameFontHighlightSmall",
+  "GameFontNormal",
+  "GameFontNormalLarge",
+  "GameFontNormalSmall",
   "GossipFrame",
   "InCombatLockdown",
   "IsInGroup",
@@ -45,12 +49,17 @@ local wow = {
   "IsResting",
   "LE_PARTY_CATEGORY_HOME",
   "LibStub",
+  "QuestTitleFont",
+  "UIParent",
+  "UISpecialFrames",
   "UNKNOWNOBJECT",
   "UnitFactionGroup",
   "UnitFullName",
   "UnitGUID",
   "UnitName",
+  "date",
   "issecretvalue",
+  "time",
 }
 
 -- Keep in sync with GLUE in spec/helpers/load.lua (a spec checks it against the TOC).

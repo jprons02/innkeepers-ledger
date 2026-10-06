@@ -127,22 +127,75 @@ describe("Sign: the gossip button", function()
     wow.uninstall()
   end)
 
-  it("shows one button under the gossip frame at Coriella Calmbreeze", function()
+  it("shows two buttons under the gossip frame at Coriella Calmbreeze", function()
     local ns = login()
     assert.is_nil(ns.Sign.ui.button)
+    assert.is_nil(ns.Sign.ui.read)
     wow.fire("GOSSIP_SHOW")
-    local b = ns.Sign.ui.button
-    assert.is_table(b)
-    assert.equal(_G.GossipFrame, b.parent)
-    assert.equal("Button", b.kind)
-    assert.equal("UIPanelButtonTemplate", b.template)
+    local b, r = ns.Sign.ui.button, ns.Sign.ui.read
+    for _, button in ipairs({ b, r }) do
+      assert.is_table(button)
+      assert.equal(_G.GossipFrame, button.parent)
+      assert.equal("Button", button.kind)
+      assert.equal("UIPanelButtonTemplate", button.template)
+      assert.is_true(button:IsShown())
+      assert.same({ 160, 24 }, { button.width, button.height })
+    end
     assert.equal("Sign the guestbook", b:GetText())
-    assert.is_true(b:IsShown())
-    assert.same({ "TOP", _G.GossipFrame, "BOTTOM", 0, -4 }, b.points[1])
+    assert.equal("Read the guestbook", r:GetText())
+    assert.same({ "TOPRIGHT", _G.GossipFrame, "BOTTOM", -3, -4 }, b.points[1])
+    assert.same({ "TOPLEFT", _G.GossipFrame, "BOTTOM", 3, -4 }, r.points[1])
     wow.fire("GOSSIP_SHOW")
     wow.fire("GOSSIP_SHOW")
-    assert.equal(1, gossipButtons())
+    assert.equal(2, gossipButtons())
     assert.equal(b, ns.Sign.ui.button)
+    assert.equal(r, ns.Sign.ui.read)
+  end)
+
+  it("shows and hides the Read button with the Sign button", function()
+    local ns = login()
+    wow.fire("GOSSIP_SHOW")
+    local b, r = ns.Sign.ui.button, ns.Sign.ui.read
+    assert.is_true(r:IsShown())
+    state.npc = VENDOR_GUID
+    wow.fire("GOSSIP_SHOW")
+    assert.is_false(b:IsShown())
+    assert.is_false(r:IsShown())
+    state.npc = CALM_GUID
+    wow.fire("GOSSIP_SHOW")
+    assert.is_true(r:IsShown())
+    wow.fire("GOSSIP_CLOSED")
+    assert.is_false(b:IsShown())
+    assert.is_false(r:IsShown())
+  end)
+
+  it("Read opens the book on the inn's page, and never signs", function()
+    local ns = login()
+    local opened = {}
+    ns.Book.OpenInn = function(self, npc) opened[#opened + 1] = { self, npc } end
+    wow.fire("GOSSIP_SHOW")
+    ns.Sign.ui.read:Click()
+    assert.same({ { ns.Book, CALM } }, opened)
+    assert.same({}, saved().own)
+    assert.is_nil(ns.Sign.session)
+    -- Away from an inn (the NPC changed under an open gossip): the book opens on no inn.
+    state.npc = VENDOR_GUID
+    ns.Sign:Read()
+    assert.same({ ns.Book, nil }, opened[2])
+  end)
+
+  it("keeps a broken book inside the Read click", function()
+    local ns = login()
+    ns.Core:ToggleDebug()
+    wow.fire("GOSSIP_SHOW")
+    ns.Book.OpenInn = function() error("raised on purpose") end
+    local n = #wow.chat
+    ns.Sign.ui.read:Click()
+    local lines = chatSince(n)
+    assert.equal(1, #lines)
+    assert.is_true(has(lines[1], "sign: error in read"))
+    ns.Book = nil
+    ns.Sign.ui.read:Click()
   end)
 
   it("hides at a vendor, a malformed, missing, hidden or raising GUID", function()
@@ -168,7 +221,8 @@ describe("Sign: the gossip button", function()
     -- A valid-looking GUID the client flags: only the hidden check can stop it.
     assert.is_false(shownFor(CALM_GUID, function(v) return v == CALM_GUID end))
     assert.is_false(shownFor(CALM_GUID, function() error("raised on purpose") end))
-    assert.equal(1, gossipButtons())
+    assert.equal(2, gossipButtons())
+    assert.is_false(ns.Sign.ui.read:IsShown())
     -- UnitGUID itself raising.
     _G.UnitGUID = function(unit)
       if unit == "npc" then
@@ -499,6 +553,34 @@ describe("Sign: errors stay inside", function()
   after_each(function()
     assert.same({}, wow.errors)
     wow.uninstall()
+  end)
+
+  it("tells the book once after a signature, and a raising book changes nothing", function()
+    local ns = login()
+    local calls = {}
+    ns.Book.Changed = function(self) calls[#calls + 1] = self end
+    click(ns)
+    ns.Sign.ui.sign:Click()
+    assert.same({ ns.Book }, calls)
+    assert.equal(1, #saved().own)
+
+    -- A refusal doesn't tell the book.
+    click(ns)
+    assert.equal(1, #calls)
+
+    wow.now = RESET + 1
+    ns.Core:ToggleDebug()
+    ns.Book.Changed = function() error("raised on purpose") end
+    click(ns)
+    local n = #wow.chat
+    ns.Sign.ui.sign:Click()
+    assert.equal(2, #saved().own)
+    local lines = chatSince(n)
+    assert.equal(3, #lines)
+    assert.is_true(has(lines[1], "sign: error in book"))
+    assert.is_true(has(lines[2], "You signed the guestbook of Calmbreeze Inn."))
+    assert.is_true(has(lines[3], "sign: added"))
+    assert.is_false(composerShown(ns))
   end)
 
   it("keeps the entry and the line when Sync's WindowChanged raises", function()

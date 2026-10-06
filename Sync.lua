@@ -1064,6 +1064,14 @@ local function realDeps()
     seals = tableOr(cosmetics.SEALS),
     phraseOk = type(phrase.validIds) == "function" and phrase.validIds or nil,
     debug = function(line) ns.Core:Debug(line) end,
+    -- Entries were stored: the book redraws if it shows (docs/specs/book.md 3.12). No
+    -- arguments, no peer data; pcall keeps a book failure out of Sync's error count.
+    onEntries = function()
+      local book = ns.Book
+      if type(book) == "table" and type(book.Changed) == "function" then
+        pcall(book.Changed, book)
+      end
+    end,
     api = {
       GetServerTime = GetServerTime,
       UnitGUID = UnitGUID,

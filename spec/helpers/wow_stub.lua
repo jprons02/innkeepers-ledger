@@ -20,12 +20,14 @@ local function region(kind)
   function r:Hide() self.shown = false end
   function r:IsShown() return self.shown end
   function r:SetPoint(...) self.points[#self.points + 1] = { ... } end
+  function r:ClearAllPoints() self.points = {} end
   function r:SetAllPoints(...) self.allPoints = { ... } end
   function r:SetSize(w, h) self.width, self.height = w, h end
   function r:SetWidth(w) self.width = w end
   function r:SetHeight(h) self.height = h end
   function r:SetText(text) self.text = text end
   function r:GetText() return self.text end
+  function r:SetAlpha(a) self.alpha = a end
   return r
 end
 
@@ -33,15 +35,75 @@ local function new_font_string(layer, template)
   local fs = region("FontString")
   fs.layer, fs.template = layer, template
   function fs:SetJustifyH(j) self.justifyH = j end
+  function fs:SetJustifyV(j) self.justifyV = j end
   function fs:SetWordWrap(on) self.wordWrap = on end
+  function fs:SetFontObject(obj) self.fontObject = obj end
+  function fs:SetTextColor(...) self.textColor = { ... } end
+  function fs:SetShadowOffset(x, y) self.shadowOffset = { x, y } end
   return fs
 end
 
+-- SetTexture(file) records the file and returns true, as the client does for a file it
+-- finds; set wow.textureResult = false per case for one it doesn't.
 local function new_texture(layer)
   local tex = region("Texture")
   tex.layer = layer
   function tex:SetColorTexture(...) self.color = { ... } end
+  function tex:SetTexture(file)
+    self.file = file
+    if M.textureResult == false then
+      return false
+    end
+    return true
+  end
+  function tex:SetTexCoord(...) self.texCoord = { ... } end
+  function tex:SetVertexColor(...) self.vertexColor = { ... } end
   return tex
+end
+
+-- EditBox methods (book.md 6.1). SetText doesn't run OnTextChanged here; wow.type does,
+-- with userInput = true, as typing does in the client.
+local function edit_box(frame)
+  frame.focus, frame.highlights, frame.maxLetters, frame.cursor = false, 0, 0, 0
+  function frame:SetText(text) self.text = text; self.highlighted = false end
+  function frame:SetCursorPosition(n) self.cursor = n end
+  function frame:SetFocus()
+    local was = self.focus
+    self.focus = true
+    if not was and self.scripts.OnEditFocusGained then
+      self.scripts.OnEditFocusGained(self)
+    end
+  end
+  function frame:ClearFocus() self.focus = false end
+  function frame:HasFocus() return self.focus end
+  function frame:HighlightText()
+    self.highlighted = true
+    self.highlights = self.highlights + 1
+  end
+  function frame:SetAutoFocus(on) self.autoFocus = on end
+  function frame:SetMultiLine(on) self.multiLine = on end
+  function frame:SetMaxLetters(n) self.maxLetters = n end
+  function frame:GetMaxLetters() return self.maxLetters end
+  function frame:SetMaxBytes(n) self.maxBytes = n end
+  function frame:SetFontObject(obj) self.fontObject = obj end
+end
+
+-- CheckButton methods: GetChecked returns a boolean; Click() toggles, then runs OnClick.
+local function check_button(frame)
+  frame.checked = false
+  function frame:SetChecked(on) self.checked = on and true or false end
+  function frame:GetChecked() return self.checked end
+  function frame:SetCheckedTexture(tex) self.checkedTexture = tex end
+  function frame:Click(...)
+    if not self.enabled then
+      return
+    end
+    self.checked = not self.checked
+    local handler = self.scripts.OnClick
+    if handler then
+      handler(self, ...)
+    end
+  end
 end
 
 -- CreateFrame(kind, name, parent, template): `parent` and `template` are recorded, not
@@ -77,6 +139,21 @@ local function new_frame(name, kind, parent, template)
     local tex = new_texture(layer)
     self.textures[#self.textures + 1] = tex
     return tex
+  end
+  function frame:SetFrameStrata(strata) self.strata = strata end
+  function frame:SetClampedToScreen(on) self.clamped = on end
+  -- Hide runs OnHide when the frame was shown, as the client does.
+  function frame:Hide()
+    local was = self.shown
+    self.shown = false
+    if was and self.scripts.OnHide then
+      self.scripts.OnHide(self)
+    end
+  end
+  if kind == "EditBox" then
+    edit_box(frame)
+  elseif kind == "CheckButton" then
+    check_button(frame)
   end
   frames[#frames + 1] = frame
   return frame
@@ -168,11 +245,28 @@ local function defaults()
   api.SendChatMessage = function() end
   api.Enum = {}
 
+  -- A named frame is also a global, as in the client (uninstall removes it).
   api.CreateFrame = function(kind, name, parent, template)
-    return new_frame(name, kind, parent, template)
+    local frame = new_frame(name, kind, parent, template)
+    if type(name) == "string" then
+      _G[name] = frame
+    end
+    return frame
   end
   -- The gossip frame Sign anchors to. UnitGUID("npc") stays nil unless a case sets it.
   api.GossipFrame = new_frame("GossipFrame")
+  -- The book's parent, the Escape list and the client's font objects (book.md 6.1). Set
+  -- any to nil per case to test the fallbacks.
+  api.UIParent = new_frame("UIParent")
+  api.UISpecialFrames = {}
+  api.GameFontNormal = { name = "GameFontNormal" }
+  api.GameFontNormalSmall = { name = "GameFontNormalSmall" }
+  api.GameFontNormalLarge = { name = "GameFontNormalLarge" }
+  api.GameFontHighlightSmall = { name = "GameFontHighlightSmall" }
+  api.QuestTitleFont = { name = "QuestTitleFont" }
+  api.date = os.date
+  api.time = os.time
+  M.textureResult = true
 
   -- Chat output lands in wow.chat.
   M.chat = {}
@@ -311,6 +405,15 @@ function M.advance(seconds)
     M.now = M.now + 1
     M.time = M.time + 1
     while run_due() do end
+  end
+end
+
+-- Types `text` into an edit box: sets it and runs OnTextChanged(self, true).
+function M.type(edit, text)
+  edit.text = text
+  local handler = edit.scripts.OnTextChanged
+  if handler then
+    handler(edit, true)
   end
 end
 

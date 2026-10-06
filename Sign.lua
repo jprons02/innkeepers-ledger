@@ -1,7 +1,8 @@
--- Sign (glue): the "Sign the guestbook" button under the gossip frame at a known
--- innkeeper, the composer, and the client reads behind them. Every decision lives in
--- SignFlow (pure); this file holds events, frames, client reads and chat output.
--- Spec: docs/specs/sign.md (sections 3.7 and 3.9). Events only: nothing here hooks the
+-- Sign (glue): the "Sign the guestbook" and "Read the guestbook" buttons under the gossip
+-- frame at a known innkeeper, the composer, and the client reads behind them. Every
+-- decision lives in SignFlow (pure); this file holds events, frames, client reads and chat
+-- output. Specs: docs/specs/sign.md (sections 3.7 and 3.9), docs/specs/book.md (3.12).
+-- Events only: nothing here hooks the
 -- gossip frame, picks a gossip option or touches the fight state. Every client value is
 -- checked for hidden values first, and every handler and click is guarded.
 local _, ns = ...
@@ -145,6 +146,7 @@ local function newText(parent, width)
   return fs
 end
 
+-- The two buttons under the gossip frame, side by side: Sign (left) and Read (right).
 local function ensureButton()
   local ui = Sign.ui
   if ui.button then
@@ -155,12 +157,27 @@ local function ensureButton()
     debug("sign: no gossip frame")
     return nil
   end
-  local b = newButton(parent, TEXT.button, 180, 24)
-  b:SetPoint("TOP", parent, "BOTTOM", 0, -4)
+  local b = newButton(parent, TEXT.button, 160, 24)
+  b:SetPoint("TOPRIGHT", parent, "BOTTOM", -3, -4)
   b:SetScript("OnClick", function() Sign:Open() end)
   b:Hide()
-  ui.button = b
+  local r = newButton(parent, TEXT.read, 160, 24)
+  r:SetPoint("TOPLEFT", parent, "BOTTOM", 3, -4)
+  r:SetScript("OnClick", function() Sign:Read() end)
+  r:Hide()
+  ui.button, ui.read = b, r
   return b
+end
+
+-- Shows or hides both buttons together.
+local function showButtons(on)
+  for _, b in ipairs({ Sign.ui.button, Sign.ui.read }) do
+    if on then
+      b:Show()
+    else
+      b:Hide()
+    end
+  end
 end
 
 local function ensureComposer()
@@ -270,13 +287,8 @@ end
 
 local function onGossipShow()
   local inn = Sign.flow.innAt(readNpc())
-  local button = ensureButton()
-  if button then
-    if inn ~= nil then
-      button:Show()
-    else
-      button:Hide()
-    end
+  if ensureButton() then
+    showButtons(inn ~= nil)
   end
   -- The NPC changed while the composer was open: close it. The same inn keeps its draft.
   local session = Sign.session
@@ -287,7 +299,7 @@ end
 
 local function onGossipClosed()
   if Sign.ui.button then
-    Sign.ui.button:Hide()
+    showButtons(false)
   end
   close()
 end
@@ -350,6 +362,9 @@ local function commit()
     if not pcall(function() ns.Sync:WindowChanged() end) then
       debug("sign: error in sync")
     end
+    if not pcall(function() ns.Book:Changed() end) then
+      debug("sign: error in book")
+    end
     say(SignFlow.message(res, session.name))
     debug("sign: added")
     return
@@ -386,6 +401,14 @@ end
 -- The composer's Sign button: one own entry, then Sync announces it.
 function Sign.Commit() -- called as Sign:Commit()
   guard("commit", commit)
+end
+
+-- The Read button: opens the book on this innkeeper's inn. It never signs, checks resting
+-- or picks a gossip option.
+function Sign.Read() -- called as Sign:Read()
+  guard("read", function()
+    ns.Book:OpenInn(Sign.flow.innAt(readNpc()))
+  end)
 end
 
 function Sign.Cancel() -- called as Sign:Cancel()

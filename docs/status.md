@@ -5,9 +5,9 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-06 (**phrase voices** (#100): 8 voices, 156 templates, an Oddities
-category, a voice per composer line; free text stays out. Earlier the same day: signing
-works in the client at Calmbreeze Inn)
+**Updated:** 2026-10-06 (**phrase voices** merged (#100, #101): 8 voices, 156 templates,
+an Oddities category, a voice per composer line; free text stays out. Released to `main`
+the same day; the beta install holds it)
 
 ## Current state
 
@@ -32,16 +32,18 @@ works in the client at Calmbreeze Inn)
   Templates and conjunctions now come in 8 voices (Hearthside, Bardic, Grumbler,
   Scholar, Rowdy, Mystic, Sailor, Noble), with 175 words including **Oddities**. The
   composer has a voice row per line, so one signature can mix two voices. Grammar, wire
-  and export are unchanged.
+  and export are unchanged. An independent review rewrote 24 lines that failed in some
+  combination (the content rules gained "no payment or service frame"). The beta install
+  was refreshed with it (the client was closed; it loads on the next start).
 - **Wording:** players sign the inn's **guestbook**. The AddOn stays *Innkeeper's Ledger*
   (decision 2026-10-02).
-- **Not built:** `UI/Book`; the list-style composer (#102, blocked on #100). Phrase and
-  cosmetic sets, the composer's look and the signing messages are DRAFTs.
+- **Not built:** `UI/Book`; the list-style composer (#102, `ready`). Phrase and cosmetic
+  sets, the composer's look and the signing messages are DRAFTs.
 - **Releasing is wired up (#81, #86):** see
   [CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing). CurseForge `1721704` and
   Wago `n6VYeONd` are in the TOC.
 - **CI:** eight required checks on `main` and `dev`, all runnable locally except
-  `package`. **Releases:** `main` holds everything through 2026-10-01. No tags or
+  `package`. **Releases:** `main` holds everything through 2026-10-06. No tags or
   published builds yet (maintainer gate).
 
 ## Next step

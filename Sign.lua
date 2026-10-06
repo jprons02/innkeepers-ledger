@@ -115,12 +115,12 @@ end
 -- Frames. The composer is a DRAFT (spec 3.7): its look, layout and labels are the
 -- maintainer's to decide.
 
-local COMPOSER_W, COMPOSER_H = 380, 470
+local COMPOSER_W, COMPOSER_H = 380, 530
 local LABEL_W = 290
 local ROWS = { -- field, offset from the top
-  { "t1", -64 }, { "cat1", -94 }, { "w1", -124 },
-  { "c", -194 }, { "t2", -224 }, { "cat2", -254 }, { "w2", -284 },
-  { "seal", -324 },
+  { "v1", -64 }, { "t1", -94 }, { "cat1", -124 }, { "w1", -154 },
+  { "v2", -222 }, { "c", -252 }, { "t2", -282 }, { "cat2", -312 }, { "w2", -342 },
+  { "seal", -382 },
 }
 
 local function gossipFrame()
@@ -202,11 +202,11 @@ local function ensureComposer()
   end
 
   ui.toggle = newButton(f, TEXT.addSecond, 200, 22)
-  ui.toggle:SetPoint("TOP", f, "TOP", 0, -156)
+  ui.toggle:SetPoint("TOP", f, "TOP", 0, -188)
   ui.toggle:SetScript("OnClick", function() Sign:ToggleSecond() end)
 
   ui.preview = newText(f, COMPOSER_W - 40)
-  ui.preview:SetPoint("TOP", f, "TOP", 0, -362)
+  ui.preview:SetPoint("TOP", f, "TOP", 0, -420)
 
   ui.sign = newButton(f, TEXT.sign, 120, 24)
   ui.sign:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 40, 16)
@@ -243,10 +243,12 @@ local function refresh()
   end
   ui.inn:SetText(session.name or "")
   local rows = ui.rows
+  showRow(rows.v1, v.v1, v.voiceRow)
   showRow(rows.t1, v.t1, true)
   showRow(rows.cat1, v.cat1, v.word1)
   showRow(rows.w1, v.w1, v.word1)
   ui.toggle:SetText(v.second and TEXT.removeSecond or TEXT.addSecond)
+  showRow(rows.v2, v.v2, v.second and v.voiceRow)
   showRow(rows.c, v.c, v.second)
   showRow(rows.t2, v.t2, v.second)
   showRow(rows.cat2, v.cat2, v.second and v.word2)

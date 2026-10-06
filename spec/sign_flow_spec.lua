@@ -631,8 +631,9 @@ describe("the draft", function()
 
   it("steps every field both ways with wrap-around", function()
     local P = REAL.Phrase
-    local sizes = { t1 = #P.templates(), cat1 = #P.categories(), w1 = #P.words(1),
-      c = #P.conjunctions(), t2 = #P.templates(), cat2 = #P.categories(), w2 = #P.words(1) }
+    local sizes = { v1 = #P.voices(), t1 = #P.templates(1), cat1 = #P.categories(),
+      w1 = #P.words(1), v2 = #P.voices(), c = #P.conjunctions(1), t2 = #P.templates(1),
+      cat2 = #P.categories(), w2 = #P.words(1) }
     for field, n in pairs(sizes) do
       assert.is_true(n > 1, field)
       local d = real.newDraft({})
@@ -664,20 +665,21 @@ describe("the draft", function()
     d:setSecond(true)
     d:step("w2", 1)
     d:step("cat2", -1)
-    assert.equal(REAL.Phrase.text(REAL.Phrase.words(8)[1]), d:view().w2)
+    local last = #REAL.Phrase.categories()
+    assert.equal(REAL.Phrase.text(REAL.Phrase.words(last)[1]), d:view().w2)
   end)
 
   it("leaves the word out of a slotless template", function()
     local d = real.newDraft({})
-    d:step("t1", -1) -- the last template, 106, has no slot
+    d:step("t1", -1) -- Hearthside's last template, 111, has no slot
     local v = d:view()
     assert.is_false(v.word1)
-    assert.equal("The fire was warm.", v.t1)
-    assert.same({ 106 }, d:ids())
+    assert.equal("Thank you for everything.", v.t1)
+    assert.same({ 111 }, d:ids())
     d:setSecond(true)
     d:step("t2", -1)
     assert.is_false(d:view().word2)
-    assert.same({ 106, 501, 106 }, d:ids())
+    assert.same({ 111, 501, 111 }, d:ids())
   end)
 
   it("adds and removes the second line", function()
@@ -757,6 +759,120 @@ describe("the draft", function()
     d:step("c", 1)
     assert.is_nil(d:ids())
     assert.is_nil(d:view().c)
+  end)
+
+  it("starts in the first voice, and line 2 follows line 1's voice until it's chosen", function()
+    local d = real.newDraft({})
+    local v = d:view()
+    assert.is_true(v.voiceRow)
+    assert.equal("Voice: Hearthside", v.v1)
+    assert.equal("Voice: Hearthside", v.v2)
+    d:step("v1", 1)
+    v = d:view()
+    assert.equal("Voice: Bardic", v.v1)
+    assert.equal("Let the ballads tell of ___!", v.t1)
+    assert.same({ 201, 1001 }, d:ids())
+    d:setSecond(true)
+    assert.equal("Voice: Bardic", d:view().v2)
+    assert.same({ 201, 1001, 511, 201, 1001 }, d:ids())
+    d:step("v1", -1) -- line 2 still follows
+    assert.same({ 1, 1001, 501, 1, 1001 }, d:ids())
+    d:step("v2", -1) -- now chosen: Noble, the last voice
+    assert.equal("Voice: Noble", d:view().v2)
+    assert.same({ 1, 1001, 571, 381, 1001 }, d:ids())
+    d:step("t2", 1)
+    d:step("v1", 1) -- line 2 keeps its own voice and template
+    assert.equal("Voice: Bardic", d:view().v1)
+    assert.equal("Voice: Noble", d:view().v2)
+    assert.same({ 201, 1001, 571, 382, 1001 }, d:ids())
+    assert.is_true(REAL.Phrase.validIds(d:ids()))
+  end)
+
+  it("resets the template on a voice change, and the conjunction on line 2's", function()
+    local d = real.newDraft({})
+    d:step("t1", 1)
+    d:step("v1", 1)
+    d:step("v1", -1)
+    assert.same({ 1, 1001 }, d:ids())
+    d:setSecond(true)
+    d:step("c", 1)
+    d:step("t2", 1)
+    d:step("v2", 1)
+    d:step("v2", -1)
+    assert.same({ 1, 1001, 501, 1, 1001 }, d:ids())
+  end)
+
+  it("pairs every voice with every voice in a valid two-line phrase", function()
+    local P = REAL.Phrase
+    local n = #P.voices()
+    for a = 1, n do
+      for b = 1, n do
+        local d = real.newDraft({})
+        d:setSecond(true)
+        d:step("v2", 1) -- choose line 2's voice first, so line 1's steps leave it alone
+        d:step("v2", -1)
+        for _ = 2, b do
+          d:step("v2", 1)
+        end
+        for _ = 2, a do
+          d:step("v1", 1)
+        end
+        local ids = d:ids()
+        assert.is_true(P.validIds(ids), a .. "/" .. b)
+        assert.equal(a, P.voice(ids[1]))
+        assert.equal(b, P.voice(ids[3]))
+        assert.equal(b, P.voice(ids[4]))
+      end
+    end
+  end)
+
+  it("offers one unnamed group when the set has no voices", function()
+    local d = newFlow().newDraft({})
+    local v = d:view()
+    assert.is_false(v.voiceRow)
+    assert.is_nil(v.v1)
+    assert.is_nil(v.v2)
+    d:step("t1", 1)
+    d:step("v1", 1) -- one group: wraps to itself, so line 1 keeps its template
+    assert.same({ 2 }, d:ids())
+  end)
+
+  it("skips a voice with no template, and lends every conjunction to a voice with none", function()
+    local data, cats = phraseData()
+    data[1].voice = 1
+    data[2].voice = 3
+    data[500].voice = 1
+    local phrase = NS.Phrase.bind(data, cats, { "Warm", "Empty", "Gruff" })
+    assert.same({}, phrase.invalid)
+    local d = newFlow({ phrase = phrase }).newDraft({})
+    d:step("v1", 1)
+    assert.equal("Voice: Gruff", d:view().v1) -- Empty was skipped
+    assert.same({ 2 }, d:ids())
+    d:setSecond(true)
+    assert.equal("And then...", d:view().c) -- Gruff has no conjunction of its own
+    assert.same({ 2, 500, 2 }, d:ids())
+  end)
+
+  it("treats junk from voices as no voices, and a voices that throws as no draft", function()
+    local base = NS.Phrase.bind(phraseData())
+    local function with(voices)
+      local phrase = {}
+      for k, fn in pairs(base) do
+        phrase[k] = fn
+      end
+      phrase.voices = voices
+      return newFlow({ phrase = phrase })
+    end
+    for _, voices in ipairs({
+      function() return "x" end,
+      function() return { 5, true } end,
+      "not a function",
+    }) do
+      local d = with(voices).newDraft({})
+      assert.is_false(d:view().voiceRow)
+      assert.same({ 1, 1000 }, d:ids())
+    end
+    assert.is_nil(with(function() error("boom") end).newDraft({}))
   end)
 
   it("cycles the seals: none, then each in turn, both ways", function()

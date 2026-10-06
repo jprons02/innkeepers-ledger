@@ -12,6 +12,10 @@
 phrase set in [§9](#9-draft-phrase-set-draft) is a DRAFT and the maintainer decides it
 (a `CLAUDE.md` gate). It ships as written until then, and the question is tracked in
 [status.md](../status.md). Nothing else in this spec waits on that answer.
+**Amended 2026-10-06 (#100):** voices (an optional `voice` on templates and conjunctions,
+`PhraseVoices`, `voices()` / `voice(id)` / `templates(v)` / `conjunctions(v)`), the
+Oddities category and the larger draft set; [decisions.md](../decisions.md) → *Phrase
+voices; free text stays out*.
 **Security-sensitive:** yes, moderately. `Phrase.validIds` runs on every received entry
 (it's `SyncProtocol`'s rule 16 hook), and `render` turns peer-chosen ID sequences into
 text the UI shows. The reviewer applies security-level scrutiny to [§5](#5-security-notes)
@@ -76,8 +80,8 @@ value is a record:
 
 | Kind | Record | ID range |
 |---|---|---|
-| template | `{ kind = "template", text = <string> }` | 1..499 |
-| conjunction | `{ kind = "conj", text = <string> }` | 500..599 |
+| template | `{ kind = "template", voice = <int>?, text = <string> }` | 1..499 |
+| conjunction | `{ kind = "conj", voice = <int>?, text = <string> }` | 500..599 |
 | word | `{ kind = "word", cat = <int>, text = <string> }` | 1000..9999 |
 
 - IDs 600..999 are **reserved** (unused; room for a fourth kind later).
@@ -92,6 +96,17 @@ value is a record:
 - `ns.Data.PhraseCategories` is an array of category names, index = category number
   (`{ "Hearth and home", "Food and drink", … }`). Names are UI labels only; they never
   appear in an entry or its rendering.
+- **Voices** group templates and conjunctions for the composer: `ns.Data.PhraseVoices`
+  is an array of voice names (`{ "Hearthside", "Bardic", … }`), and a template's or
+  conjunction's optional `voice` is an index into it. A voice is a UI label only: it never
+  appears in an entry, it doesn't change the grammar, and any template still takes any
+  word. The shipped data gives every template and conjunction a voice.
+- **Template and conjunction IDs by voice** (allocation convention, like the word
+  blocks): voice 1 keeps the first draft's IDs, slotted from 1 and slotless from 101;
+  voice `v ≥ 2` takes a block of 30 from `201 + 30(v − 2)`, slotted from the block's
+  start and slotless from +20. Conjunctions of voice `v` start at `501 + 10(v − 1)`. That
+  leaves room for 10 voices (the tenth with 9 conjunction IDs, since 600 is reserved);
+  `voicesMax` (50) only bounds the bind loop.
 - **Stability:** before the first public release the draft can change freely. From the
   first release on, an ID is never reused and its meaning never changes (stored entries
   and other players' books depend on it); new phrases get new IDs. See
@@ -122,9 +137,12 @@ flag is **not** in v1.
    - **conj:** 4..`conjBytes` bytes; first byte `A-Z`; ends with `...`.
    - **word:** 1..`wordBytes` bytes; first and last byte `a-z`; `cat` an integer in
      1..`#categories` (the bound category list).
-6. A category name is a string of 1..`categoryBytes` (40) bytes under rules 3–4 (no
-   `{w}`) with first byte `A-Z`. The category list is read as `1..n` up to the first
-   missing or invalid name; later names, and words pointing at them, are excluded.
+   - **template or conj with a `voice`:** an integer in 1..`#voices` (the bound voice
+     list). A word has no `voice` field (rule 2).
+6. A category or voice name is a string of 1..`categoryBytes` (40) bytes under rules 3–4
+   (no `{w}`) with first byte `A-Z`. Each list is read as `1..n` (voices: at most
+   `voicesMax`, 50) up to the first missing or invalid name; later names, and records
+   pointing at them, are excluded.
 
 ### 3.3 Grammar
 
@@ -186,15 +204,15 @@ Returned arrays are new tables each call; changing them changes nothing inside `
 | Name | Value |
 |---|---|
 | `Phrase.SLOT` | `"{w}"` |
-| `Phrase.LIMITS` | `{ idsMax = Ledger.LIMITS.phraseIdsMax (5), idMax = Ledger.LIMITS.phraseIdMax (9999), templateBytes = 48, conjBytes = 16, wordBytes = 24, categoryBytes = 40, renderBytes = 160 }` — the two sync numbers are **read from `Ledger.LIMITS`**, not second literals |
+| `Phrase.LIMITS` | `{ idsMax = Ledger.LIMITS.phraseIdsMax (5), idMax = Ledger.LIMITS.phraseIdMax (9999), templateBytes = 48, conjBytes = 16, wordBytes = 24, categoryBytes = 40, renderBytes = 160, voicesMax = 50 }` — the two sync numbers are **read from `Ledger.LIMITS`**, not second literals |
 | `Phrase.RANGES` | `{ template = { 1, 499 }, conj = { 500, 599 }, word = { 1000, 9999 }, block = 100 }` |
 | `Phrase.SHAPES` | `{ t = true, TW = true, tCt = true, tCTW = true, TWCt = true, TWCTW = true }` |
 
-**`Phrase.bind(data, categories)`** → a **set**: a table holding the functions below as
+**`Phrase.bind(data, categories, voices)`** → a **set**: a table holding the functions below as
 closures over a private copy of the valid records, plus `set.invalid`. Validation and
-indexing happen once, here. A non-table `data` or `categories` counts as empty.
-`set.invalid` is an array of short strings naming what was excluded (`"id 12"`,
-`"category 4"`), for tests and the debug report; order unspecified. `bind` copies every
+indexing happen once, here. A non-table `data`, `categories` or `voices` counts as
+empty. `set.invalid` is an array of short strings naming what was excluded (`"id 12"`,
+`"category 4"`, `"voice 9"`), for tests and the debug report; order unspecified. `bind` copies every
 text it keeps, so changing `data` afterwards changes nothing.
 
 **Set functions** (each also exposed on `Phrase` for the default set, [§3.7](#37-loading-and-binding)):
@@ -207,8 +225,10 @@ text it keeps, so changing `data` afterwards changes nothing.
 | `kind(id)` | `"template"`, `"conj"`, `"word"` or `nil` |
 | `text(id)` | the record's text (templates keep `{w}`, so the builder can show a blank), or `nil` |
 | `hasSlot(id)` | `true` only for a slotted template, else `false` |
-| `templates()` | template IDs, ascending |
-| `conjunctions()` | conjunction IDs, ascending |
+| `templates(v)` | template IDs, ascending: all of them when `v` is `nil`, voice `v`'s for a bound voice number, `{}` for anything else |
+| `conjunctions(v)` | conjunction IDs, the same way |
+| `voice(id)` | the voice number of a template or conjunction, or `nil` (no voice, a word, unknown, hostile) |
+| `voices()` | voice names, index = voice number |
 | `categories()` | category names, index = category number |
 | `words(cat)` | the word IDs of category `cat`, ascending; `{}` for anything else |
 
@@ -231,7 +251,7 @@ proportional to the input.
 
 Entries propagate with no moderator, and an AddOn that spreads offensive content is the
 author's problem ([addon-policy.md](../addon-policy.md), Rule 6). The draft allows about
-2 200 one-clause and 19 million two-clause phrases, far too many to read, so safety comes
+19 000 one-clause and 11 billion two-clause phrases, far too many to read, so safety comes
 from rules on the parts that make every combination safe:
 
 **Words** (every one must satisfy all of these):
@@ -263,6 +283,15 @@ from rules on the parts that make every combination safe:
 4. The only person a template names is the reader ("traveler", "friend"). No template
    names the innkeeper or makes anyone the source of the slot: "Ask the innkeeper about
    good company" reads as a tavern euphemism (#62 review).
+5. **No payment or service frame around the slot:** no template pays for, buys, orders,
+   sends for or summons its slot ("Paid good coin. Got {w}." reads as a euphemism with
+   "good company"), and no "does {w}" (2026-10-06).
+
+**Voices** are temperaments (gruff, courtly, salty), never a race, class, faction or
+real-world group, and no voice imitates a real-world accent. A gruff voice praises
+grudgingly ("Can't fault {w}."); it never complains about its slot (template rule 1).
+**Oddities** words are gentle humor about things ("a suspicious stew", "the leaky
+roof"), under the same word rules.
 
 **Conjunctions** are neutral connectors with no content of their own.
 
@@ -292,8 +321,8 @@ rule is caught in CI.
 - At load, `Phrase.lua`:
   1. `assert(ns.Ledger, …)` (a packaging bug, like `SyncProtocol`'s assert).
   2. `local data = type(ns.Data) == "table" and ns.Data.Phrases or nil`, same for
-     `PhraseCategories`.
-  3. `local default = Phrase.bind(data, categories)` and copies its ten functions and
+     `PhraseCategories` and `PhraseVoices`.
+  3. `local default = Phrase.bind(data, categories, voices)` and copies its twelve functions and
      `invalid` onto `Phrase` (`Phrase.validIds = default.validIds`, …).
 - So `Phrase.validIds` takes the **single `ids` argument** `Sync` passes
   (`realDeps` reads `ns.Phrase.validIds` at `Start`, after every file has loaded), and
@@ -493,7 +522,7 @@ Loads `Data/Phrases.lua` (strict environment) and `Phrase.lua`:
   rendering (the longest slotted template with the longest word, twice, joined by the
   longest conjunction) is rendered through `render` and is ≤ `LIMITS.renderBytes` (160),
   and equals the formula of 3.4 step 5 for those lengths. Every one-clause rendering of
-  the real set (templates × words, about 2 200) is ≤ 160 bytes and passes the byte
+  the real set (templates × words, about 19 000) is ≤ 160 bytes and passes the byte
   allow-list.
 - **Tripwire deny-list** (3.6): split every template, conjunction and word text into
   lowercase letter runs; none is in a list the test keeps, at least: `bed bath naked
@@ -501,11 +530,20 @@ Loads `Data/Phrases.lua` (strict environment) and `Phrase.lua`:
   sausage peach peaches breast thigh hole tongue rear hand head heart belly blood kill
   die dead death horde alliance human dwarf dwarves elf elves gnome gnomes orc orcs troll
   trolls tauren undead forsaken warrior mage priest rogue hunter warlock paladin druid
-  shaman man woman men women boy girl`. Category names are not checked (they never enter
-  an entry). A failing word is changed or the list is amended with a reason in the PR.
-- The counts match §9 (24 templates, 4 conjunctions, 120 words, 8 categories), so a
-  wording change that drops a record is visible in review. (Update the numbers with the
-  wording; they aren't a rule.)
+  shaman man woman men women boy girl innkeeper stayed milk staff goblin goblins worgen
+  chest meat mount pay paid coin coins buy bought stool trade`. Category and voice names are not
+  checked (they never enter an entry). A failing word is changed or the list is amended with a reason in the PR.
+- The counts match §9 (156 templates, 109 slotted; 30 conjunctions; 175 words; 9
+  categories; 8 voices, with the per-voice counts), so a wording change that drops a
+  record is visible in review. (Update the numbers with the wording; they aren't a rule.)
+- Every template and conjunction has a voice, inside its voice's ID block (§3.1), and the
+  per-voice template lists together are the whole list; voice names pass rule 6 and
+  don't repeat.
+- **Voices (fixture):** a voice per template and conj binds and filters
+  (`templates(v)`, `conjunctions(v)`, `voice(id)`); a bad `voice` (0, beyond the list,
+  1.5, `"1"`, NaN, `true`) excludes that record; a word with a `voice` is excluded; a hole
+  or bad name ends the voice list there; non-table `voices` binds none; names stop at
+  `voicesMax`; hostile voice arguments give `{}` / `nil`; returned lists are copies.
 
 ### 6.4 With `SyncProtocol` (integration)
 
@@ -566,8 +604,9 @@ rejecting). A second message with one entry at inn 1239 using an unknown ID
   fails, so every own entry is one peers will accept. `compose` keeps the non-`nil`
   arguments in order and ignores their positions (`compose(nil, nil, 101)` is `{101}`),
   so the builder passes the parts in the order it wants them, not by slot.
-- **UI / phrase builder:** lists parts with `templates()`, `conjunctions()`,
-  `categories()`, `words(cat)` and `text(id)` (showing `Phrase.SLOT` as a blank);
+- **UI / phrase builder:** lists parts with `voices()`, `templates(v)`,
+  `conjunctions(v)`, `categories()`, `words(cat)` and `text(id)` (showing `Phrase.SLOT`
+  as a blank);
   never hard-codes an ID. Shows `render` output as plain text (never as a format string
   or a `gsub` replacement). When `render` returns `nil` (an entry stored under an older
   draft, or damaged), it shows a neutral fallback; that wording is the UI slice's
@@ -582,61 +621,167 @@ rejecting). A second message with one entry at inn 1239 using an unknown ID
 ## 9. Draft phrase set (DRAFT)
 
 **Wording is the maintainer's decision** (open question 1). Everything below passes
-§3.2 and was checked against §3.6. Counts: **24 templates** (18 slotted, 6 slotless),
-**4 conjunctions**, **120 words** in **8 categories** of 15.
+§3.2 and was checked against §3.6. Counts: **156 templates** (109 slotted, 47 slotless) in **8 voices**,
+**30 conjunctions**, **175 words** in **9 categories** (20 each, Oddities 15).
+Generated from `Data/Phrases.lua`; the table there is the source of truth.
 
-### Templates (1..499)
+### Voices, templates and conjunctions
 
-| ID | Text | | ID | Text |
+**1. Hearthside**: warm and earnest (the first draft's tone, plus a newcomer's delight).
+
+| ID | Template | | ID | Template |
 |---|---|---|---|---|
-| 1 | `Rested here, dreaming of {w}.` | | 10 | `Tomorrow, {w}.` |
-| 2 | `Lingered a day longer for {w}.` | | 11 | `Will miss {w}.` |
-| 3 | `Here's to {w}!` | | 12 | `Raised a cup to {w}.` |
-| 4 | `Grateful for {w}.` | | 13 | `The road led me to {w}.` |
-| 5 | `Found {w} here.` | | 14 | `Stopped to rest, thought of {w}.` |
-| 6 | `Warmed by {w}.` | | 15 | `Heard songs of {w}.` |
-| 7 | `Remember {w}.` | | 16 | `Traded tales of {w}.` |
-| 8 | `Seek {w}, traveler.` | | 17 | `Write home about {w}.` |
-| 9 | `Never forget {w}.` | | 18 | `May you find {w}.` |
+| 1 | `Rested here, dreaming of {w}.` | | 19 | `Today I saw {w} for the first time!` |
+| 2 | `Lingered a day longer for {w}.` | | 20 | `Will sing the praises of {w}!` |
+| 3 | `Here's to {w}!` | | 21 | `A toast to {w}, and to you.` |
+| 4 | `Grateful for {w}.` | | 22 | `Glad I stopped for {w}.` |
+| 5 | `Found {w} here.` | | 23 | `Will think of {w} on the road.` |
+| 6 | `Warmed by {w}.` | | 24 | `Nothing beats {w}.` |
+| 7 | `Remember {w}.` | | 25 | `Look after {w} for me.` |
+| 8 | `Seek {w}, traveler.` | | 101 | `Rest well, traveler.` |
+| 9 | `Never forget {w}.` | | 102 | `Slept like a stone.` |
+| 10 | `Tomorrow, {w}.` | | 103 | `Safe travels, friend.` |
+| 11 | `Will miss {w}.` | | 104 | `Passed through here.` |
+| 12 | `Raised a cup to {w}.` | | 105 | `I will be back.` |
+| 13 | `The road led me to {w}.` | | 106 | `The fire was warm.` |
+| 14 | `Stopped to rest, thought of {w}.` | | 107 | `Signing my very first guestbook!` |
+| 15 | `Heard songs of {w}.` | | 108 | `Best inn ever!` |
+| 16 | `Traded tales of {w}.` | | 109 | `Felt right at home.` |
+| 17 | `Write home about {w}.` | | 110 | `Left in better spirits.` |
+| 18 | `May you find {w}.` | | 111 | `Thank you for everything.` |
 
-Slotless:
+Conjunctions: 501 `And then...` · 502 `But...` · 503 `Even so...` · 504 `Best of all...` · 505 `Oh, and...` · 506 `Later...` · 507 `Still...`
 
-| ID | Text |
-|---|---|
-| 101 | `Rest well, traveler.` |
-| 102 | `Slept like a stone.` |
-| 103 | `Safe travels, friend.` |
-| 104 | `Passed through here.` |
-| 105 | `I will be back.` |
-| 106 | `The fire was warm.` |
+**2. Bardic**: grandiose and poetic.
 
-### Conjunctions (500..599)
+| ID | Template | | ID | Template |
+|---|---|---|---|---|
+| 201 | `Let the ballads tell of {w}!` | | 211 | `Thus began the ballad of {w}.` |
+| 202 | `O, the splendor of {w}!` | | 212 | `Inspired anew by {w}.` |
+| 203 | `Verses shall be written of {w}.` | | 213 | `An ode to {w}!` |
+| 204 | `Sing, friends, of {w}!` | | 214 | `Penned a verse on {w}.` |
+| 205 | `A song yet unsung, of {w}.` | | 215 | `Raise your voices for {w}!` |
+| 206 | `Hark! Behold {w}!` | | 221 | `A tale worth singing.` |
+| 207 | `Let the lutes ring out for {w}!` | | 222 | `Songs shall be sung of this inn!` |
+| 208 | `Legends will speak of {w}.` | | 223 | `What a night, what a tale!` |
+| 209 | `Here I found {w}, and a tale besides.` | | 224 | `Encore! Encore!` |
+| 210 | `Of {w} I sing!` | | 225 | `The end, for now.` |
 
-| ID | Text |
-|---|---|
-| 501 | `And then...` |
-| 502 | `But...` |
-| 503 | `Even so...` |
-| 504 | `Best of all...` |
+Conjunctions: 511 `And lo...` · 512 `Alas...` · 513 `Hark...` · 514 `Verily...`
+
+**3. Grumbler**: gruff and terse; praise given grudgingly, never a complaint.
+
+| ID | Template | | ID | Template |
+|---|---|---|---|---|
+| 231 | `Can't fault {w}.` | | 241 | `Grumbled less, thanks to {w}.` |
+| 232 | `Grudgingly, I'll allow {w}.` | | 242 | `Even I smiled at {w}.` |
+| 233 | `Could get used to {w}.` | | 243 | `Begrudging nod to {w}.` |
+| 234 | `Still thinking about {w}. Fine.` | | 251 | `Stew was hot. That's something.` |
+| 235 | `Back for {w}, and the quiet.` | | 252 | `Adequate.` |
+| 236 | `Would trudge back for {w}.` | | 253 | `Roof didn't leak. Much.` |
+| 237 | `Least it had {w}.` | | 254 | `Slept. Left.` |
+| 238 | `Can't argue with {w}.` | | 255 | `Would return. Probably.` |
+| 239 | `Grudging thanks for {w}.` | | 256 | `Could be worse.` |
+| 240 | `Worth the walk for {w}.` | |  |  |
+
+Conjunctions: 521 `Mind you...` · 522 `Anyway...` · 523 `Then again...`
+
+**4. Scholar**: fussy and precise.
+
+| ID | Template | | ID | Template |
+|---|---|---|---|---|
+| 261 | `Of particular interest, {w}.` | | 270 | `Hypothesis confirmed, {w}.` |
+| 262 | `Field notes, day nine. Found {w}.` | | 271 | `Footnote, regarding {w}.` |
+| 263 | `Further study of {w} is warranted.` | | 272 | `Sketched {w} in the margins.` |
+| 264 | `Noted for posterity, {w}.` | | 281 | `Lodgings deemed satisfactory.` |
+| 265 | `Added {w} to my notes.` | | 282 | `Catalogued. Moving on.` |
+| 266 | `Observed {w}, as predicted.` | | 283 | `Results inconclusive. Will return.` |
+| 267 | `Cross-referenced {w}. Fascinating.` | | 284 | `Peer review pending.` |
+| 268 | `See appendix nine, on {w}.` | | 285 | `Quiet enough to read.` |
+| 269 | `A treatise on {w} is overdue.` | |  |  |
+
+Conjunctions: 531 `Furthermore...` · 532 `Notably...` · 533 `In summary...` · 534 `However...`
+
+**5. Rowdy**: loud and jolly.
+
+| ID | Template | | ID | Template |
+|---|---|---|---|---|
+| 291 | `Three cheers for {w}!` | | 299 | `Cheers to {w}, all round!` |
+| 292 | `Huzzah for {w}!` | | 300 | `Raised the roof for {w}!` |
+| 293 | `Hooray for {w}!` | | 301 | `One more song for {w}!` |
+| 294 | `Sang off-key for {w}!` | | 311 | `Best night in ages!` |
+| 295 | `Raised a tankard to {w}!` | | 312 | `Sing louder, friends!` |
+| 296 | `Let's hear it for {w}!` | | 313 | `One more verse!` |
+| 297 | `All hail {w}!` | | 314 | `Loudest inn on the road!` |
+| 298 | `Louder, for {w}!` | | 315 | `What a racket!` |
+
+Conjunctions: 541 `Huzzah, and...` · 542 `Then, LOUDER...` · 543 `Better yet...`
+
+**6. Mystic**: cryptic and dreamy.
+
+| ID | Template | | ID | Template |
+|---|---|---|---|---|
+| 321 | `The stars whisper of {w}.` | | 330 | `Listen. Do you hear {w}?` |
+| 322 | `In dreams, I glimpsed {w}.` | | 331 | `Destiny points to {w}.` |
+| 323 | `The cards foretold {w}.` | | 332 | `Three omens, and then {w}.` |
+| 324 | `Seek {w} where the road bends.` | | 341 | `All roads circle back here.` |
+| 325 | `All paths lead to {w}.` | | 342 | `The fire knows my name.` |
+| 326 | `The candle flickered at {w}.` | | 343 | `Some doors open only once.` |
+| 327 | `The tea leaves showed {w}.` | | 344 | `I was expected.` |
+| 328 | `Who can fathom {w}?` | | 345 | `The wind told me to stay.` |
+| 329 | `The moon remembers {w}.` | |  |  |
+
+Conjunctions: 551 `And yet...` · 552 `So it seems...` · 553 `Or perhaps...`
+
+**7. Sailor**: salty and nautical.
+
+| ID | Template | | ID | Template |
+|---|---|---|---|---|
+| 351 | `Dropped anchor, glad of {w}.` | | 359 | `Spotted {w} off the starboard bow.` |
+| 352 | `Fair winds and {w}!` | | 360 | `Weighed anchor, still thinking of {w}.` |
+| 353 | `Ship's log notes {w}.` | | 361 | `Smoother sailing with {w}.` |
+| 354 | `Charted a course for {w}.` | | 371 | `Solid ground at last.` |
+| 355 | `Crossed seven seas for {w}.` | | 372 | `Smells less of fish than most.` |
+| 356 | `Hoist the sails for {w}!` | | 373 | `The floor won't stop rocking.` |
+| 357 | `Ring the ship's bell in honor of {w}!` | | 374 | `Ahoy, and farewell!` |
+| 358 | `Nothing like {w} after a storm.` | | 375 | `Shipshape, this inn.` |
+
+Conjunctions: 561 `Ahoy...` · 562 `By the tides...` · 563 `Avast...`
+
+**8. Noble**: pompous and courtly.
+
+| ID | Template | | ID | Template |
+|---|---|---|---|---|
+| 381 | `One does appreciate {w}.` | | 389 | `Commission a portrait of {w}.` |
+| 382 | `We are most pleased with {w}.` | | 390 | `Worthy of the family name, {w}.` |
+| 383 | `Kindly note our approval of {w}.` | | 401 | `Quite tolerable, really.` |
+| 384 | `Rather charmed by {w}, actually.` | | 402 | `Adequate, all things considered.` |
+| 385 | `We raise a glass to {w}.` | | 403 | `We shall return. Perhaps.` |
+| 386 | `Not unlike {w} back at the estate.` | | 404 | `The silverware was real!` |
+| 387 | `Made tolerable by {w}.` | | 405 | `How quaint. How utterly quaint.` |
+| 388 | `Inform the court of {w}.` | |  |  |
+
+Conjunctions: 571 `Moreover...` · 572 `Naturally...` · 573 `One must add...`
 
 ### Words (1000..9999, one block of 100 per category)
 
 | # | Category (block) | Words, IDs from block + 1 in this order |
 |---|---|---|
-| 1 | Hearth and home (1000..1099) | home, the hearth, a warm fire, a cozy corner, the common room, a good night's sleep, a warm blanket, a lantern's glow, a rocking chair, a window seat, the creaky stairs, a roof overhead, the inn's cat, the stables, a quiet room |
-| 2 | Food and drink (1100..1199) | fresh bread, hot stew, a bowl of soup, sweet rolls, honey cakes, apple pie, a wheel of cheese, roast boar, fresh berries, a hearty breakfast, a second helping, hot tea, warm porridge, spiced cider, a mug of ale |
-| 3 | Company (1200..1299) | old friends, new friends, good company, fellow travelers, my companions, the guild, the whole party, a warm welcome, a kind word, a good deed, a shared meal, a good laugh, tall tales, a song by the fire, a game of cards |
-| 4 | The road (1300..1399) | the long road, the open road, a winding path, the next town, the mountain pass, a river crossing, the ferry, a shortcut, a well-worn map, a trusty compass, a signpost, a quiet trail, the crossroads, the way home, faraway lands |
-| 5 | Places (1400..1499) | the sea, the mountains, the deep forest, a quiet village, the big city, the harbor, rolling hills, a still lake, a waterfall, the meadow, the old bridge, the countryside, a hidden valley, the coast, the snowy peaks |
-| 6 | Sky and seasons (1500..1599) | the morning sun, a starry night, the full moon, soft rain, fresh snow, a summer breeze, autumn leaves, the first frost, a thunderstorm, morning mist, a rainbow, the sunset, the dawn, the harvest, spring flowers |
-| 7 | Adventure (1600..1699) | adventure, treasure, a new quest, an old legend, a lucky find, a hidden cave, ancient ruins, a secret door, a sunken ship, a glinting gem, a dragon, the wolves, the murlocs, a long climb, the unknown |
-| 8 | Of the heart (1700..1799) | rest, peace and quiet, a fresh start, good fortune, hope, courage, sweet dreams, a clear mind, wonder, patience, a second chance, simple joys, a long nap, old memories, the little things |
+| 1 | Hearth and home (1000..1099) | home, the hearth, a warm fire, a cozy corner, the common room, a good night's sleep, a warm blanket, a lantern's glow, a rocking chair, a window seat, the creaky stairs, a roof overhead, the inn's cat, the stables, a quiet room, a crackling log, the kettle, a spare candle, the doorstep, a full larder |
+| 2 | Food and drink (1100..1199) | fresh bread, hot stew, a bowl of soup, sweet rolls, honey cakes, apple pie, a wheel of cheese, roast boar, fresh berries, a hearty breakfast, a second helping, hot tea, warm porridge, spiced cider, a mug of ale, baked apples, a slice of cake, fish chowder, griddle cakes, a crusty loaf |
+| 3 | Company (1200..1299) | old friends, new friends, good company, fellow travelers, my companions, the guild, the whole party, a warm welcome, a kind word, a good deed, a shared meal, a good laugh, tall tales, a song by the fire, a game of cards, a friendly wave, a good riddle, a long chat, a round of toasts, a fond farewell |
+| 4 | The road (1300..1399) | the long road, the open road, a winding path, the next town, the mountain pass, a river crossing, the ferry, a shortcut, a well-worn map, a trusty compass, a signpost, a quiet trail, the crossroads, the way home, faraway lands, a sturdy wagon, a muddy track, the final stretch, a dusty road, the town gate |
+| 5 | Places (1400..1499) | the sea, the mountains, the deep forest, a quiet village, the big city, the harbor, rolling hills, a still lake, a waterfall, the meadow, the old bridge, the countryside, a hidden valley, the coast, the snowy peaks, a lighthouse, the marshes, the old mill, a mossy glade, the desert |
+| 6 | Sky and seasons (1500..1599) | the morning sun, a starry night, the full moon, soft rain, fresh snow, a summer breeze, autumn leaves, the first frost, a thunderstorm, morning mist, a rainbow, the sunset, the dawn, the harvest, spring flowers, a shooting star, the evening star, a gentle drizzle, the long winter, a clear sky |
+| 7 | Adventure (1600..1699) | adventure, treasure, a new quest, an old legend, a lucky find, a hidden cave, ancient ruins, a secret door, a sunken ship, a glinting gem, a dragon, the wolves, the murlocs, a long climb, the unknown, a dusty tome, a riddle in stone, a giant spider, the kobolds, the high seas |
+| 8 | Of the heart (1700..1799) | rest, peace and quiet, a fresh start, good fortune, hope, courage, sweet dreams, a clear mind, wonder, patience, a second chance, simple joys, a long nap, old memories, the little things, gratitude, kindness, good cheer, belonging, a new chapter |
+| 9 | Oddities (1800..1899) | a suspicious stew, the wobbly table, a very loud rooster, a stubborn mule, the leaky roof, a lopsided bench, an angry goose, a mysterious noise, a talking parrot, a squeaky door, a singing kettle, a runaway chicken, an ominous creak, too many candles, a very small dragon |
 
-So `1001` = "home", `1002` = "the hearth", …, `1015` = "a quiet room"; `1101` = "fresh
-bread"; `1715` = "the little things".
+So `1001` = "home", `1002` = "the hearth", …; `1101` = "fresh bread"; `1801` = "a
+suspicious stew".
 
-Longest parts: template 14 (32 bytes), word 1006 "a good night's sleep" (20 bytes),
-conjunction 504 (14 bytes); the worst-case rendering is 114 bytes.
+Longest parts: template 360 (38 bytes), word 1006 "a good night's sleep" (20 bytes),
+conjunction 542 (15 bytes); the worst-case rendering is 127 bytes.
 
 ## Assumptions (listed for the maintainer)
 
@@ -661,10 +806,10 @@ conjunction 504 (14 bytes); the worst-case rendering is 114 bytes.
 
 ## Open questions (maintainer)
 
-1. **The wording of the draft set** (§9: templates, conjunctions, words, category names)
-   and its tone: warm inn-and-road lines with a little Dark Souls whimsy ("Lingered a day
-   longer for the murlocs"). Ship as is, or redirect? Doesn't block the build or merge;
-   the IDs can change freely until the first release.
+1. **The wording of the draft set** (§9: voices, templates, conjunctions, words,
+   category and voice names). The maintainer chose the voices direction on 2026-10-06;
+   individual lines are still open to rewording. Doesn't block the build or merge; the
+   IDs can change freely until the first release.
 2. **Alcohol words:** keep "a mug of ale" and "spiced cider" (inns sell both in the game),
    or keep the set alcohol-free?
 3. **Game creature words:** keep Warcraft flavor like "the murlocs", or keep every word

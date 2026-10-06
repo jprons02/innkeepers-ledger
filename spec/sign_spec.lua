@@ -318,6 +318,9 @@ describe("Sign: signing", function()
     assert.equal("Calmbreeze Inn", ui.inn:GetText())
     assert.equal("Rested here, dreaming of home.", ui.preview:GetText())
     assert.equal("Rested here, dreaming of ___.", ui.rows.t1.label:GetText())
+    assert.equal("Voice: Hearthside", ui.rows.v1.label:GetText())
+    assert.is_true(ui.rows.v1.next:IsShown())
+    assert.is_false(ui.rows.v2.label:IsShown())
     assert.is_true(ui.rows.w1.label:IsShown())
     assert.is_false(ui.rows.c.label:IsShown())
     assert.is_false(ui.rows.seal.prev:IsShown())
@@ -329,17 +332,19 @@ describe("Sign: signing", function()
     ui.toggle:Click()
     assert.equal("Remove the second line", ui.toggle:GetText())
     assert.is_true(ui.rows.c.label:IsShown())
+    assert.is_true(ui.rows.v2.label:IsShown())
+    assert.equal("Voice: Hearthside", ui.rows.v2.label:GetText())
     assert.is_true(ui.rows.w2.next:IsShown())
     assert.equal("Lingered a day longer for the hearth. And then... Rested here, dreaming of "
       .. "home.", ui.preview:GetText())
     ui.rows.t2.prev:Click() -- the last template has no slot
     assert.is_false(ui.rows.w2.label:IsShown())
-    assert.equal("Lingered a day longer for the hearth. And then... The fire was warm.",
+    assert.equal("Lingered a day longer for the hearth. And then... Thank you for everything.",
       ui.preview:GetText())
 
     local n = #wow.chat
     ui.sign:Click()
-    assert.same({ { inn = CALM, t = NOW, phrase = { 2, 1002, 501, 106 } } }, saved().own)
+    assert.same({ { inn = CALM, t = NOW, phrase = { 2, 1002, 501, 111 } } }, saved().own)
     assert.same({ [2] = NOW, [101] = NOW, [1003] = NOW, [1101] = NOW }, saved().earned)
     assert.equal(1, window.n)
     local lines = chatSince(n)
@@ -347,6 +352,23 @@ describe("Sign: signing", function()
     assert.is_true(has(lines[1], "You signed the guestbook of Calmbreeze Inn."))
     assert.is_false(composerShown(ns))
     assert.is_nil(ns.Sign.session)
+  end)
+
+  it("writes each line in its own voice", function()
+    local ns = login()
+    click(ns)
+    local ui = ns.Sign.ui
+    ui.rows.v1.next:Click()
+    assert.equal("Voice: Bardic", ui.rows.v1.label:GetText())
+    assert.equal("Let the ballads tell of home!", ui.preview:GetText())
+    ui.toggle:Click()
+    assert.equal("Voice: Bardic", ui.rows.v2.label:GetText()) -- follows line 1
+    ui.rows.v2.next:Click()
+    assert.equal("Voice: Grumbler", ui.rows.v2.label:GetText())
+    assert.equal("Let the ballads tell of home! Mind you... Can't fault home.",
+      ui.preview:GetText())
+    ui.sign:Click()
+    assert.same({ { inn = CALM, t = NOW, phrase = { 201, 1001, 521, 231, 1001 } } }, saved().own)
   end)
 
   it("signs with a seal the next week", function()

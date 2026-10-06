@@ -102,8 +102,8 @@ None of these block work. Drafts ship and get retuned
   Wago is unverified until the first upload (the packager's `-g` overrides it).
 - **Release gate: `Data/Inns` must be complete for what it ships.** Earned cosmetics are
   never taken away, and the `zone`, `continent` and `all` rules count only the inns the
-  data knows. The beta's first signature, at the only known inn, earned 1101, 101, 1003
-  *and* 2 at once (2026-10-05). Beta saves don't carry over to live, but a partial atlas
+  data knows. The beta's first signature, at the only known inn, earned 1101 (an ink, since
+  dropped), 101, 1003 *and* 2 at once (2026-10-05). Beta saves don't carry over to live, but a partial atlas
   in a release would hand out "every inn" for good. Before the first tag, either every
   Forever inn is in the data, or the rules gain a guard (e.g. a per-zone "complete" mark,
   a `collection-cosmetics.md` change).

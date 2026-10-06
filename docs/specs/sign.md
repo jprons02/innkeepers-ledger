@@ -541,7 +541,7 @@ Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
 - **Sign end to end:** click → composer shown with the preview `Rested here, dreaming of
   home.`; step `t1` and `w1` through the row buttons and toggle the second line → the
   preview follows; Sign → one own entry in `db.global.ledgers[guid].own` with the
-  composed IDs and no seal; `earned` holds 1101, 1003, 2 and 101 at the entry's time;
+  composed IDs and no seal; `earned` holds 1003, 2 and 101 at the entry's time;
   `ns.Sync.WindowChanged` called once (spy); one `added` chat line naming *Calmbreeze
   Inn*; composer hidden.
 - **Next week with a seal:** advance `wow.now` past the reset; click → the seal row shows;
@@ -558,7 +558,7 @@ Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
   prints, no error escapes; `flow.commit` stubbed to raise → `Nothing was signed.`, no
   error escapes; `wow.errors` stays empty in every case.
 - **Core at login:** a saved ledger with one own entry at `254089` and an empty `earned`
-  → after login `earned` = `{ [2] = t, [101] = t, [1003] = t, [1101] = t }`; a read-only
+  → after login `earned` = `{ [2] = t, [101] = t, [1003] = t }`; a read-only
   ledger → the saved table is unchanged (deep compare); `Sign.RecordUnlocks` raising →
   the ledger still opens and `Sync` still starts.
 - `spec/addon_load_spec.lua`: `ns.SignFlow` is a table; the TOC, `load.PURE` and
@@ -606,7 +606,8 @@ from disk after a `/reload`:
    template set; the second line's voice follows until stepped; nothing overlaps in the
    530-pixel frame.
 3. Sign → the `added` line; after `/reload`, `InnkeepersLedger.lua` holds one own entry
-   at `254089` and `earned` holds 1101, 1003, 2, 101.
+   at `254089` and `earned` holds 1003, 2, 101 (and 1101 in a
+   save from before 2026-10-06: an ink, since dropped, and ignored).
 4. A second click the same week → the `too_soon` line, and the reset it names matches the
    beta's Tuesday 16:00 UTC.
 5. Closing the gossip mid-compose hides the composer; talking to another NPC with it open

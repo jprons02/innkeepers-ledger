@@ -598,17 +598,17 @@ times, never the clock. Coverage floor 90% for both modules (already in
 
 ### 6.4 `unlocked` and earned times
 
-- **Alliance, E, no kept:** exactly `{1, T+100}, {103, T+100}, {1102, T+100}, {101,
-  T+300}, {1001, T+300}, {1101, T+300}, {2, T+400}, {102, T+400}` (the `(t, id)` order).
+- **Alliance, E, no kept:** exactly `{1, T+100}, {103, T+100}, {1003, T+100}, {101,
+  T+300}, {1001, T+300}, {1002, T+300}, {2, T+400}, {102, T+400}` (the `(t, id)` order).
   Seal 104 (Horde's zone) is absent.
-- **Horde, E:** exactly `{101, T}, {1102, T}, {1, T+100}`.
+- **Horde, E:** exactly `{101, T}, {1003, T}, {1, T+100}`.
 - **Every time is an own entry's `t`** (checked for both cases), and the same input twice
   and a shuffled input give deep-equal results.
 - **Empty data:** `{}` for any entries (no rule can be met with `total 0`).
 - **Kept floor, one case each:**
-  - F plus a new neutral inn `[5004]` in zone 10, Alliance, no kept → 101, 2 gone, 1101
-    moves to T+400; with `kept = { [101] = T+300, [2] = T+400, [1101] = T+300 }` → 101 at
-    T+300, 2 at T+400, 1101 at T+300 (the smaller time).
+  - F plus a new neutral inn `[5004]` in zone 10, Alliance, no kept → 101, 2 gone, 1002
+    moves to T+400; with `kept = { [101] = T+300, [2] = T+400, [1002] = T+300 }` → 101 at
+    T+300, 2 at T+400, 1002 at T+300 (the smaller time).
   - F without 5101 (zone 11 loses its only inn), `kept = { [102] = T+400 }` → 102 still
     unlocked at T+400 (e5's time; e5 now counts as `unknown` and still anchors it).
   - `kept = { [1] = T }` → seal 1 at T (earlier than derived T+100, and e1's time).

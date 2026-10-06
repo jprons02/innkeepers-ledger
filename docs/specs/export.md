@@ -248,7 +248,7 @@ their limits instead of repeating literals.
 
 **Why these limits.** `ownMax` 10 000: an honest ledger holds at most one entry per inn
 per week, and 10 000 means signing about 14 inns every day for two years. `cosmeticsMax`
-1 200 covers every ID `Cosmetics` can produce (99 milestone seals + 899 zone seals + 200
+1 200 covers every ID `Cosmetics` can produce (99 milestone seals + 899 zone seals + 100
 quills). `mapItemsMax` 1 000 is above the 899 zones that can carry a seal.
 `serializedMax` 4 MiB is a backstop above the largest string `build` can produce
 (≈ 2.2 MB, [§3.10](#310-size-budget)), so it never refuses a `build` result; it stops a

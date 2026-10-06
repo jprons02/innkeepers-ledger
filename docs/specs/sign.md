@@ -217,7 +217,9 @@ one unnamed group holds `templates()` and `conjunctions()`, and the voice rows h
 Line 1 uses group `v1` for `t1`; line 2 uses group `v2` for `c` and `t2`. Changing `v1`
 resets `t1`; changing `v2` resets `c` and `t2`. **Line 2 follows line 1's voice** (moving
 `v1` also sets `v2` and resets `c`, `t2`) until the player steps `v2` once; from then on
-the two are independent.
+the two are independent. A step that wraps a one-item list back to itself changes
+nothing and resets nothing. When any voice group exists, a template or conjunction with
+no `voice` isn't offered; the shipped data gives every one a voice (a test checks it).
 
 | Method | Does |
 |---|---|

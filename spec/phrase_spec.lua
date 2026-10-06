@@ -1067,7 +1067,7 @@ describe("Data/Phrases (the draft set)", function()
       blood kill die dead death horde alliance human dwarf dwarves elf elves gnome gnomes
       orc orcs troll trolls tauren undead forsaken warrior mage priest rogue hunter warlock
       paladin druid shaman man woman men women boy girl innkeeper stayed milk staff
-      goblin goblins worgen chest meat mount pay paid coin coins buy bought
+      goblin goblins worgen chest meat mount pay paid coin coins buy bought stool trade
     ]]):gmatch("%S+") do
       DENY[w] = true
     end

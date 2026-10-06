@@ -832,8 +832,9 @@ describe("the draft", function()
     assert.is_false(v.voiceRow)
     assert.is_nil(v.v1)
     assert.is_nil(v.v2)
-    d:step("v1", 1) -- one group: wraps to itself
-    assert.same({ 1, 1000 }, d:ids())
+    d:step("t1", 1)
+    d:step("v1", 1) -- one group: wraps to itself, so line 1 keeps its template
+    assert.same({ 2 }, d:ids())
   end)
 
   it("skips a voice with no template, and lends every conjunction to a voice with none", function()

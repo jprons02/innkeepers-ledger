@@ -36,7 +36,9 @@ with canned phrases (*Canned phrases, not free text*,
 - **Content rules gain one line:** no template pays for, buys, orders or summons its slot.
   With the Company words in the slot, a payment frame ("Paid good coin. Got {w}.") reads
   as a provider-and-service euphemism. The tripwire adds `pay paid coin coins buy bought
-  chest meat mount goblin goblins worgen`.
+  chest meat mount goblin goblins worgen stool trade`. The review replaced 24 lines that
+  failed in some combination (e.g. "Rhymes with {w}" invited unstated crude rhymes;
+  "What is {w}" broke agreement with plural words).
 
 *Rejected:* free text, synced or private (above); typed slots per voice (the "any word
 fits" rule keeps the content argument simple); a voice stored in the entry (peers don't

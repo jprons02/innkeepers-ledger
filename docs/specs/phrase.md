@@ -105,7 +105,8 @@ value is a record:
   blocks): voice 1 keeps the first draft's IDs, slotted from 1 and slotless from 101;
   voice `v ≥ 2` takes a block of 30 from `201 + 30(v − 2)`, slotted from the block's
   start and slotless from +20. Conjunctions of voice `v` start at `501 + 10(v − 1)`. That
-  leaves room for 10 voices in the template range and 10 in the conjunction range.
+  leaves room for 10 voices (the tenth with 9 conjunction IDs, since 600 is reserved);
+  `voicesMax` (50) only bounds the bind loop.
 - **Stability:** before the first public release the draft can change freely. From the
   first release on, an ID is never reused and its meaning never changes (stored entries
   and other players' books depend on it); new phrases get new IDs. See
@@ -530,7 +531,7 @@ Loads `Data/Phrases.lua` (strict environment) and `Phrase.lua`:
   die dead death horde alliance human dwarf dwarves elf elves gnome gnomes orc orcs troll
   trolls tauren undead forsaken warrior mage priest rogue hunter warlock paladin druid
   shaman man woman men women boy girl innkeeper stayed milk staff goblin goblins worgen
-  chest meat mount pay paid coin coins buy bought`. Category and voice names are not
+  chest meat mount pay paid coin coins buy bought stool trade`. Category and voice names are not
   checked (they never enter an entry). A failing word is changed or the list is amended with a reason in the PR.
 - The counts match §9 (156 templates, 109 slotted; 30 conjunctions; 175 words; 9
   categories; 8 voices, with the per-voice counts), so a wording change that drops a
@@ -631,10 +632,10 @@ Generated from `Data/Phrases.lua`; the table there is the source of truth.
 | ID | Template | | ID | Template |
 |---|---|---|---|---|
 | 1 | `Rested here, dreaming of {w}.` | | 19 | `Today I saw {w} for the first time!` |
-| 2 | `Lingered a day longer for {w}.` | | 20 | `Will tell everyone about {w}!` |
+| 2 | `Lingered a day longer for {w}.` | | 20 | `Will sing the praises of {w}!` |
 | 3 | `Here's to {w}!` | | 21 | `A toast to {w}, and to you.` |
 | 4 | `Grateful for {w}.` | | 22 | `Glad I stopped for {w}.` |
-| 5 | `Found {w} here.` | | 23 | `Thinking of you, and of {w}.` |
+| 5 | `Found {w} here.` | | 23 | `Will think of {w} on the road.` |
 | 6 | `Warmed by {w}.` | | 24 | `Nothing beats {w}.` |
 | 7 | `Remember {w}.` | | 25 | `Look after {w} for me.` |
 | 8 | `Seek {w}, traveler.` | | 101 | `Rest well, traveler.` |
@@ -656,9 +657,9 @@ Conjunctions: 501 `And then...` · 502 `But...` · 503 `Even so...` · 504 `Best
 | ID | Template | | ID | Template |
 |---|---|---|---|---|
 | 201 | `Let the ballads tell of {w}!` | | 211 | `Thus began the ballad of {w}.` |
-| 202 | `O, the splendor of {w}!` | | 212 | `My muse stirred at {w}.` |
+| 202 | `O, the splendor of {w}!` | | 212 | `Inspired anew by {w}.` |
 | 203 | `Verses shall be written of {w}.` | | 213 | `An ode to {w}!` |
-| 204 | `Sing, friends, of {w}!` | | 214 | `Rhymes with {w}, near enough.` |
+| 204 | `Sing, friends, of {w}!` | | 214 | `Penned a verse on {w}.` |
 | 205 | `A song yet unsung, of {w}.` | | 215 | `Raise your voices for {w}!` |
 | 206 | `Hark! Behold {w}!` | | 221 | `A tale worth singing.` |
 | 207 | `Let the lutes ring out for {w}!` | | 222 | `Songs shall be sung of this inn!` |
@@ -676,11 +677,11 @@ Conjunctions: 511 `And lo...` · 512 `Alas...` · 513 `Hark...` · 514 `Verily..
 | 232 | `Grudgingly, I'll allow {w}.` | | 242 | `Even I smiled at {w}.` |
 | 233 | `Could get used to {w}.` | | 243 | `Begrudging nod to {w}.` |
 | 234 | `Still thinking about {w}. Fine.` | | 251 | `Stew was hot. That's something.` |
-| 235 | `Back for {w}, not the chatter.` | | 252 | `Adequate.` |
+| 235 | `Back for {w}, and the quiet.` | | 252 | `Adequate.` |
 | 236 | `Would trudge back for {w}.` | | 253 | `Roof didn't leak. Much.` |
 | 237 | `Least it had {w}.` | | 254 | `Slept. Left.` |
 | 238 | `Can't argue with {w}.` | | 255 | `Would return. Probably.` |
-| 239 | `Recommend {w}.` | | 256 | `Could be worse.` |
+| 239 | `Grudging thanks for {w}.` | | 256 | `Could be worse.` |
 | 240 | `Worth the walk for {w}.` | |  |  |
 
 Conjunctions: 521 `Mind you...` · 522 `Anyway...` · 523 `Then again...`
@@ -705,14 +706,14 @@ Conjunctions: 531 `Furthermore...` · 532 `Notably...` · 533 `In summary...` ·
 
 | ID | Template | | ID | Template |
 |---|---|---|---|---|
-| 291 | `Three cheers for {w}!` | | 299 | `A round for {w}, on me!` |
+| 291 | `Three cheers for {w}!` | | 299 | `Cheers to {w}, all round!` |
 | 292 | `Huzzah for {w}!` | | 300 | `Raised the roof for {w}!` |
-| 293 | `Bring on {w}!` | | 301 | `One more song for {w}!` |
+| 293 | `Hooray for {w}!` | | 301 | `One more song for {w}!` |
 | 294 | `Sang off-key for {w}!` | | 311 | `Best night in ages!` |
-| 295 | `Toasted {w} till dawn!` | | 312 | `Sing louder, friends!` |
-| 296 | `Who's ready for {w}?` | | 313 | `Again! Again!` |
+| 295 | `Raised a tankard to {w}!` | | 312 | `Sing louder, friends!` |
+| 296 | `Let's hear it for {w}!` | | 313 | `One more verse!` |
 | 297 | `All hail {w}!` | | 314 | `Loudest inn on the road!` |
-| 298 | `Louder, for {w}!` | | 315 | `No regrets!` |
+| 298 | `Louder, for {w}!` | | 315 | `What a racket!` |
 
 Conjunctions: 541 `Huzzah, and...` · 542 `Then, LOUDER...` · 543 `Better yet...`
 
@@ -723,26 +724,26 @@ Conjunctions: 541 `Huzzah, and...` · 542 `Then, LOUDER...` · 543 `Better yet..
 | 321 | `The stars whisper of {w}.` | | 330 | `Listen. Do you hear {w}?` |
 | 322 | `In dreams, I glimpsed {w}.` | | 331 | `Destiny points to {w}.` |
 | 323 | `The cards foretold {w}.` | | 332 | `Three omens, and then {w}.` |
-| 324 | `Seek {w} where the shadows fall.` | | 341 | `All roads circle back here.` |
+| 324 | `Seek {w} where the road bends.` | | 341 | `All roads circle back here.` |
 | 325 | `All paths lead to {w}.` | | 342 | `The fire knows my name.` |
 | 326 | `The candle flickered at {w}.` | | 343 | `Some doors open only once.` |
 | 327 | `The tea leaves showed {w}.` | | 344 | `I was expected.` |
-| 328 | `What is {w}, truly?` | | 345 | `The wind told me to stay.` |
+| 328 | `Who can fathom {w}?` | | 345 | `The wind told me to stay.` |
 | 329 | `The moon remembers {w}.` | |  |  |
 
-Conjunctions: 551 `And yet...` · 552 `Then, softly...` · 553 `Or perhaps...`
+Conjunctions: 551 `And yet...` · 552 `So it seems...` · 553 `Or perhaps...`
 
 **7. Sailor**: salty and nautical.
 
 | ID | Template | | ID | Template |
 |---|---|---|---|---|
-| 351 | `Dropped anchor for {w}.` | | 359 | `Spotted {w} off the starboard bow.` |
+| 351 | `Dropped anchor, glad of {w}.` | | 359 | `Spotted {w} off the starboard bow.` |
 | 352 | `Fair winds and {w}!` | | 360 | `Weighed anchor, still thinking of {w}.` |
 | 353 | `Ship's log notes {w}.` | | 361 | `Smoother sailing with {w}.` |
 | 354 | `Charted a course for {w}.` | | 371 | `Solid ground at last.` |
 | 355 | `Crossed seven seas for {w}.` | | 372 | `Smells less of fish than most.` |
 | 356 | `Hoist the sails for {w}!` | | 373 | `The floor won't stop rocking.` |
-| 357 | `Ring the ship's bell for {w}!` | | 374 | `Ahoy, and farewell!` |
+| 357 | `Ring the ship's bell in honor of {w}!` | | 374 | `Ahoy, and farewell!` |
 | 358 | `Nothing like {w} after a storm.` | | 375 | `Shipshape, this inn.` |
 
 Conjunctions: 561 `Ahoy...` · 562 `By the tides...` · 563 `Avast...`
@@ -754,10 +755,10 @@ Conjunctions: 561 `Ahoy...` · 562 `By the tides...` · 563 `Avast...`
 | 381 | `One does appreciate {w}.` | | 389 | `Commission a portrait of {w}.` |
 | 382 | `We are most pleased with {w}.` | | 390 | `Worthy of the family name, {w}.` |
 | 383 | `Kindly note our approval of {w}.` | | 401 | `Quite tolerable, really.` |
-| 384 | `Rather charmed by {w}, actually.` | | 402 | `Adequate for persons of quality.` |
-| 385 | `Our compliments on {w}.` | | 403 | `We shall return. Perhaps.` |
+| 384 | `Rather charmed by {w}, actually.` | | 402 | `Adequate, all things considered.` |
+| 385 | `We raise a glass to {w}.` | | 403 | `We shall return. Perhaps.` |
 | 386 | `Not unlike {w} back at the estate.` | | 404 | `The silverware was real!` |
-| 387 | `Tolerable, given {w}.` | | 405 | `How quaint. How utterly quaint.` |
+| 387 | `Made tolerable by {w}.` | | 405 | `How quaint. How utterly quaint.` |
 | 388 | `Inform the court of {w}.` | |  |  |
 
 Conjunctions: 571 `Moreover...` · 572 `Naturally...` · 573 `One must add...`
@@ -768,13 +769,13 @@ Conjunctions: 571 `Moreover...` · 572 `Naturally...` · 573 `One must add...`
 |---|---|---|
 | 1 | Hearth and home (1000..1099) | home, the hearth, a warm fire, a cozy corner, the common room, a good night's sleep, a warm blanket, a lantern's glow, a rocking chair, a window seat, the creaky stairs, a roof overhead, the inn's cat, the stables, a quiet room, a crackling log, the kettle, a spare candle, the doorstep, a full larder |
 | 2 | Food and drink (1100..1199) | fresh bread, hot stew, a bowl of soup, sweet rolls, honey cakes, apple pie, a wheel of cheese, roast boar, fresh berries, a hearty breakfast, a second helping, hot tea, warm porridge, spiced cider, a mug of ale, baked apples, a slice of cake, fish chowder, griddle cakes, a crusty loaf |
-| 3 | Company (1200..1299) | old friends, new friends, good company, fellow travelers, my companions, the guild, the whole party, a warm welcome, a kind word, a good deed, a shared meal, a good laugh, tall tales, a song by the fire, a game of cards, a friendly wave, a good riddle, a long chat, a round of toasts, a fair trade |
-| 4 | The road (1300..1399) | the long road, the open road, a winding path, the next town, the mountain pass, a river crossing, the ferry, a shortcut, a well-worn map, a trusty compass, a signpost, a quiet trail, the crossroads, the way home, faraway lands, a sturdy wagon, a muddy track, the last mile, a dusty road, the town gate |
+| 3 | Company (1200..1299) | old friends, new friends, good company, fellow travelers, my companions, the guild, the whole party, a warm welcome, a kind word, a good deed, a shared meal, a good laugh, tall tales, a song by the fire, a game of cards, a friendly wave, a good riddle, a long chat, a round of toasts, a fond farewell |
+| 4 | The road (1300..1399) | the long road, the open road, a winding path, the next town, the mountain pass, a river crossing, the ferry, a shortcut, a well-worn map, a trusty compass, a signpost, a quiet trail, the crossroads, the way home, faraway lands, a sturdy wagon, a muddy track, the final stretch, a dusty road, the town gate |
 | 5 | Places (1400..1499) | the sea, the mountains, the deep forest, a quiet village, the big city, the harbor, rolling hills, a still lake, a waterfall, the meadow, the old bridge, the countryside, a hidden valley, the coast, the snowy peaks, a lighthouse, the marshes, the old mill, a mossy glade, the desert |
 | 6 | Sky and seasons (1500..1599) | the morning sun, a starry night, the full moon, soft rain, fresh snow, a summer breeze, autumn leaves, the first frost, a thunderstorm, morning mist, a rainbow, the sunset, the dawn, the harvest, spring flowers, a shooting star, the evening star, a gentle drizzle, the long winter, a clear sky |
 | 7 | Adventure (1600..1699) | adventure, treasure, a new quest, an old legend, a lucky find, a hidden cave, ancient ruins, a secret door, a sunken ship, a glinting gem, a dragon, the wolves, the murlocs, a long climb, the unknown, a dusty tome, a riddle in stone, a giant spider, the kobolds, the high seas |
 | 8 | Of the heart (1700..1799) | rest, peace and quiet, a fresh start, good fortune, hope, courage, sweet dreams, a clear mind, wonder, patience, a second chance, simple joys, a long nap, old memories, the little things, gratitude, kindness, good cheer, belonging, a new chapter |
-| 9 | Oddities (1800..1899) | a suspicious stew, the wobbly table, a very loud rooster, a stubborn mule, the leaky roof, a three-legged stool, an angry goose, a mysterious noise, a talking parrot, a squeaky door, a singing kettle, a runaway chicken, an ominous puddle, too many candles, a very small dragon |
+| 9 | Oddities (1800..1899) | a suspicious stew, the wobbly table, a very loud rooster, a stubborn mule, the leaky roof, a lopsided bench, an angry goose, a mysterious noise, a talking parrot, a squeaky door, a singing kettle, a runaway chicken, an ominous creak, too many candles, a very small dragon |
 
 So `1001` = "home", `1002` = "the hearth", …; `1101` = "fresh bread"; `1801` = "a
 suspicious stew".

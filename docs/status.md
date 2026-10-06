@@ -5,8 +5,9 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-06 (**signing works in the client**: `Sign` (#96) at Calmbreeze Inn,
-the first inn in `Data/Inns`; wording is "guestbook"; release to `main` on 2026-10-01)
+**Updated:** 2026-10-06 (**phrase voices** (#100): 8 voices, 156 templates, an Oddities
+category, a voice per composer line; free text stays out. Earlier the same day: signing
+works in the client at Calmbreeze Inn)
 
 ## Current state
 
@@ -26,10 +27,16 @@ the first inn in `Data/Inns`; wording is "guestbook"; release to `main` on 2026-
   "Sign the guestbook" button at known innkeepers, a DRAFT composer, and a pure `SignFlow`
   module. In the beta, the button showed only at Coriella and a signature survived a
   restart. A second click named the Tuesday 16:00 UTC reset.
+- **Phrase voices (#100, decision 2026-10-06):** the maintainer asked for free text up
+  to ~200 characters, then chose to keep canned phrases with more personality instead.
+  Templates and conjunctions now come in 8 voices (Hearthside, Bardic, Grumbler,
+  Scholar, Rowdy, Mystic, Sailor, Noble), with 175 words including **Oddities**. The
+  composer has a voice row per line, so one signature can mix two voices. Grammar, wire
+  and export are unchanged.
 - **Wording:** players sign the inn's **guestbook**. The AddOn stays *Innkeeper's Ledger*
   (decision 2026-10-02).
-- **Not built:** `UI/Book`. Phrase and cosmetic sets, the composer's look and the
-  signing messages are DRAFTs.
+- **Not built:** `UI/Book`; the list-style composer (#102, blocked on #100). Phrase and
+  cosmetic sets, the composer's look and the signing messages are DRAFTs.
 - **Releasing is wired up (#81, #86):** see
   [CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing). CurseForge `1721704` and
   Wago `n6VYeONd` are in the TOC.
@@ -41,6 +48,8 @@ the first inn in `Data/Inns`; wording is "guestbook"; release to `main` on 2026-
 
 - **Agents:** write and build the `UI/Book` ticket (contracts in each spec's §8;
   [collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
+  Then #102: browse phrases in lists instead of arrow cyclers (156 templates are a lot
+  of clicking).
 - **In the client (maintainer, as you play):** keep ILProbe enabled, talk to every
   innkeeper you pass and `/reload` now and then; each one becomes a `Data/Inns` record.
   After merges, agents refresh the installed copy
@@ -56,8 +65,9 @@ the first inn in `Data/Inns`; wording is "guestbook"; release to `main` on 2026-
 
 None of these block work. Drafts ship and get retuned
 ([decisions.md](decisions.md) → *Maintainer-gated content ships as a DRAFT*).
-- **Phrase wording (#62):** the DRAFT in [phrase.md §9](specs/phrase.md#9-draft-phrase-set-draft):
-  ship or redirect? Alcohol words? "the murlocs"?
+- **Phrase wording (#62):** the voices direction is chosen (2026-10-06); the lines in
+  [phrase.md §9](specs/phrase.md#9-draft-phrase-set-draft) are still open to rewording as
+  you play. Alcohol words? "the murlocs" and "the kobolds"?
 - **Cosmetic catalog (#63):** the DRAFT in
   [collection-cosmetics.md §9](specs/collection-cosmetics.md#9-draft-catalog-draft): the
   set, names and thresholds. Does "every inn" mean your faction's inns? Should a zone
@@ -75,8 +85,8 @@ None of these block work. Drafts ship and get retuned
 [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)):
 - More innkeepers.
 - The rest of the signing checks: the composer closing with the gossip and with the
-  vendor option, cycling and the second line, and a sealed signature after
-  2026-10-06 16:00 UTC.
+  vendor option, cycling and the second line, the new voice rows (a screenshot of the
+  taller composer), and a sealed signature after 2026-10-06 16:00 UTC.
 - A second character in a party: round-trips; `got hello PARTY`, not `drop unresolved`;
   `UnitFullName("partyN")`; and the same in a cross-realm or group-finder group.
 - A guild round-trip, and one dungeon run.

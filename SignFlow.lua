@@ -520,7 +520,11 @@ function SignFlow.new(deps)
       if list == nil or #list == 0 then
         return
       end
+      local before = st[field]
       st[field] = (st[field] - 1 + delta) % #list + 1
+      if st[field] == before then
+        return -- a one-item list wraps to itself: nothing changed, so nothing resets
+      end
       if field == "cat1" then
         st.w1 = 1
       elseif field == "cat2" then

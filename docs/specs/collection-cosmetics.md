@@ -75,7 +75,7 @@ against, and the shapes the book and the export read. It ships a draft catalog.
 **Out:**
 - Filling `Data/Inns`, `Zones`, `Continents` (#12; [§8](#8-contract-for-later-slices)
   says what the walk records).
-- `Sign` attaching a seal and recording unlocks, the seal/quill/ink pickers, the
+- `Sign` attaching a seal and recording unlocks, the seal and quill pickers, the
   collection view (`UI/Book`), `Export` (#64). [§8](#8-contract-for-later-slices) fixes
   what each must do.
 - Counting other travelers' entries toward anything. Progress and unlocks come from the
@@ -84,7 +84,7 @@ against, and the shapes the book and the export read. It ships a draft catalog.
 - Camps, continents' own seals, badges as a separate kind, "home inn" or repeat-visit
   rewards, percentage thresholds, localization of place names. Not in v1 (see
   [Open questions](#open-questions-maintainer) for the ones worth asking about).
-- Any change to the wire format: quills and inks are not on the wire (only `seal` is).
+- Any change to the wire format: quills are not on the wire (only `seal` is).
 
 ## 3. Approach
 
@@ -239,17 +239,17 @@ One ID space of 1..`Ledger.LIMITS.cosmeticIdMax` (9 999), the key space of `earn
 | (reserved) | 100 | never used |
 | seal (zone) | 101..999 | the zone's `seal` field in `Data/Zones` |
 | quill | 1000..1099 | `Data/Cosmetics` |
-| ink | 1100..1199 | `Data/Cosmetics` |
+| (reserved) | 1100..1199 | held inks until 2026-10-06 (none released); never reused |
 | (reserved) | 1200..9999 | later kinds (never reused for these) |
 
 - **Every seal is ≤ 999** (`Ledger.LIMITS.sealMax`), because seals are the one cosmetic
-  that travels on the wire. Quills and inks never do, so they sit above it.
+  that travels on the wire. Quills never do, so they sit above it.
 - **Zone seal IDs are stable because they are stored, not computed.** Each zone record
   carries its own `seal`, allocated once in the order zones are added (101, 102, …) and
   never reused. Adding a zone takes the next free number; no existing seal moves. The
   zone's map ID can't be the seal ID (Classic-era map IDs are in the 1400s, over 999), and
   a position in a list would renumber on insert.
-- **`Data/Cosmetics`** is one table keyed by ID (seals 1..99, quills, inks):
+- **`Data/Cosmetics`** is one table keyed by ID (seals 1..99, quills):
 
   ```lua
   ns.Data.Cosmetics[1001] = { kind = "quill", name = "Traveler's quill", rule = { kind = "inns", n = 10 } }
@@ -258,7 +258,7 @@ One ID space of 1..`Ledger.LIMITS.cosmeticIdMax` (9 999), the key space of `earn
   Record rules (`Cosmetics.bind` excludes and names anything else, like 3.2): the key is
   an integer in its kind's range (a seal outside 1..99, e.g. 100 or 101, is excluded:
   zone seals come only from `Data/Zones`); exactly `kind`, `name`, `rule`; `kind` is
-  `"seal"`, `"quill"` or `"ink"`; `name` 1..32 bytes under 3.2 rule 5; `rule` a table
+  `"seal"` or `"quill"`; `name` 1..32 bytes under 3.2 rule 5; `rule` a table
   that is exactly one of:
 
   | Rule | Fields | Met when |
@@ -295,7 +295,7 @@ behind it, as the profile-site trust entry wants.
 
 **Kept unlocks (why some state is needed).** Pure derivation drifts the other way: when a
 Forever patch adds an inn to a zone and #12's data follows, a player's zone seal (and
-maybe `all` and a `zones n` ink) would silently disappear, `Sign` would refuse the seal
+maybe `all` and a `continent` quill) would silently disappear, `Sign` would refuse the seal
 they've been using, and the export would drop it. Earned things must not be taken away.
 So `Sign` records each unlock with `ledger:markEarned(id, t)` (the ledger's existing
 `earned` map, which already keeps the earliest time; sync-ledger.md §4.2, §4.5), and
@@ -360,7 +360,7 @@ Returned tables are new each call; changing them changes nothing inside the modu
 
 | Name | Value / returns |
 |---|---|
-| `Cosmetics.RANGES` | `{ seal = { 1, 99 }, zoneSeal = { 101, 999 }, quill = { 1000, 1099 }, ink = { 1100, 1199 } }` (a copy) |
+| `Cosmetics.RANGES` | `{ seal = { 1, 99 }, zoneSeal = { 101, 999 }, quill = { 1000, 1099 } }` (a copy) |
 | `Cosmetics.bind(atlas, catalog)` | a **set**: the fields below. An `atlas` without `progress`, `zoneKeys` and `zone` functions, or whose zones misbehave (an error, a seal outside 101..999 or used twice, a bad name), counts as an empty atlas (`Collection.bind()`); a non-table `catalog` as empty |
 | `set.SEALS` | 3.7 |
 | `set.invalid` | excluded catalog records (`"cosmetic 100"`), as 3.2 |
@@ -385,7 +385,7 @@ Same pattern as `Phrase` ([phrase.md §3.7](phrase.md#37-loading-and-binding)):
   Collection.bind(ns.Data.Inns, ns.Data.Zones, ns.Data.Continents)` (each read only if
   `ns.Data` is a table).
 - `Cosmetics.lua` asserts `ns.Ledger` and `ns.Collection`, asserts
-  `RANGES.zoneSeal[2] <= Ledger.LIMITS.sealMax` and `RANGES.ink[2] <=
+  `RANGES.zoneSeal[2] <= Ledger.LIMITS.sealMax` and `RANGES.quill[2] <=
   Ledger.LIMITS.cosmeticIdMax`, then binds the default set over `Collection.atlas` and
   `ns.Data.Cosmetics` and copies its fields, `SEALS` included, onto `Cosmetics`.
 - **Missing data or a bad record never raises:** it binds an empty atlas or leaves the
@@ -476,7 +476,7 @@ handling of `progress` / `unlocked`.**
 - **Peer-facing surface: only `SEALS`.** It widens rule 16 from "no seal is known" to
   "every catalog seal is known". Check that every key is an integer in 1..999 (the wire
   can't carry more, and `SyncProtocol`'s grammar and `validEntry` check it again), that
-  it holds seals only (no quill or ink ID, so a peer's `seal` field can't name one), and
+  it holds seals only (no quill ID, so a peer's `seal` field can't name one), and
   that nothing in this slice changes `SyncProtocol`, the own-signature rule, the rate
   limits, size caps or storage caps. Rule 16 stays: an unknown seal skips that entry only.
 - **Never remove a zone record** once released (3.1): its seal would leave `SEALS`, and
@@ -520,7 +520,7 @@ times, never the clock. Coverage floor 90% for both modules (already in
 `9999 @ T+500` (not in data), e7 `5001 @ T+604800` (a week later).
 
 **Fixture catalog C:** `[1]` seal `inns 2`, `[2]` seal `all`, `[1001]` quill `inns 3`,
-`[1101]` ink `zones 2`, `[1102]` ink `continent`.
+`[1002]` quill `zones 2`, `[1003]` quill `continent`.
 
 ### 6.1 `Collection.bind` and record rules
 
@@ -587,7 +587,7 @@ times, never the clock. Coverage floor 90% for both modules (already in
   zone = 20 } }`; `info(1001).rule` = `{ kind = "inns", n = 3 }`; `info(5)`/`info(nil)`
   → `nil`; `catalog()` ascending by `id`, 9 records.
 - **Each record rule of 3.5 broken once → excluded and named:** a seal at 0, 100, 101,
-  999, 1000; a quill at 999 and 1100; an ink at 1099 and 1200; an unknown `kind`; an extra
+  999, 1000; a quill at 999, 1100 and 1101 (reserved); an `ink` (no longer a kind); an unknown `kind`; an extra
   field; `name` failing 3.2 rule 5 or 33 bytes; `rule` missing, unknown `kind`, `inns`
   with `n` 0, 1.5, 10000 or missing, `zones` with `n` 1000, `continent` or `all` with an
   `n`, an extra rule field.
@@ -717,9 +717,9 @@ ns.Data.Cosmetics).SEALS` on a fresh ledger: the `101` entry is stored too
   data update never finds an unrecorded unlock. A read-only ledger records nothing.
 - **UI / Book:** shows progress from `ns.Collection.progress(ledger:own(), faction)`, names
   from `inn`/`zone`/`continent` as plain text; lists cosmetics with `catalog()` and
-  `unlocked`; offers only seals `canSeal` allows, and quills and inks that are in
-  `unlocked` (a chosen one that isn't falls back to the default look). What quills and
-  inks look like, and the labels ("Dunes seal"?), are the UI slice's design (a
+  `unlocked`; offers only seals `canSeal` allows, and quills that are in
+  `unlocked` (a chosen one that isn't falls back to the default look). What quills
+  look like, and the labels ("Dunes seal"?), are the UI slice's design (a
   maintainer gate). Never hard-codes an ID.
 - **Export (#64):** `collection` and `cosmetics` exactly as in §4, from the same calls.
 - **After the first release:** new inns, zones, aliases and cosmetics get new keys and
@@ -731,23 +731,21 @@ ns.Data.Cosmetics).SEALS` on a fresh ledger: the `101` entry is stored too
 **The set, names and thresholds are the maintainer's decision** (open questions 1–3). Every
 record passes 3.5 and is earned by play only. Thresholds are placeholders to retune after
 #12 counts the inns: Classic had a few dozen inns open to each faction, and Forever adds
-zones.
+zones. **There are no inks** (maintainer, 2026-10-06): every signature is written in one
+realistic ink, true to the game's times.
 
 | ID | Kind | Name | Rule |
 |---|---|---|---|
-| 1101 | ink | Sepia ink | `inns 1`: your first signature |
 | 1 | seal | Wayfarer's seal | `inns 5` |
 | 1001 | quill | Traveler's quill | `inns 10` (the vision's example) |
 | 1002 | quill | Owl-feather quill | `inns 20` |
-| 1102 | ink | Forest-green ink | `zones 3` |
-| 1103 | ink | Midnight-blue ink | `zones 10` |
 | 1003 | quill | Cartographer's quill | `continent`: every inn open to you on one continent |
 | 2 | seal | Innkeeper's seal | `all`: every inn open to you |
 | 101.. | seal | one per zone, named for it | `zone`: every inn open to you in that zone |
 
-The feel: the first signature earns an ink at once; many zones have a single inn, so the
-first zone seals come early; seals (the only cosmetic peers see) mark breadth; quills and
-inks mark depth. No name refers to a faction, race or class.
+The feel: many zones have a single inn, so the
+first zone seals come early; seals (the only cosmetic peers see) mark breadth; quills mark
+depth. No name refers to a faction, race or class.
 
 ## Assumptions (listed for the maintainer)
 
@@ -762,8 +760,8 @@ inks mark depth. No name refers to a faction, race or class.
   integers and nothing else changes.
 - **Place names are English in v1,** like phrases; the map IDs leave room to use the
   client's localized names later.
-- **Quills and inks are local** (your own book's look); only seals travel. Putting quills
-  or inks on the wire would need protocol v2.
+- **Quills are local** (your own book's look); only seals travel. Putting quills
+  on the wire would need protocol v2.
 - **No badge kind in v1;** "badges" on the profile site can be any earned cosmetic.
 - **The signature that completes a rule can't carry its seal;** the next one can.
 - **`ownMax` 100 000** is far above any honest ledger (one entry per inn per week).

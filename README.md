@@ -20,7 +20,7 @@ from last night's dungeon slept in the same tiny Hillsbrad inn you did.
   signatures.
 - **A book, not a spreadsheet.** Entries are rendered on parchment, in character,
   with dates.
-- **Earned cosmetics.** Quills, inks and wax seals unlock as your collection grows.
+- **Earned cosmetics.** Quills and wax seals unlock as your collection grows.
   Nothing is paid, and nothing is gated.
 - **Export.** Copy a documented export string of your ledger for use anywhere
   (see [docs/export-format.md](docs/export-format.md)).

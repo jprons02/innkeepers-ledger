@@ -10,6 +10,25 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-06 — No inks: one realistic ink for every signature
+
+From the book mockups, the maintainer dropped ink color choices: the book should "look
+real or somewhat real and role-play with the technology of the times of the game".
+Every signature, the player's and travelers', is written in one period-plausible ink
+(#105).
+
+- **The catalog loses inks:** 1101 Sepia, 1102 Forest-green and 1103 Midnight-blue are
+  gone, and so is the `ink` kind. 1100..1199 stays reserved and is never reused. None
+  had been released, so nothing is taken from anyone.
+- **Quills stay,** earned as before; in the book a quill is a flourish under your own
+  signatures (decided with the rest of the book, #106).
+- **What the first signature earns** is now only what its zone completes (a lone inn's
+  zone seal); the cosmetic ladder is still a DRAFT (#63).
+- *Rejected:* colored inks, as anachronistic for the setting.
+- Supersedes the ink parts of *Cosmetics: IDs, derived unlocks that are never taken away, seals on
+  signing* (2026-09-27) and the
+  ink mention in *Cosmetics are earned by play, never paid or gated* ([archive](archive/decisions-2026-09.md)).
+
 ### 2026-10-06 — Phrase voices; free text stays out
 
 The maintainer found the first composer too narrow ("a few preselected options") and

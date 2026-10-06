@@ -1,4 +1,4 @@
--- Cosmetics (pure): the catalog of seals, quills and inks, which of them the player's own
+-- Cosmetics (pure): the catalog of seals and quills, which of them the player's own
 -- signatures unlock and when, and SEALS, the seal table peers' entries are checked against.
 -- No WoW API here. Client values come in as arguments (docs/architecture.md -> Modules).
 -- Spec: docs/specs/collection-cosmetics.md (sections 3.5-3.9). SEALS is SyncProtocol's
@@ -25,8 +25,8 @@ local RANGES = {
   seal = { 1, 99 },
   zoneSeal = { 101, 999 },
   quill = { 1000, 1099 },
-  ink = { 1100, 1199 },
 }
+-- 1100..1199 held inks until 2026-10-06 (none was released); it stays reserved.
 local ID_MAX = Ledger.LIMITS.cosmeticIdMax -- read from Ledger, not second literals
 local SEAL_MAX = Ledger.LIMITS.sealMax
 local T_MIN, T_MAX = Ledger.LIMITS.tMin, Ledger.LIMITS.tMax
@@ -39,13 +39,12 @@ local INNS_N_MAX, ZONES_N_MAX = 9999, 999
 -- Every seal must fit the wire's seal token; every ID must fit the `earned` key space.
 assert(RANGES.seal[2] <= SEAL_MAX and RANGES.zoneSeal[2] <= SEAL_MAX,
   "Cosmetics: a seal range is over Ledger.LIMITS.sealMax")
-assert(RANGES.ink[2] <= ID_MAX, "Cosmetics: an ID range is over Ledger.LIMITS.cosmeticIdMax")
+assert(RANGES.quill[2] <= ID_MAX, "Cosmetics: an ID range is over Ledger.LIMITS.cosmeticIdMax")
 
 Cosmetics.RANGES = {
   seal = { RANGES.seal[1], RANGES.seal[2] },
   zoneSeal = { RANGES.zoneSeal[1], RANGES.zoneSeal[2] },
   quill = { RANGES.quill[1], RANGES.quill[2] },
-  ink = { RANGES.ink[1], RANGES.ink[2] },
 }
 
 -- An integer in lo..hi. NaN fails x == x; inf % 1 is NaN, so inf fails too.
@@ -89,7 +88,7 @@ end
 
 local RECORD_FIELDS = { kind = true, name = true, rule = true }
 -- Catalog kinds and their ID ranges. Zone seals never come from the catalog.
-local KIND_RANGE = { seal = RANGES.seal, quill = RANGES.quill, ink = RANGES.ink }
+local KIND_RANGE = { seal = RANGES.seal, quill = RANGES.quill }
 -- Each rule kind's fields besides `kind`, with the range of `n`.
 local RULE_N = { inns = INNS_N_MAX, zones = ZONES_N_MAX, continent = false, all = false }
 

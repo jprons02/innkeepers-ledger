@@ -56,9 +56,9 @@ local function U(pairsList)
 end
 
 -- The spec 6.4 results for E.
-local ALLIANCE = U({ { 1, T + 100 }, { 103, T + 100 }, { 1102, T + 100 }, { 101, T + 300 },
-  { 1001, T + 300 }, { 1101, T + 300 }, { 2, T + 400 }, { 102, T + 400 } })
-local HORDE = U({ { 101, T }, { 1102, T }, { 1, T + 100 } })
+local ALLIANCE = U({ { 1, T + 100 }, { 103, T + 100 }, { 1003, T + 100 }, { 101, T + 300 },
+  { 1001, T + 300 }, { 1002, T + 300 }, { 2, T + 400 }, { 102, T + 400 } })
+local HORDE = U({ { 101, T }, { 1003, T }, { 1, T + 100 } })
 
 -- Every own-entry time in E.
 local function entryTimes()
@@ -73,8 +73,8 @@ end
 
 describe("Cosmetics module", function()
   it("has the spec 3.8 RANGES", function()
-    assert.same({ seal = { 1, 99 }, zoneSeal = { 101, 999 }, quill = { 1000, 1099 },
-      ink = { 1100, 1199 } }, Cosmetics.RANGES)
+    assert.same({ seal = { 1, 99 }, zoneSeal = { 101, 999 }, quill = { 1000, 1099 } },
+      Cosmetics.RANGES)
   end)
 
   it("changing the exported RANGES changes nothing inside", function()
@@ -114,7 +114,7 @@ describe("Cosmetics module", function()
       modules({ patch = function(L) L.LIMITS.sealMax = 500 end })
     end)
     assert.has_error(function()
-      modules({ patch = function(L) L.LIMITS.cosmeticIdMax = 1150 end })
+      modules({ patch = function(L) L.LIMITS.cosmeticIdMax = 1050 end })
     end)
   end)
 
@@ -125,8 +125,8 @@ describe("Cosmetics module", function()
     local set = ns.Cosmetics.bind(ns.Collection.bind(fx.places()), fx.catalog())
     -- e5 (T + 400) and e7 are past tMax now: not read, so zone 11 has nothing signed.
     local got = set.unlocked(fx.entries(), "Alliance")
-    assert.same(U({ { 1, T + 100 }, { 103, T + 100 }, { 1102, T + 100 }, { 101, T + 300 },
-      { 1001, T + 300 }, { 1101, T + 300 } }), got)
+    assert.same(U({ { 1, T + 100 }, { 103, T + 100 }, { 1003, T + 100 }, { 101, T + 300 },
+      { 1001, T + 300 }, { 1002, T + 300 } }), got)
     assert.is_false(set.canSeal(got, 1, T + 351))
     assert.is_true(set.canSeal(got, 1, T + 350))
     -- A kept time past tMax is ignored.
@@ -165,8 +165,8 @@ describe("Cosmetics.bind", function()
     assert.same({ kind = "inns", n = 3 }, set.info(1001).rule)
     assert.same({ id = 2, kind = "seal", name = "Last seal", rule = { kind = "all" } },
       set.info(2))
-    assert.same({ id = 1101, kind = "ink", name = "Blue ink", rule = { kind = "zones", n = 2 } },
-      set.info(1101))
+    assert.same({ id = 1002, kind = "quill", name = "Blue quill",
+      rule = { kind = "zones", n = 2 } }, set.info(1002))
     assert.is_nil(set.info(5))
     assert.is_nil(set.info(nil))
     for _, v in ipairs({ "1", 0 / 0, 1 / 0, 1.5, 0, 10000, {}, fx.hostileTable(),
@@ -180,7 +180,7 @@ describe("Cosmetics.bind", function()
       ids[i] = rec.id
       assert.same(set.info(rec.id), rec)
     end
-    assert.same({ 1, 2, 101, 102, 103, 104, 1001, 1101, 1102 }, ids)
+    assert.same({ 1, 2, 101, 102, 103, 104, 1001, 1002, 1003 }, ids)
   end)
 
   it("SEALS values are info records, and it holds seals only", function()
@@ -191,7 +191,7 @@ describe("Cosmetics.bind", function()
       assert.is_true(id % 1 == 0 and id >= 1 and id <= LIMITS.sealMax)
     end
     assert.is_nil(set.SEALS[1001])
-    assert.is_nil(set.SEALS[1101])
+    assert.is_nil(set.SEALS[1002])
   end)
 
   local function rec(kind, name, rule)
@@ -208,9 +208,9 @@ describe("Cosmetics.bind", function()
     { "a seal at 1000", 1000, rec("seal", "Seal", ALL) },
     { "a quill at 999", 999, rec("quill", "Quill", ALL) },
     { "a quill at 1100", 1100, rec("quill", "Quill", ALL) },
-    { "an ink at 1099", 1099, rec("ink", "Ink", ALL) },
-    { "an ink at 1200", 1200, rec("ink", "Ink", ALL) },
-    { "an ink at 10000", 10000, rec("ink", "Ink", ALL) },
+    { "an ink (no longer a kind) at 1101", 1101, rec("ink", "Ink", ALL) },
+    { "a quill at 1101 (reserved)", 1101, rec("quill", "Quill", ALL) },
+    { "a quill at 10000", 10000, rec("quill", "Quill", ALL) },
     { "a seal at 1.5", 1.5, rec("seal", "Seal", ALL) },
     { "a seal at -1", -1, rec("seal", "Seal", ALL) },
     { "a key \"3\"", "3", rec("seal", "Seal", ALL) },
@@ -277,11 +277,9 @@ describe("Cosmetics.bind", function()
     cat[99] = rec("seal", "S" .. ("e"):rep(31), { kind = "inns", n = 9999 })
     cat[1000] = rec("quill", "Az09 ',.-", { kind = "zones", n = 999 })
     cat[1099] = rec("quill", "Q", ALL)
-    cat[1100] = rec("ink", "I", { kind = "continent" })
-    cat[1199] = rec("ink", "J", { kind = "inns", n = 1 })
     local set = setF(cat)
     assert.same({}, set.invalid)
-    assert.equal(14, #set.catalog())
+    assert.equal(12, #set.catalog())
     assert.is_table(set.SEALS[99])
   end)
 
@@ -452,7 +450,7 @@ describe("Cosmetics unlocked", function()
 
   it("faction nil counts every inn: no all, no Horde zone done yet", function()
     assert.same(U({ { 1, T + 100 }, { 101, T + 300 }, { 1001, T + 300 }, { 102, T + 400 },
-      { 1101, T + 400 }, { 1102, T + 400 } }), set.unlocked(fx.entries(), nil))
+      { 1002, T + 400 }, { 1003, T + 400 } }), set.unlocked(fx.entries(), nil))
   end)
 
   it("empty data: nothing for any entries", function()
@@ -475,7 +473,7 @@ describe("Cosmetics unlocked", function()
         { [947] = { name = "Azeroth" } }), fx.catalog())
       assert.same({}, world.invalid)
       assert.same({ 1, 2, 101 }, keys(world.SEALS))
-      assert.same(U({ { 2, T }, { 101, T }, { 1102, T } }),
+      assert.same(U({ { 2, T }, { 101, T }, { 1003, T } }),
         world.unlocked({ { inn = 251001, t = T, phrase = { 1 } } }, "Alliance"))
     end)
 
@@ -486,15 +484,15 @@ describe("Cosmetics unlocked", function()
       return Cosmetics.bind(Collection.bind(inns, zones, conts), fx.catalog())
     end
 
-    it("a new inn in a done zone: 101 and 2 gone, 1101 moves to T+400 without kept", function()
+    it("a new inn in a done zone: 101 and 2 gone, 1002 moves to T+400 without kept", function()
       local s = withNewInn()
-      assert.same(U({ { 1, T + 100 }, { 103, T + 100 }, { 1102, T + 100 }, { 1001, T + 300 },
-        { 102, T + 400 }, { 1101, T + 400 } }), s.unlocked(fx.entries(), "Alliance"))
+      assert.same(U({ { 1, T + 100 }, { 103, T + 100 }, { 1003, T + 100 }, { 1001, T + 300 },
+        { 102, T + 400 }, { 1002, T + 400 } }), s.unlocked(fx.entries(), "Alliance"))
     end)
 
-    it("a new inn in a done zone: kept keeps 101, 2 and the earlier 1101", function()
+    it("a new inn in a done zone: kept keeps 101, 2 and the earlier 1002", function()
       local s = withNewInn()
-      local kept = { [101] = T + 300, [2] = T + 400, [1101] = T + 300 }
+      local kept = { [101] = T + 300, [2] = T + 400, [1002] = T + 300 }
       local before = fx.snapshot(kept)
       assert.same(ALLIANCE, s.unlocked(fx.entries(), "Alliance", kept))
       assert.is_true(fx.sameSnapshot(before, fx.snapshot(kept)))
@@ -526,7 +524,7 @@ describe("Cosmetics unlocked", function()
 
     it("a kept time is honored at any own entry, even at an unknown inn (e6)", function()
       local got = set.unlocked(fx.entries(), "Horde", { [2] = T + 500 })
-      assert.same(U({ { 101, T }, { 1102, T }, { 1, T + 100 }, { 2, T + 500 } }), got)
+      assert.same(U({ { 101, T }, { 1003, T }, { 1, T + 100 }, { 2, T + 500 } }), got)
     end)
 
     -- Kept values that are ignored: Horde has neither 2 nor 102 derived, so any honored
@@ -566,14 +564,14 @@ describe("Cosmetics unlocked", function()
         { [2] = T + 7 }))
       -- Past a hole isn't read either.
       assert.same(HORDE, set.unlocked({ E[1], E[2], nil, E[4] }, "Horde", { [2] = T + 300 }))
-      assert.same(U({ { 101, T }, { 1102, T }, { 1, T + 100 }, { 2, T + 300 } }),
+      assert.same(U({ { 101, T }, { 1003, T }, { 1, T + 100 }, { 2, T + 300 } }),
         set.unlocked({ E[1], E[2], E[4] }, "Horde", { [2] = T + 300 }))
     end)
 
     it("the controls: an honored value would show", function()
-      assert.same(U({ { 2, T }, { 101, T }, { 1102, T }, { 1, T + 100 } }),
+      assert.same(U({ { 2, T }, { 101, T }, { 1003, T }, { 1, T + 100 } }),
         set.unlocked(fx.entries(), "Horde", { [2] = T }))
-      assert.same(U({ { 101, T }, { 1102, T }, { 1, T + 100 }, { 102, T + 400 } }),
+      assert.same(U({ { 101, T }, { 1003, T }, { 1, T + 100 }, { 102, T + 400 } }),
         set.unlocked(fx.entries(), "Horde", { [102] = T + 400 }))
     end)
   end)
@@ -643,10 +641,10 @@ describe("Cosmetics canSeal", function()
     is(false, list, 104, T + 500)
   end)
 
-  it("a quill or an ink is never a seal", function()
+  it("a quill is never a seal", function()
     is(false, list, 1001, T + 500)
-    is(false, list, 1101, T + 500)
-    is(false, list, 1102, T + 500)
+    is(false, list, 1002, T + 500)
+    is(false, list, 1003, T + 500)
   end)
 
   it("unknown or malformed seals", function()
@@ -715,9 +713,6 @@ describe("Data/Cosmetics (the draft catalog)", function()
       [1001] = { "quill", "Traveler's quill", { kind = "inns", n = 10 } },
       [1002] = { "quill", "Owl-feather quill", { kind = "inns", n = 20 } },
       [1003] = { "quill", "Cartographer's quill", { kind = "continent" } },
-      [1101] = { "ink", "Sepia ink", { kind = "inns", n = 1 } },
-      [1102] = { "ink", "Forest-green ink", { kind = "zones", n = 3 } },
-      [1103] = { "ink", "Midnight-blue ink", { kind = "zones", n = 10 } },
     }
     assert.same(keys(want), keys(DATA))
     for id, w in pairs(want) do
@@ -774,14 +769,6 @@ describe("Data/Cosmetics (the draft catalog)", function()
     for z = 1, 20 do
       assert.is_true(got[100 + z] == true, "zone seal " .. (100 + z))
     end
-  end)
-
-  it("the first signature earns an ink at once (spec 9's feel)", function()
-    local atlas = Collection.bind({ [1] = { name = "Inn", zone = 10 } },
-      { [10] = { name = "Zone", continent = 1, seal = 101 } }, { [1] = { name = "Land" } })
-    local set = Cosmetics.bind(atlas, DATA)
-    local got = set.unlocked({ { inn = 1, t = T } }, "Horde")
-    assert.same({ id = 1101, t = T }, got[#got])
   end)
 end)
 

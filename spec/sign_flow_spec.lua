@@ -351,7 +351,7 @@ describe("flow.seals", function()
     assert.same({}, flow.seals(sit({ ledger = s.ledger, npc = npcGUID(5101), now = NOW - 1 })))
   end)
 
-  it("never offers a quill or an ink", function()
+  it("never offers a quill", function()
     local ledger = newLedger(savedData({ entry(5001, NOW - 300), entry(5002, NOW - 200),
       entry(5101, NOW - 100) }))
     local u = NS.Cosmetics.bind(deps().atlas, fx.catalog()).unlocked(ledger:own(), "Alliance")
@@ -360,7 +360,7 @@ describe("flow.seals", function()
       ids[#ids + 1] = item.id
     end
     table.sort(ids)
-    assert.same({ 1, 101, 102, 1001, 1101, 1102 }, ids)
+    assert.same({ 1, 101, 102, 1001, 1002, 1003 }, ids)
     assert.same({ 1, 101, 102 }, flow.seals(sit({ ledger = ledger, npc = npcGUID(5201) })))
   end)
 
@@ -413,9 +413,9 @@ describe("flow.commit", function()
     s.npc = npcGUID(5002)
     res = flow.commit(s, 5002, { 2 }, 1)
     assert.equal(1, res.entry.seal)
-    assert.same({ 101, 1001, 1101, 1102 }, res.earned)
-    assert.same({ [1] = NOW, [101] = NOW, [102] = NOW, [1001] = NOW, [1101] = NOW,
-      [1102] = NOW }, s.ledger:earned())
+    assert.same({ 101, 1001, 1002, 1003 }, res.earned)
+    assert.same({ [1] = NOW, [101] = NOW, [102] = NOW, [1001] = NOW, [1002] = NOW,
+      [1003] = NOW }, s.ledger:earned())
     -- Own entries sort by time, then inn: 5001, 5002, 5101.
     assert.same({ inn = 5001, t = NOW, phrase = { 2 }, seal = 102 }, s.ledger:own()[1])
   end)

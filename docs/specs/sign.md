@@ -68,7 +68,7 @@ one plain reason, so the player is never left guessing.
 - **Sitting** as a condition: the client has no query for it
   ([platform-forever.md](../platform-forever.md) → *Sitting detection*), so the
   architecture's "drop it if so" applies.
-- Quills and inks on the composer (they're the book's look, not part of an entry).
+- Quills on the composer (they're the book's look, not part of an entry).
 - Camps, non-innkeeper NPCs, signing from anywhere but the gossip frame.
 - Localization: the DRAFT text is English, like phrases and place names.
 
@@ -468,8 +468,8 @@ for these, and say so in the review:
   `false`, `nil`, `1`, `"true"` → `not_resting`; all good → `ok` with the inn and name;
   another inn signed this week doesn't block this one.
 - **`seals`:** none unlocked → `{}`; a seal earned by the latest entry is offered only
-  when `now` ≥ its time (canSeal), so the signature that earns it can't use it; a quill or
-  ink ID in `unlocked` is never offered; a kept `earned` floor (a zone seal kept after its
+  when `now` ≥ its time (canSeal), so the signature that earns it can't use it; a quill ID
+  in `unlocked` is never offered; a kept `earned` floor (a zone seal kept after its
   zone gained an inn) is offered; `check` failing → `{}`; hostile `faction` → counted as
   `nil`.
 - **`commit`:**
@@ -627,7 +627,7 @@ from disk after a `/reload`:
   never skips straight to the merchant window).
 - **No sitting requirement** (no client query exists) and **no faction check** (the client
   already prevents talking to the other faction's innkeepers).
-- **Signing records unlocks silently;** nothing announces a new seal, quill or ink until
+- **Signing records unlocks silently;** nothing announces a new seal or quill until
   the book shows it.
 - **Default seal is none** each time; the composer doesn't remember the last phrase or
   seal.
@@ -646,7 +646,7 @@ None blocks the build or the merge; the DRAFT ships until answered.
    parchment page, handwriting font, where it sits)?
 2. **The messages** (§3.8): wording and tone, and whether reasons belong in chat at all
    or on the frame.
-3. **Announcing earned cosmetics:** should signing say when it earns a seal, quill or ink
+3. **Announcing earned cosmetics:** should signing say when it earns a seal or quill
    (for example "Zephras Isle's seal is yours"), or leave that to the book?
 4. **Recent phrases:** worth a follow-up (the last few phrases offered first), or is the
    cycler enough?

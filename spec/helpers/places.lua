@@ -49,8 +49,8 @@ function M.catalog()
     [1] = { kind = "seal", name = "First seal", rule = { kind = "inns", n = 2 } },
     [2] = { kind = "seal", name = "Last seal", rule = { kind = "all" } },
     [1001] = { kind = "quill", name = "Long quill", rule = { kind = "inns", n = 3 } },
-    [1101] = { kind = "ink", name = "Blue ink", rule = { kind = "zones", n = 2 } },
-    [1102] = { kind = "ink", name = "Red ink", rule = { kind = "continent" } },
+    [1002] = { kind = "quill", name = "Blue quill", rule = { kind = "zones", n = 2 } },
+    [1003] = { kind = "quill", name = "Red quill", rule = { kind = "continent" } },
   }
 end
 

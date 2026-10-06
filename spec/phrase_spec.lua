@@ -22,7 +22,7 @@ end
 
 local NS = modules()
 local Phrase = NS.Phrase
-local DATA, CATEGORIES = NS.Data.Phrases, NS.Data.PhraseCategories
+local DATA, CATEGORIES, VOICES = NS.Data.Phrases, NS.Data.PhraseCategories, NS.Data.PhraseVoices
 
 -- The spec 6 fixture.
 local function fixture()
@@ -131,7 +131,7 @@ describe("Phrase module", function()
     assert.equal("{w}", Phrase.SLOT)
     assert.same({
       idsMax = 5, idMax = 9999, templateBytes = 48, conjBytes = 16, wordBytes = 24,
-      categoryBytes = 40, renderBytes = 160,
+      categoryBytes = 40, renderBytes = 160, voicesMax = 50,
     }, Phrase.LIMITS)
     assert.same({ template = { 1, 499 }, conj = { 500, 599 }, word = { 1000, 9999 }, block = 100 },
       Phrase.RANGES)
@@ -163,9 +163,9 @@ describe("Phrase module", function()
     assert.equal("Here's to old friends!", ns.Phrase.render({ 3, 1201 }))
   end)
 
-  it("exposes the default set's ten functions and invalid", function()
+  it("exposes the default set's twelve functions and invalid", function()
     for _, name in ipairs({ "validIds", "render", "compose", "kind", "text", "hasSlot",
-      "templates", "conjunctions", "categories", "words" }) do
+      "templates", "conjunctions", "categories", "words", "voices", "voice" }) do
       assert.is_function(Phrase[name], name)
     end
     assert.same({}, Phrase.invalid)
@@ -462,6 +462,133 @@ describe("Phrase.bind", function()
       assert.is_nil(set.kind(1))
     end)
   end
+
+  describe("voices", function()
+    -- The fixture with voices: template 1 and conj 500 in voice 1, template 2 in voice 2,
+    -- and template 3 with no voice.
+    local function voiced(extra)
+      local data, cats = fixture()
+      data[1].voice = 1
+      data[2].voice = 2
+      data[500].voice = 1
+      data[3] = { kind = "template", text = "Hello." }
+      for k, v in pairs(extra or {}) do
+        data[k] = v
+      end
+      return data, cats
+    end
+
+    it("binds the voices and lists templates and conjunctions per voice", function()
+      local data, cats = voiced()
+      local set = Phrase.bind(data, cats, { "Warm", "Gruff" })
+      assert.same({}, set.invalid)
+      assert.same({ "Warm", "Gruff" }, set.voices())
+      assert.same({ 1, 2, 3 }, set.templates())
+      assert.same({ 1, 2, 3 }, set.templates(nil))
+      assert.same({ 1 }, set.templates(1))
+      assert.same({ 2 }, set.templates(2))
+      assert.same({ 500 }, set.conjunctions())
+      assert.same({ 500 }, set.conjunctions(1))
+      assert.same({}, set.conjunctions(2))
+      assert.equal(1, set.voice(1))
+      assert.equal(2, set.voice(2))
+      assert.equal(1, set.voice(500))
+      assert.is_nil(set.voice(3)) -- no voice
+      assert.is_nil(set.voice(1000)) -- a word
+      assert.is_nil(set.voice(4)) -- unknown
+      -- A voice never changes what is valid.
+      assert.is_true(set.validIds({ 3, 500, 1, 1000 }))
+    end)
+
+    it("returns {} for a voice that isn't bound, and nil for hostile IDs", function()
+      local data, cats = voiced()
+      local set = Phrase.bind(data, cats, { "Warm", "Gruff" })
+      for _, v in ipairs({ 0, 3, -1, 1.5, "1", true, {}, 0 / 0, 1 / 0, hostileTable(),
+        hostileProxy(), function() end }) do
+        assert.same({}, set.templates(v))
+        assert.same({}, set.conjunctions(v))
+        assert.is_nil(set.voice(v))
+      end
+    end)
+
+    for _, case in ipairs({
+      { "voice 0", 0 }, { "voice 3 (beyond the list)", 3 }, { "voice 1.5", 1.5 },
+      { "voice \"1\"", "1" }, { "voice NaN", 0 / 0 }, { "voice true", true },
+    }) do
+      it("excludes a template with " .. case[1], function()
+        local data, cats = voiced({ [4] = { kind = "template", voice = case[2], text = "Bye." } })
+        local set = Phrase.bind(data, cats, { "Warm", "Gruff" })
+        assert.is_nil(set.kind(4))
+        assert.same({ "id 4" }, set.invalid)
+        assert.is_false(set.validIds({ 4 }))
+      end)
+    end
+
+    it("excludes a word with a voice (not one of its fields)", function()
+      local data, cats = voiced({ [1001] = { kind = "word", cat = 1, voice = 1, text = "tea" } })
+      local set = Phrase.bind(data, cats, { "Warm", "Gruff" })
+      assert.is_nil(set.kind(1001))
+      assert.same({ "id 1001" }, set.invalid)
+    end)
+
+    it("a hole at 2 keeps only voice 1 and excludes the voice-2 template", function()
+      local data, cats = voiced()
+      local set = Phrase.bind(data, cats, { [1] = "Warm", [3] = "Extra" })
+      assert.same({ "Warm" }, set.voices())
+      assert.is_nil(set.kind(2))
+      assert.is_true(contains(set.invalid, "id 2"))
+      assert.is_true(contains(set.invalid, "voice 3"))
+      assert.equal(2, #set.invalid)
+    end)
+
+    for _, case in ipairs({
+      { "a non-string name", 5 }, { "an empty name", "" },
+      { "a 41-byte name", "G" .. ("r"):rep(40) },
+      { "a name with |", "Gr|uff" }, { "a name starting lowercase", "gruff" },
+    }) do
+      it("a bad voice name (" .. case[1] .. ") ends the list there", function()
+        local data, cats = voiced()
+        local set = Phrase.bind(data, cats, { "Warm", case[2] })
+        assert.same({ "Warm" }, set.voices())
+        assert.is_nil(set.kind(2))
+        assert.is_true(contains(set.invalid, "id 2"))
+        assert.is_true(contains(set.invalid, "voice 2"))
+      end)
+    end
+
+    it("binds no voice when voices isn't a table, so voiced records are excluded", function()
+      local cases = { n = 4, nil, "x", 7, true }
+      for i = 1, cases.n do
+        local data, cats = voiced()
+        local set = Phrase.bind(data, cats, cases[i])
+        assert.same({}, set.voices())
+        assert.same({ 3 }, set.templates())
+        assert.is_nil(set.kind(500))
+      end
+    end)
+
+    it("stops reading names after voicesMax", function()
+      local names = {}
+      for i = 1, Phrase.LIMITS.voicesMax + 5 do
+        names[i] = "Voice"
+      end
+      local data, cats = voiced()
+      local set = Phrase.bind(data, cats, names)
+      assert.equal(Phrase.LIMITS.voicesMax, #set.voices())
+      assert.equal(5, #set.invalid)
+    end)
+
+    it("copies: changing a returned list or the names after bind changes nothing", function()
+      local data, cats = voiced()
+      local names = { "Warm", "Gruff" }
+      local set = Phrase.bind(data, cats, names)
+      names[1] = "Cold"
+      set.voices()[2] = "x"
+      set.templates(1)[1] = 99
+      assert.same({ "Warm", "Gruff" }, set.voices())
+      assert.same({ 1 }, set.templates(1))
+    end)
+  end)
 
   it("a data table with a metatable is read raw", function()
     local data, cats = fixture()
@@ -929,7 +1056,7 @@ describe("Data/Phrases (the draft set)", function()
         n = n + 1
       end
     end
-    assert.equal(18 * 120 + 6, n)
+    assert.equal(109 * 175 + 47, n)
   end)
 
   it("trips on no deny-listed word (spec 3.6 tripwire)", function()
@@ -940,6 +1067,7 @@ describe("Data/Phrases (the draft set)", function()
       blood kill die dead death horde alliance human dwarf dwarves elf elves gnome gnomes
       orc orcs troll trolls tauren undead forsaken warrior mage priest rogue hunter warlock
       paladin druid shaman man woman men women boy girl innkeeper stayed milk staff
+      goblin goblins worgen chest meat mount pay paid coin coins buy bought stool trade
     ]]):gmatch("%S+") do
       DENY[w] = true
     end
@@ -959,25 +1087,33 @@ describe("Data/Phrases (the draft set)", function()
   end)
 
   it("has the counts of spec 9 (update with the wording)", function()
-    assert.equal(24, #byKind("template"))
+    assert.equal(156, #byKind("template"))
     local slotted = 0
     for _, id in ipairs(byKind("template")) do
       if Phrase.hasSlot(id) then
         slotted = slotted + 1
       end
     end
-    assert.equal(18, slotted)
-    assert.equal(4, #byKind("conj"))
-    assert.equal(120, #byKind("word"))
-    assert.equal(8, #CATEGORIES)
+    assert.equal(109, slotted)
+    assert.equal(30, #byKind("conj"))
+    assert.equal(175, #byKind("word"))
+    assert.equal(9, #CATEGORIES)
     for cat = 1, 8 do
-      assert.equal(15, #Phrase.words(cat))
+      assert.equal(20, #Phrase.words(cat))
+    end
+    assert.equal(15, #Phrase.words(9))
+    assert.equal(8, #VOICES)
+    local perVoice = { { 36, 7 }, { 20, 4 }, { 19, 3 }, { 17, 4 }, { 16, 3 }, { 17, 3 },
+      { 16, 3 }, { 15, 3 } }
+    for v, counts in ipairs(perVoice) do
+      assert.equal(counts[1], #Phrase.templates(v), VOICES[v])
+      assert.equal(counts[2], #Phrase.conjunctions(v), VOICES[v])
     end
     local n = 0
     for _ in pairs(DATA) do
       n = n + 1
     end
-    assert.equal(148, n)
+    assert.equal(361, n)
   end)
 
   it("the lists match the data", function()
@@ -985,6 +1121,49 @@ describe("Data/Phrases (the draft set)", function()
     assert.same(byKind("conj"), Phrase.conjunctions())
     assert.same(CATEGORIES, Phrase.categories())
     assert.are_not.equal(CATEGORIES, Phrase.categories())
+    assert.same(VOICES, Phrase.voices())
+    assert.are_not.equal(VOICES, Phrase.voices())
+  end)
+
+  it("gives every template and conjunction a voice, inside its voice's ID block", function()
+    -- The allocation convention of Data/Phrases.lua's header (spec 3.1).
+    local function templateVoice(id)
+      if id <= 200 then
+        return 1
+      end
+      return math.floor((id - 201) / 30) + 2
+    end
+    for id, rec in pairs(DATA) do
+      if rec.kind == "template" then
+        assert.equal(templateVoice(id), rec.voice, rec.text)
+        assert.equal(rec.voice, Phrase.voice(id))
+        local slotless = id > 200 and (id - 201) % 30 >= 20 or id > 100 and id <= 200
+        assert.equal(not slotless, Phrase.hasSlot(id), rec.text)
+      elseif rec.kind == "conj" then
+        assert.equal(math.floor((id - 501) / 10) + 1, rec.voice, rec.text)
+        assert.equal(rec.voice, Phrase.voice(id))
+      else
+        assert.is_nil(Phrase.voice(id))
+      end
+    end
+    local all = {}
+    for v = 1, #VOICES do
+      for _, id in ipairs(Phrase.templates(v)) do
+        all[#all + 1] = id
+      end
+    end
+    table.sort(all)
+    assert.same(Phrase.templates(), all)
+  end)
+
+  it("voice names pass rule 6 and don't repeat", function()
+    local seen = {}
+    for i, name in ipairs(VOICES) do
+      assert.is_true(#name >= 1 and #name <= 40 and allowedBytes(name), name)
+      assert.truthy(name:find("^[A-Z]"), name)
+      assert.is_nil(seen[name:lower()], name)
+      seen[name:lower()] = i
+    end
   end)
 end)
 

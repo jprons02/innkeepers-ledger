@@ -10,6 +10,101 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-06 — Phrase voices; free text stays out
+
+The maintainer found the first composer too narrow ("a few preselected options") and
+asked about free text up to ~200 characters. Free text was weighed again, including a
+**private note** kept only in the player's own ledger, and the maintainer chose to stay
+with canned phrases (*Canned phrases, not free text*,
+[archive](archive/decisions-2026-09.md), stands). Instead the set grows **voices** (#100):
+
+- **A voice is a temperament with its own sentence frames and connectors:** Hearthside
+  (the first draft's warm tone), Bardic, Grumbler, Scholar, Rowdy, Mystic, Sailor, Noble.
+  The terse and wide-eyed voices that were floated are folded into Grumbler and
+  Hearthside. Voices are temperaments, never races or classes (content rule 2), and no
+  voice imitates a real-world accent.
+- **A voice is a UI grouping only.** Templates and conjunctions carry an optional
+  `voice`; `ns.Data.PhraseVoices` names them. The grammar, `validIds`, the wire and the
+  export are unchanged, and any template still takes any word, so a signature may **mix
+  voices**: the composer picks a voice per line, and line 2 follows line 1's voice until
+  the player picks one for it.
+- **IDs:** voice 1 keeps the first draft's IDs (the beta's signatures still render);
+  voice `v ≥ 2` takes a block of 30 template IDs from `201 + 30(v − 2)` (slotless from
+  +20) and conjunctions `501 + 10(v − 1)`.
+- **Words:** five more per category and a ninth category, **Oddities** (gentle humor such
+  as "a suspicious stew"), under the same content rules.
+- **Content rules gain one line:** no template pays for, buys, orders or summons its slot.
+  With the Company words in the slot, a payment frame ("Paid good coin. Got {w}.") reads
+  as a provider-and-service euphemism. The tripwire adds `pay paid coin coins buy bought
+  chest meat mount goblin goblins worgen stool trade`. The review replaced 24 lines that
+  failed in some combination (e.g. "Rhymes with {w}" invited unstated crude rhymes;
+  "What is {w}" broke agreement with plural words).
+
+*Rejected:* free text, synced or private (above); typed slots per voice (the "any word
+fits" rule keeps the content argument simple); a voice stored in the entry (peers don't
+need it, and it would change the wire); one voice per signature (the maintainer asked to
+combine voices).
+
+*Reflected in:* `Data/Phrases.lua`, `Phrase.lua`, `SignFlow.lua`, `Sign.lua`,
+`docs/specs/phrase.md` (§3.1, §3.2, §3.5, §3.6, §9), `docs/specs/sign.md` (§3.6, §3.7,
+§8), `docs/architecture.md`.
+
+### 2026-10-05 — Sign: a pure SignFlow, the button at every known innkeeper, reasons on click, no sitting or combat check
+
+The `Sign` slice (#96, [specs/sign.md](specs/sign.md)) settles how signing works:
+
+- **The decisions live in a new pure module, `SignFlow`,** with a **90% coverage floor**
+  (`scripts/check-coverage.sh`, like the other non-boundary pure modules): when the button
+  shows, the checks and their order, the seals offered, the commit, unlock recording, the
+  composer's state and the chat lines. `Sign.lua` is thin glue: events, frames, client
+  reads (each hidden-value checked first) and chat output. The `SyncSchedule` split again.
+- **The button shows at every innkeeper in `Data/Inns`** (that `Collection` kept), whether
+  or not signing is possible right now. A click that can't sign prints one chat line with
+  the reason (no ledger, read-only, signed this week with the time to the reset, not
+  resting); `too_soon` is reported before `not_resting`.
+- **Every check runs again at commit,** including the NPC (`changed` if the player is
+  talking to someone else); a seal that stopped being allowed is refused, never dropped.
+- **No sitting requirement** (the client has no query for it) and **no faction check**
+  (the client already keeps players from the other faction's innkeepers).
+- **No combat check:** the button and composer are unprotected frames, and signing sends
+  nothing itself (`Sync`'s combat hold already covers the HELLO). `Sign.lua` stays out of
+  the `combat state` allow-list of `check-apis.sh`.
+- **`Core` records unlocks once at login** for a writable ledger, before `Sync` starts; an
+  error there is logged and changes nothing else.
+- The composer's look and every player-facing line are a **DRAFT** (all in
+  `SignFlow.TEXT`); the maintainer decides them (status.md → Open questions).
+
+*Rejected:* all the logic in `Sign.lua` with injected client functions (no coverage
+floor, no strict environment); hiding or disabling the button when signing isn't possible
+(a missing button reads as a bug; a disabled one needs an unverified tooltip); injecting a
+gossip option into the option list (needs a hook, which is forbidden); dropdowns (the
+modern menu API is unverified on Forever); checking only when the composer opens.
+
+*Reflected in:* `SignFlow.lua`, `Sign.lua`, `Core.lua`, `scripts/check-coverage.sh`,
+`.luacov`, `docs/architecture.md` (Modules, Signing flow), `docs/testing.md`,
+`docs/platform-forever.md` (checklist).
+
+### 2026-10-02 — Players sign the inn's guestbook; the AddOn keeps the name "ledger"
+
+The maintainer saw the probe's "sign the ledger" button in the beta and asked for "sign
+the guestbook". Player-facing text now uses **guestbook** for the thing you sign at an
+inn: the `Sign` button reads "Sign the guestbook", the TOC `## Notes` line reads "Sign
+the guestbook at every inn you rest in, and collect the signatures of travelers you meet
+along the way." (this matches the download pages, which already said "guestbook"), and so
+do the README tagline and the changelog. This supersedes the wording (not the two-halves
+shape) of *AddOn list blurb names both halves of the AddOn* (2026-09-27).
+
+The AddOn's name, *Innkeeper's Ledger*, stays: the ledger is the player's own book of
+inns and signatures. `/ledger`, the `Ledger` module and the SavedVariables names are
+unchanged.
+
+*Rejected:* renaming the AddOn to match. The CurseForge and Wago projects already exist
+under this name, and "guestbook" alone would read as a housing guestbook AddOn
+([prior-art.md](prior-art.md)).
+
+*Reflected in:* `InnkeepersLedger.toc`, `README.md`, `CHANGELOG.md`, `CLAUDE.md`,
+`docs/vision.md`, `docs/architecture.md` (the `Sign` flow).
+
 ### 2026-10-01 — On a two-part client, guild keys must be two words too
 
 From the `dev → main` release review. This extends *Two-part names key as the bare

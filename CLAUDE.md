@@ -6,7 +6,7 @@ points at `docs/` rather than repeating it.
 ## What this is
 
 A free, open-source World of Warcraft AddOn targeting **WoW: Forever** (launches
-2026-11-04). Players sign a ledger by talking to innkeepers; the ledger becomes a
+2026-11-04). Players sign each inn's guestbook at the innkeeper; their ledger becomes a
 collection of inns plus the signatures of travelers they've crossed paths with,
 synced peer-to-peer in-game. See [docs/vision.md](docs/vision.md).
 
@@ -32,9 +32,10 @@ task needs, using the "Read when" column. Don't read everything.
 | [docs/prior-art.md](docs/prior-art.md) | existing guestbook AddOns and what we took from them; the Forever AddOn landscape near launch | positioning, sync pattern precedent, "does this already exist?" for a new feature |
 | [docs/kickoff.md](docs/kickoff.md) | phased build sequence to v1, cut order, completion criteria | picking the next step; timeline slips |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | local dev setup (Lua 5.1, busted, luacheck; Windows notes), PR conventions, releasing (tags, `CHANGELOG.md`, the packager workflow) | setting up tooling; tests won't run locally; preparing or cutting a release |
-| [docs/specs/phrase.md](docs/specs/phrase.md) | the `Phrase` spec: phrase data shape and ID ranges, the composition grammar, rendering, content rules, the draft phrase set | `Phrase.lua` or `Data/Phrases.lua`; adding or rewording phrases; rendering entries (UI, export) |
+| [docs/specs/phrase.md](docs/specs/phrase.md) | the `Phrase` spec: phrase data shape and ID ranges, voices, the composition grammar, rendering, content rules, the draft phrase set | `Phrase.lua` or `Data/Phrases.lua`; adding or rewording phrases or voices; rendering entries (UI, export) |
 | [docs/specs/collection-cosmetics.md](docs/specs/collection-cosmetics.md) | the `Collection` + `Cosmetics` spec: `Data/Inns` shape (inns, zones, continents, aliases, factions), progress math, stamps, cosmetic IDs and unlock rules, `SEALS`, the draft catalog | `Collection.lua`, `Cosmetics.lua`, `Data/Inns.lua` or `Data/Cosmetics.lua`; filling `Data/Inns` (#12); a seal on signing; the collection view or export |
 | [docs/specs/export.md](docs/specs/export.md) | the `Export` spec: the v1 data table (types, ranges, sources), the encoding pipeline, `Core:ExportString`, the travelers opt-in, limits and size budget, the test-only decoder and the no-decoder guard | `Export.lua` or `Core:ExportString`; anything that ends up in an export; the Share window; writing an export consumer |
+| [docs/specs/sign.md](docs/specs/sign.md) | the `Sign` spec: the gossip button at known innkeepers, the checks and their reasons, the commit (`addOwn`, seals, `markEarned`, `WindowChanged`), the pure `SignFlow` module and draft model, the DRAFT composer and messages, `Core`'s unlock recording at login, the in-client checks | `Sign.lua`, `SignFlow.lua` or `Core`'s unlock recording; the gossip button or composer; signing messages; what an own entry may contain |
 | `docs/specs/<feature>.md` | one spec per feature (written by the planner) | working on that feature |
 
 At the end of a session with real work or decisions: rewrite `docs/status.md`, add dated

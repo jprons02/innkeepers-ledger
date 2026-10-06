@@ -73,6 +73,12 @@ whether a module is done.
 - Branch from `dev`: `feat/<slug>`, `fix/<slug>`, `chore/<slug>` or `docs/<slug>`.
 - Open the PR against `dev`. It's squash-merged once CI is green.
 - `main` only receives `dev → main` release PRs.
+- **A check that failed for GitHub's reasons** (the job log says "not acquired by Runner
+  … even after multiple attempts", a 15-minute timeout) isn't a code failure. Re-run it
+  from the Actions page; the agents' token can't (`gh run rerun` gets "Resource not
+  accessible by personal access token"), so agents push an empty commit to the branch
+  instead, which starts fresh runs. Check [githubstatus.com](https://www.githubstatus.com/)
+  first: during an Actions incident, retries keep timing out until it's mitigated.
 
 ## Releasing
 
@@ -81,7 +87,8 @@ and publishing are the maintainer's; everything before them is checked in CI.
 
 - **Every PR** runs `package`: the packager with `-d -u` (no upload, Unix line endings),
   then `scripts/check-package.sh` on the zip. A manual run (*Actions → release → Run
-  workflow*) does the same for any branch once `release.yml` is on `main`.
+  workflow*) does the same for any branch. Only the maintainer can start one: the
+  agents' token gets a 403 on that.
 - **Release notes** go in `CHANGELOG.md` under `## vX.Y.Z` before tagging. It ships in
   the AddOn and is the text on the download pages, so it's plain: no links, no site or
   product names. The packager never builds notes from commit messages.

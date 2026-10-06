@@ -5,7 +5,7 @@
 
 ## The one-liner
 
-Walk into an inn, talk to the innkeeper, sign the ledger. Over time you fill a book of
+Walk into an inn, talk to the innkeeper, sign the guestbook. Over time you fill a book of
 everywhere you've stayed, and the entries of travelers you've crossed paths with fill
 in alongside yours.
 

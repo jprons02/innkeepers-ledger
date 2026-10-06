@@ -77,7 +77,17 @@ merged) run in the Forever beta, build **1.60.1.70124** (2026-09-29), on 2026-09
 - ✅ **Gossip:** `GOSSIP_SHOW` fires; `C_GossipInfo.GetOptions()` / `GetText()` work;
   `GossipFrame` is the retail frame (`GossipFrame.GreetingPanel.ScrollBox`, 338×496).
   A `UIPanelButtonTemplate` button parented to `GossipFrame` and anchored under it shows
-  and takes clicks. ❓ Not yet seen at an innkeeper (none met so far).
+  and takes clicks.
+- ✅ **At an innkeeper (2026-10-05):** the first one met is *Coriella Calmbreeze*
+  (NPC `254089`, Calmbreeze Inn, Shen'dar Village, Zephras Isle; GUID
+  `Creature-0-4615-2991-62-254089-…`). `GOSSIP_SHOW` fires, her GUID and name read
+  normally, the probe's button shows under the frame and takes clicks, and
+  **`IsResting()` is `true`** at her. `UnitFactionGroup("npc")` returns nothing
+  (neutral; Zephras Isle mixes Alliance and Horde NPCs). Her greeting is "Welcome to the
+  Calmbreeze Inn, traveler…", and her options are *Make this inn your home.*
+  (`gossipOptionID` 137079, icon 132052, the binder icon) and *I would like to buy from
+  you.* (icon 132060). The binder option is what marks an innkeeper in the probe's log;
+  no other NPC logged so far has it.
 - ✅ **Sitting detection: no query API.** Only actions exist (`ToggleSit`,
   `SitStandOrDescendStart`); nothing reports the stand state.
 - ✅ **Addon messages on custom channels are allowed** (retail behavior): `"CHANNEL"` to a
@@ -99,15 +109,16 @@ merged) run in the Forever beta, build **1.60.1.70124** (2026-09-29), on 2026-09
 
 ## Verification checklist (needs a Forever client: beta until 2026-10-21, or launch 2026-11-04)
 
-Ticked items were checked in the beta on 2026-09-30 (build 1.60.1.70124); the results are
+Ticked items were checked in the beta on 2026-09-30 and 2026-10-05 (build 1.60.1.70124); the results are
 in the sections above. **Partly** means the rest of the item is still open.
 
 - [x] TOC interface number (`16001`); AddOn loads ✅
-- [ ] `GOSSIP_SHOW` fires for innkeepers; `UnitGUID("npc")` yields a creature GUID with
-      NPC ID. **Partly** ✅: both hold for every NPC tried, but no innkeeper yet
+- [x] `GOSSIP_SHOW` fires for innkeepers; `UnitGUID("npc")` yields a creature GUID with
+      NPC ID ✅ (Coriella Calmbreeze, 2026-10-05)
 - [x] Gossip option injection approach works ✅ (a button parented to `GossipFrame`,
-      anchored under it). Re-check the look at an innkeeper
-- [ ] `IsResting()` true inside inns (it's `false` outside, and readable)
+      anchored under it; shows and clicks at an innkeeper too)
+- [x] `IsResting()` true inside inns ✅ (`true` at the Calmbreeze Inn, `false` outside,
+      readable)
 - [x] Embedded libraries (see [libraries.md](libraries.md)) load without errors ✅
 - [ ] Addon message PARTY / RAID / GUILD round-trip between two characters
 - [ ] Addon messages inside an instance / during an encounter, and which chat type
@@ -116,8 +127,8 @@ in the sections above. **Partly** means the rest of the item is still open.
       **Partly** ✅: 255 bytes, longer messages truncated silently; 30 whispers in one
       frame all arrived. Group and guild throttles untested
 - [x] Hidden values outside combat: `UnitGUID("npc")`, NPC names and the
-      `CHAT_MSG_ADDON` sender all arrive as normal values ✅ (at an innkeeper: re-check
-      with the first one)
+      `CHAT_MSG_ADDON` sender all arrive as normal values ✅ (at an innkeeper too,
+      2026-10-05)
 - [x] Addon messages to a custom channel (`"CHANNEL"`): **allowed** ✅
 - [x] Player GUID and name format on the mega-realm ✅: retail GUID, **two-part names**
       whose surname fills the realm slot of `UnitName`/`UnitFullName`
@@ -129,7 +140,8 @@ in the sections above. **Partly** means the rest of the item is still open.
       2026-09-30); confirm with a second character that a party member's messages
       resolve (`/ledger debug` shows `got hello PARTY`, not `drop unresolved`). First,
       logged in solo, `/ledger debug`'s report must end `names two-part` (#80: the form
-      is decided at login and kept for the session)
+      is decided at login and kept for the session). **Partly** ✅: solo, it ends
+      `names two-part` (2026-10-05); the party half is still open
 - [ ] Sync glue ([specs/sync-glue.md §8](specs/sync-glue.md#8-unverified-client-facts-this-spec-relies-on)).
       **Partly** ✅: the `CHAT_MSG_ADDON` sender is `"First Surname"` (a space, no realm
       suffix); `GetNormalizedRealmName()` is `ClassicBetaPvP`; `UnitGUID("player")` and
@@ -156,7 +168,8 @@ in the sections above. **Partly** means the rest of the item is still open.
       both can use it); whether another innkeeper serves the same inn (an alias). Zone
       seals are numbered 101, 102, … in the order zones are added
       ([specs/collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
-      The probe logs every NPC talked to, so this fills in during normal play
+      The probe logs every NPC talked to, so this fills in during normal play.
+      **Partly** ✅: 1 inn so far (Calmbreeze Inn, Zephras Isle; zone seal 101)
 - [ ] Map IDs readable at each inn (`C_Map.GetBestMapForUnit("player")`, then the
       `C_Map.GetMapInfo(id).parentMapID` chain up to the first *Zone*- and
       *Continent*-type maps, or a *World* map if it comes first); a capital city is its
@@ -170,6 +183,32 @@ in the sections above. **Partly** means the rest of the item is still open.
       edit box holds a 256 000-byte string (`SetText` 2.3 ms). Still open: copying it
       out; build time and memory of an opted-in export at the foreign cap
 - [x] Sitting detection ✅: none (no query API)
+- [ ] Signing the guestbook ([specs/sign.md §8](specs/sign.md#8-in-client-checks-for-12)),
+      at Coriella Calmbreeze (`254089`) with `/ledger debug` on, reading
+      `InnkeepersLedger.lua` from disk after a `/reload`:
+  - [x] "Sign the guestbook" shows under her gossip frame, not under other NPCs' ✅
+        (2026-10-05). Still to watch: it hides when the gossip closes
+  - [x] a click opens the composer right of the gossip frame; background, font strings
+        and `<` `>` buttons render; the preview reads "Rested here, dreaming of home." ✅
+        (maintainer's screenshot, 2026-10-05). Cycling and the second line: not yet
+        exercised
+  - [x] Sign → "You signed the guestbook of Calmbreeze Inn."; after a restart the saved
+        file holds one own entry `{ inn = 254089, phrase = { 1, 1306 } }` (20:45 UTC) and
+        `earned` holds 1101, 1003, 2 and 101 ✅. That all four unlock at once is the
+        partial-data effect in [status.md](status.md) → Follow-ups (release gate)
+  - [x] a second click the same week → "You've signed this guestbook this week. Sign
+        again after the weekly reset (in 19 hours)." ✅, i.e. Tuesday 16:00 UTC
+  - [ ] the voice rows (#100): "Voice: Hearthside" above line 1, stepping it changes
+        the line's templates, line 2's voice follows until stepped, and the taller
+        (530-pixel) composer has no overlapping rows. A screenshot for the maintainer
+  - [ ] closing the gossip mid-compose hides the composer; talking to another NPC with it
+        open closes it; *I would like to buy from you.* closes it too (`GOSSIP_CLOSED`)
+  - [ ] after the next weekly reset (Tuesday 2026-10-06 16:00 UTC): the seal row offers Zephras
+        Isle's seal and the Innkeeper's seal; a sealed signature is stored with `seal = 101`
+  - [ ] with a second character in a party, the signature reaches them (with the
+        round-trip item above)
+  - [ ] at any innkeeper whose rest area doesn't cover where you talk to them: the
+        `not_resting` line
 
 ## Sources
 

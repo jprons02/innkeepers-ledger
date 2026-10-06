@@ -37,6 +37,7 @@ local wow = {
   "GetNumGroupMembers",
   "GetNumGuildMembers",
   "GetServerTime",
+  "GossipFrame",
   "InCombatLockdown",
   "IsInGroup",
   "IsInGuild",

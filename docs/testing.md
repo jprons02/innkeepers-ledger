@@ -114,7 +114,15 @@ Proportional, not ceremonial:
   `WTF/Account/<account>/SavedVariables/!ILProbe.lua`, which a session reads straight
   from disk. Extend the probe on that branch when a new client question comes up; the
   results go into [platform-forever.md](platform-forever.md), never the raw log (it holds
-  the character's name).
+  the character's name). Since 2026-10-05 the probe adds no gossip button of its own (it
+  stacked on the real "Sign the guestbook" button); it still logs every NPC, and an
+  innkeeper is the one whose options include *Make this inn your home.* (icon 132052).
+- **Refreshing the AddOn in the client after a merge:** the installed
+  `Interface/AddOns/InnkeepersLedger` is a plain copy, not a link. Copy `Libs`, `Data`,
+  `UI`, every top-level `*.lua` and the TOC from `dev` over it (what `install.sh` does,
+  without touching the probe), then `diff -rq` it against the repo. Changed files load
+  on `/reload`; a new file in the TOC needs a full client restart. The game never reads
+  GitHub, so `dev` code is testable in the beta without a release.
 - **CI:** every check runs on every push and PR, and each has a local command
   ([CONTRIBUTING.md → Development setup](../CONTRIBUTING.md#development-setup)). Pure
   modules have coverage floors (95% for `Ledger`, `SyncProtocol`, `SyncSchedule`; 90% the

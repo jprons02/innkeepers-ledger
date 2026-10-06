@@ -18,7 +18,8 @@ Phrase.lua 90
 Collection.lua 90
 Cosmetics.lua 90
 Export.lua 90
-SignFlow.lua 90'
+SignFlow.lua 90
+BookView.lua 90'
 
 if [ ! -r "$report" ]; then
   echo "check-coverage: FAIL: $report not found; run busted --coverage, then luacov." >&2

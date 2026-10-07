@@ -5,8 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-07 (**list composer merged** (#102, #111) and **completeness marks**
-(#110) into `dev`; with the book and no-inks of 2026-10-06, none released to `main` yet)
+**Updated:** 2026-10-07 (**released to `main` (#114):** the book, no inks, the list
+composer (#102) and completeness marks (#110); release security review passed)
 
 ## Current state
 
@@ -38,14 +38,14 @@
   The shipped data marks nothing, so a signature now earns only `inns n` items; the book
   shows "1 of 1+". This answers the release gate on a partial atlas.
 - **Releasing is wired up** ([CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing)).
-  `main` holds everything through #104; #107, #108, #111 and #110 are on `dev` only. No tags yet
+  `main` and `dev` hold the same content (release #114, 2026-10-07). No tags yet
   (maintainer gate). **CI:** eight required checks, all green on `dev`.
 
 ## Next step
 
-- **Agents:** a `dev → main` release PR with its security review (the book, no inks, the
-  list composer, completeness marks). No `ready` ticket is queued after it; #12 drives
-  what's next.
+- **Agents:** no `ready` ticket is queued; #12's in-client results drive what's next
+  (retune the DRAFT look from screenshots, mark zones complete from the walk). Small
+  follow-ups below can fill gaps.
 - **In the client (maintainer):** restart the client (a new file, `BookView.lua`, needs a
   full restart, not `/reload`), then run the book's and the composer's checks on the
   [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).

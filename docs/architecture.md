@@ -159,8 +159,13 @@ AddOn. `SyncProtocol` validates everything before anything reaches `Ledger`:
   exist in `Data/Phrases`, and a `seal` must be a key of `Cosmetics.SEALS` (every seal
   the catalog knows, unlocked or not). Canned phrases make this a lookup table, not a
   text filter.
-- **Name:** length-capped and matched against the character name pattern (no `|`, so no
-  UI escape codes); it's rendered only as text, never interpreted.
+- **Name:** length-capped, well-formed UTF-8 with no hidden character (controls,
+  non-ASCII spaces, format and bidi controls such as a right-to-left override, invisible
+  fillers, private use, noncharacters), and matched against the character name pattern
+  (no `|`, so no UI escape codes); it's rendered only as text, never interpreted. The
+  hidden-character check, `Ledger.cleanText`, is shared with the book's `plain`
+  (amended 2026-10-07, #119:
+  [specs/sync-ledger.md §5.2a](specs/sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119)).
 - **Time sanity:** reject timestamps in the future (small tolerance) or before the
   Forever beta began.
 - **Rate limits:** per-sender messages and entries per minute, plus a global ceiling.

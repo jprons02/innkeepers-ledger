@@ -8,6 +8,10 @@
 > `Sync` slice, or changing anything about peer data, storage caps or the wire format.
 
 **Status:** approved (self-approved 2026-09-27, ticket #11; no maintainer decision in it).
+Amended 2026-10-07 (#119, self-approved; the maintainer chose to tighten): names must be
+well-formed UTF-8 with no hidden character, through the new shared check
+`Ledger.cleanText`
+([§5.2a](#52a-hidden-characters-in-names-amended-2026-10-07-119)).
 **Security-sensitive:** yes. The reviewer applies security-level scrutiny to everything
 under [Security notes](#5-security-notes) and must try malicious input itself.
 
@@ -367,7 +371,8 @@ or its indexes.
 | `Ledger.new(data, owner, weekAnchor)` | a ledger object (see 4.3); `ledger.readOnly`, `ledger.loadReport` |
 | `Ledger.validEntry(e)` | boolean (4.1) |
 | `Ledger.validGUID(s)` | boolean: a string of ≤ 40 bytes matching `^Player%-%d+%-%x+$` |
-| `Ledger.validName(s)` | boolean: the name rule (5.2) |
+| `Ledger.validName(s)` | boolean: the name rule (5.2), which includes `cleanText` (5.2a) |
+| `Ledger.cleanText(s)` | boolean: `s` is a string of well-formed UTF-8 with no hidden code point; never throws (5.2a; amended 2026-10-07, #119) |
 | `Ledger.innFromNpcGUID(guid, inns)` | NPC ID if `guid` is a creature GUID whose NPC ID is a key of `inns`, else `nil`; never throws (5.2) |
 | `ledger:weekOf(t)` / `ledger:nextWeekStart(now)` | the signing-week number of `t` / the time of the first weekly reset after `now` (4.4) |
 | `ledger:canSign(inn, now)` | `false` if an own entry at `inn` falls in `weekOf(now)` (or the ledger is read-only, or `inn` / `now` isn't a valid integer), else `true` |
@@ -404,7 +409,7 @@ written to the ledger until every whole-message check has passed. Result is
 | 1 | Never throws | the whole body runs inside `pcall` | `nil, "error"` | `receive never throws on a hostile value in any argument` |
 | 2 | Context sane | `ctx` is a table (its fields are read with `rawget`); `ctx.now` an integer in 0..`tMax`; `ctx.selfGUID` passes `Ledger.validGUID` and equals the ledger owner's GUID; `ctx.limiter` has `admit` and `admitEntries`; `ctx.wantMemo.seen`, `ctx.inns`, `ctx.phrases` and `ctx.seals` are tables; `ctx.phraseOk` is nil or a function; then `ctx.ledger` is not read-only (a read-only ledger gives `"readonly"`) | `"ctx"` / `"readonly"` | `drops everything when selfGUID is a hidden-value stand-in`; `… when the ledger is read-only` |
 | 3 | Channel | `channel` is `"PARTY"`, `"RAID"` or `"GUILD"` | `"channel"` | `drops WHISPER, CHANNEL, SAY, INSTANCE_CHAT and nil` |
-| 4 | Sender resolved | `sender` is a table; `Ledger.validGUID(sender.guid)`; `Ledger.validName(sender.name)` (5.2) | `"sender"` | `drops a nil, empty, non-string or malformed sender GUID`; `drops a sender name with a pipe or control byte` |
+| 4 | Sender resolved | `sender` is a table; `Ledger.validGUID(sender.guid)`; `Ledger.validName(sender.name)` (5.2, 5.2a) | `"sender"` | `drops a nil, empty, non-string or malformed sender GUID`; `drops a sender name with a pipe or control byte`; `drops a sender name with a hidden character or malformed UTF-8` |
 | 5 | Not our own echo | `sender.guid ~= ctx.selfGUID` | `"self"` | `drops our own messages echoed back by the channel` |
 | 6 | Size first | `type(msg) == "string"` and `1 <= #msg <= 255` | `"size"` | `drops a 256-byte message unread`; `drops an empty message` |
 | 7 | Rate (messages) | limiter admits the message (5.3); counted before parsing, so junk counts too | `"rate"` | `drops the 41st message from one sender within 60 s`; `admits again after the window` |
@@ -489,14 +494,160 @@ The design never depends on them arriving:
   `pcall` in rule 1 is the backstop and #12 checks the real behavior.
 - **Identity is the GUID.** Names are display only. The **name rule**
   (`Ledger.validName`): a string of 2..96 bytes with no byte below 32, no 127 and
-  no `|`; split at the first `-` into a name part and an optional realm part; the name
+  no `|`, that passes `Ledger.cleanText` (well-formed UTF-8 with no hidden character;
+  5.2a, amended 2026-10-07, #119); split at the first `-` into a name part and an
+  optional realm part; the name
   part is one word or two words joined by one space, each word only `A-Za-z` and bytes
   128–255, the first 2..48 bytes and the second (the surname) 1..48 bytes; the realm part,
   if present, is 1..48 bytes of `A-Za-z0-9'-` and bytes 128–255 and doesn't end in
   `-`. Two-part (surname) names pass. The server issues these names, so this is
-  defense in depth against UI escapes, not a filter on real names.
+  defense in depth against UI escapes and invisible or reordering text, not a filter on
+  real names.
 - **Patterns use explicit byte ranges** (`[A-Za-z]`, `[\128-\255]`), never `%a`, `%w`,
   `%l` or `%u`, whose meaning depends on the C locale. `%d` and `%x` are fine.
+
+### 5.2a Hidden characters in names (amended 2026-10-07, #119)
+
+**The problem.** The name rule let any byte 128–255 into a word, so a forged or tampered
+name could carry a right-to-left override, zero-width joiners, a no-break or ideographic
+space, a line separator or a Hangul filler, and the book would show reordered text, a
+blank name or stray glyphs. `BookView.plain` checked UTF-8 structure only, and loosely: it
+took overlongs (`E0 80..9F`, `F0 80..8F`), surrogates (`ED A0..BF`), code points above
+U+10FFFF (`F4 90..BF`) and the C1 controls (`C2 80..9F`). The maintainer chose to tighten
+(2026-10-07). Names reach the ledger from the client's sender resolution, never from the
+payload, so like the rest of the name rule this is defense in depth: against a tampered
+SavedVariables file, a client quirk, or a future code path.
+
+**`Ledger.cleanText(s)`** returns `true` or `false`. Pure; reads bytes with `string.byte`
+only (a local captured at load; no patterns, no substrings, nothing allocated per call);
+never errors on any string.
+1. `s` not a string → `false` (a hidden-value stand-in included: the type check comes
+   first). `""` → `true`; callers enforce their own lengths.
+2. Decode each character per RFC 3629 §4. The lead byte fixes the length and the range of
+   the second byte; every later byte is `80..BF`:
+
+   | Lead byte | Length | Second byte | Code points |
+   |---|---|---|---|
+   | `00..7F` | 1 | | U+0000..U+007F |
+   | `C2..DF` | 2 | `80..BF` | U+0080..U+07FF |
+   | `E0` | 3 | `A0..BF` | U+0800..U+0FFF |
+   | `E1..EC`, `EE..EF` | 3 | `80..BF` | U+1000..U+CFFF, U+E000..U+FFFF |
+   | `ED` | 3 | `80..9F` | U+D000..U+D7FF |
+   | `F0` | 4 | `90..BF` | U+10000..U+3FFFF |
+   | `F1..F3` | 4 | `80..BF` | U+40000..U+FFFFF |
+   | `F4` | 4 | `80..8F` | U+100000..U+10FFFF |
+   | `80..C1`, `F5..FF` | | | `false` |
+
+   A lone continuation byte, a lead byte `C0`, `C1` or `F5..FF`, a byte outside its range
+   in any position, or a sequence cut short by the end of `s` → `false`. Overlongs,
+   surrogates and anything above U+10FFFF can't decode, so they need no table rows.
+3. Look each code point up in `HIDDEN` (below) by binary search over its rows; inside a
+   row → `false`.
+4. Otherwise `true`.
+
+Cost: O(n log 48) for an n-byte string. `validName` caps its input at 96 bytes before
+the check.
+
+**Banned code points.** `HIDDEN` is a local, sorted, non-overlapping table of
+`{ from, to }` pairs, copied verbatim from this table (complete for Unicode 16.0; no
+Unicode database at runtime). Adjacent ranges are merged; the unassigned code points
+inside a merged row (U+2065, U+FFF0..U+FFF8 and the rest of U+E0000..U+E0FFF) are
+default-ignorable and banned with their neighbours.
+
+| # | From | To | What |
+|---|---|---|---|
+| 1 | U+0000 | U+001F | C0 controls |
+| 2 | U+007F | U+009F | DEL, C1 controls |
+| 3 | U+00A0 | U+00A0 | no-break space |
+| 4 | U+00AD | U+00AD | soft hyphen |
+| 5 | U+034F | U+034F | combining grapheme joiner |
+| 6 | U+0600 | U+0605 | Arabic number signs (format) |
+| 7 | U+061C | U+061C | Arabic letter mark (bidi) |
+| 8 | U+06DD | U+06DD | Arabic end of ayah |
+| 9 | U+070F | U+070F | Syriac abbreviation mark |
+| 10 | U+0890 | U+0891 | Arabic pound and piastre marks above |
+| 11 | U+08E2 | U+08E2 | Arabic disputed end of ayah |
+| 12 | U+115F | U+1160 | Hangul choseong and jungseong fillers |
+| 13 | U+1680 | U+1680 | Ogham space mark |
+| 14 | U+17B4 | U+17B5 | Khmer inherent vowels (invisible) |
+| 15 | U+180B | U+180F | Mongolian free variation selectors, vowel separator |
+| 16 | U+2000 | U+200F | en quad .. hair space, zero-width space, ZWNJ, ZWJ, LRM, RLM |
+| 17 | U+2028 | U+202F | line and paragraph separators, bidi embeddings and overrides (LRE, RLE, PDF, LRO, RLO), narrow no-break space |
+| 18 | U+205F | U+206F | medium mathematical space, word joiner, invisible operators, bidi isolates (LRI, RLI, FSI, PDI), deprecated format controls |
+| 19 | U+2800 | U+2800 | Braille pattern blank |
+| 20 | U+3000 | U+3000 | ideographic space |
+| 21 | U+3164 | U+3164 | Hangul filler |
+| 22 | U+E000 | U+F8FF | private use |
+| 23 | U+FDD0 | U+FDEF | noncharacters |
+| 24 | U+FE00 | U+FE0F | variation selectors |
+| 25 | U+FEFF | U+FEFF | zero-width no-break space (BOM) |
+| 26 | U+FFA0 | U+FFA0 | halfwidth Hangul filler |
+| 27 | U+FFF0 | U+FFFF | specials: interlinear annotation controls, object replacement, replacement character, noncharacters |
+| 28 | U+110BD | U+110BD | Kaithi number sign |
+| 29 | U+110CD | U+110CD | Kaithi number sign above |
+| 30 | U+13430 | U+1343F | Egyptian hieroglyph format controls |
+| 31 | U+1BCA0 | U+1BCA3 | shorthand format controls |
+| 32 | U+1D173 | U+1D17A | musical symbol format controls |
+| 33 | U+1FFFE | U+1FFFF | noncharacters |
+| 34 | U+2FFFE | U+2FFFF | noncharacters |
+| 35 | U+3FFFE | U+3FFFF | noncharacters |
+| 36 | U+4FFFE | U+4FFFF | noncharacters |
+| 37 | U+5FFFE | U+5FFFF | noncharacters |
+| 38 | U+6FFFE | U+6FFFF | noncharacters |
+| 39 | U+7FFFE | U+7FFFF | noncharacters |
+| 40 | U+8FFFE | U+8FFFF | noncharacters |
+| 41 | U+9FFFE | U+9FFFF | noncharacters |
+| 42 | U+AFFFE | U+AFFFF | noncharacters |
+| 43 | U+BFFFE | U+BFFFF | noncharacters |
+| 44 | U+CFFFE | U+CFFFF | noncharacters |
+| 45 | U+DFFFE | U+DFFFF | noncharacters |
+| 46 | U+E0000 | U+E0FFF | tags (U+E0001, U+E0020..U+E007F), variation selectors supplement (U+E0100..U+E01EF), the rest default-ignorable |
+| 47 | U+EFFFE | U+EFFFF | noncharacters |
+| 48 | U+F0000 | U+10FFFF | supplementary private use, planes 15 and 16 (their noncharacters included) |
+
+What that covers: every control (C0, DEL, C1); every space separator except U+0020, and
+U+2028/U+2029; every format character (Cf) as of Unicode 16.0, so every bidi control;
+the invisible letters and fillers U+034F, U+115F, U+1160, U+17B4, U+17B5, U+2800, U+3164
+and U+FFA0; every variation selector; all private use; every noncharacter; the specials.
+Surrogates never decode (step 2), so they have no row.
+
+**Where it applies.**
+- **`Ledger.validName(s)`**: after its type and length checks, `cleanText(s)` must be
+  `true`; the patterns follow unchanged. Every caller inherits it with no change of its
+  own: `SyncProtocol.receive` rule 4 (`"sender"`), `addForeign` (`"invalid"`),
+  `setOwnerName` (`false`), normalize at load (4.3), `Export` (`me.name` absent;
+  [export.md](export.md) §3.5) and `Core`'s own-name read
+  ([sync-glue.md](sync-glue.md) §3.2 step 2).
+- **`BookView.plain`** runs it on the full input before any cut
+  ([book.md §3.8](book.md#38-text-safety-and-dates)).
+- `|` stays in each caller's own check: it's a WoW escape, not a Unicode matter.
+
+**No legit name is lost.** The server issues names made of letters of the client's
+languages (Latin with accents, `ß`, Cyrillic, Hangul syllables, Chinese) and realms of
+letters, digits, `'` and `-`; no banned code point is one of those letters. The letters
+next to banned rows stay allowed (the Hangul jamo beside the fillers, Hangul syllables up
+to U+D7A3 behind the `ED` lead, the CJK compatibility ideographs from U+F900).
+
+**Stored data.** No SavedVariables schema change and no wire or export format change. The
+existing normalize pass is the migration: a stored traveler whose name now fails is
+dropped at load with its entries, like any invalid record (`travelersDropped`), and a
+`me.name` that fails is reset (`nameReset`). Fail closed.
+
+**Rejected.**
+- **Stripping or replacing the characters instead of rejecting:** it silently changes the
+  sender's name, so a forged name could be made to look exactly like another player's,
+  and the stored name would no longer be the one `Sync` resolved. The name rule only
+  accepts or rejects.
+- **Allow-listing scripts** (Latin, Cyrillic, Hangul, Han ranges): too many locales to
+  get right, and a missed range drops real players. The ban list is short and stable.
+- **A Unicode category database at runtime:** large, and harder to review than one table.
+- **Checking only at display (`plain`):** the name would still be stored, exported and
+  counted. **Checking only in `validName`:** `plain` stays the gate for a tampered file
+  or a future path.
+
+**Out of scope** (possible follow-ups): a limit on stacked combining marks ("zalgo"
+names); look-alike letters across scripts (identity is the GUID); format characters a
+later Unicode version adds (a new table row then).
 
 ### 5.3 Rate limits
 
@@ -562,6 +713,50 @@ clock.
   `Player-1-`, `Player-1-AB-CD`, `Player-1-0x1F`, a 41-byte GUID, an embedded NUL, a
   pipe, a control byte, two spaces, three words, a trailing `-`, 1 and 97 bytes,
   non-strings.
+- **cleanText (5.2a; amended 2026-10-07, #119).** The spec has a helper `enc(cp)` that
+  builds UTF-8 with `string.char`, and its **own transcription** of the 5.2a table (a
+  second copy, so a typo in either fails the run).
+  - *Every row, both edges:* `enc(from)` and `enc(to)` → `false`; `enc(from − 1)` and
+    `enc(to + 1)` → `true` unless that code point is in another row, a surrogate or above
+    U+10FFFF (U+0000 has no lower and U+10FFFF no upper neighbour).
+  - *Exhaustive decode:* every code point of planes 0 and 1 (surrogates excluded), and in
+    each of planes 2–16 its first 256, its last 256 and every 251st code point:
+    `cleanText(enc(cp)) == not inTable(cp)`. Every surrogate encoded as three bytes
+    (`ED A0 80` .. `ED BF BF`) → `false`.
+  - *Malformed, one case per class* (each alone, and again between `"Ab"` and `"cd"`):
+    overlong 2-byte `"\192\128"`, `"\193\191"`; overlong 3-byte `"\224\128\128"`,
+    `"\224\159\191"`; overlong 4-byte `"\240\128\128\128"`, `"\240\143\191\191"`;
+    surrogate `"\237\160\128"`, `"\237\191\191"` and a CESU-8 pair
+    `"\237\160\189\237\184\128"`; above U+10FFFF `"\244\144\128\128"`,
+    `"\245\128\128\128"`, `"\248\128\128\128\128"`, `"\255"`; lone continuation `"\128"`,
+    `"\191"`; truncated at the end `"Zo\195"`, `"\226\130"`, `"\226"`,
+    `"\240\159\152"`, `"\240\159"`, `"\240"`; truncated mid-string `"\195A"`,
+    `"\226\130A"`, `"\240\159\152A"`; a bad later byte in each position `"\195\195"`,
+    `"\225\65\128"`, `"\225\128\65"`, `"\241\65\128\128"`, `"\241\128\65\128"`,
+    `"\241\128\128\65"`. (The overlong, surrogate and above-U+10FFFF cases put the second
+    byte of `E0`, `ED`, `F0` and `F4` just outside its range.)
+  - *Valid at every length and lead class* → `true`: `"\195\157"` (Ý), `"\224\160\128"`
+    (U+0800), `"\225\128\128"` (U+1000), `"\237\158\163"` (U+D7A3, 힣), `"\239\164\128"`
+    (U+F900), `"\240\144\128\128"` (U+10000), `"\241\128\128\128"` (U+40000),
+    `"\243\175\191\189"` (U+EFFFD). `"\244\128\128\128"` (U+100000) decodes and is still
+    `false` (private use; all of `F4` is banned, so a decoder that wrongly rejected `F4`
+    outright would only fail closed).
+  - *Letters beside a row pass,* alone and inside a name (`validName("Ab" .. enc(cp))`):
+    U+115E, U+1161, U+17B3, U+3163, U+3165, U+FF9F, U+FFA1, U+F900, U+D7A3.
+  - *Non-strings:* `nil`, `7`, `true`, `{}`, a function and both hidden-value stand-ins
+    → `false`, no throw. `""` → `true`.
+  - *Fuzz:* a seeded loop of 10 000 strings of 0..16 bytes, each byte drawn mostly from
+    the edge bytes (`00 1F 20 7E 7F 80 8F 90 9F A0 BF C0 C1 C2 DF E0 E1 EC ED EE EF F0 F1
+    F3 F4 F5 FF`) and otherwise at random → always a boolean, never throws.
+  - Together these reach every branch of the decoder and the search (floor 95%).
+- **validName, hidden characters (5.2a):** RLO (`E2 80 AE`), ZWJ (`E2 80 8D`), NBSP
+  (`C2 A0`), ideographic space (`E3 80 80`) and the Hangul filler (`E3 85 A4`), each at
+  the start (`"\226\128\174Aldric"`), the end, the middle (`"Ald" .. x .. "ric"`), in the
+  surname (`"Aldric Stone" .. x .. "brook"`) and in the realm (`"Aldric-Azjol" .. x ..
+  "Nerub"`) → `false`; a name of two Hangul fillers only → `false`; a C1 control
+  (`"Ald\194\133ric"`, U+0085) → `false`; an overlong and a truncated sequence inside a
+  name → `false`. Still pass: `Aldric`, `Ýrsa`, `Ærendil`, `Weiß`, `Алдрик`, `알드릭`,
+  `艾德里克`, `Aldric Stonebrook`, `Aldric-Kel'Thuzad`, `Zoë-Azjol-Nerub`.
 - **Weeks** (fixture `weekAnchor` = 1 790 089 200, Tuesday 2026-09-22 15:00 UTC, the
   retail US reset): `weekOf` of the anchor is 0, of `anchor − 1` is −1; Tuesday
   14:59:59 and 15:00:00 UTC differ by one; `nextWeekStart` at, just before and just after
@@ -578,7 +773,8 @@ clock.
 - **addForeign:** added with traveler record (`name`, `met = now`); dup; conflicting
   re-send doesn't overwrite; `"too_soon"` for a second entry from one signer at one inn
   in one week (the first is kept), while another signer at the same inn in that week is
-  added; `"self"` for the owner's GUID; invalid signer, name or entry; name updates on a
+  added; `"self"` for the owner's GUID; invalid signer, name or entry (including a name
+  with an RLO, 5.2a); name updates on a
   later accepted entry; `met` doesn't change. Cap and flood fixtures give each signer
   distinct `(inn, week)` pairs so the weekly rule doesn't mask the caps.
 - **Caps, one test per cap:** the 41st entry of a signer evicts that signer's oldest; an
@@ -607,7 +803,10 @@ clock.
   while two own entries in one week are both kept;
   unsorted input sorted; caps re-applied when they're lowered (a fixture with 60 entries
   from one signer, 200 at one inn and 3 500 in total ends at 40 / 150 / 3 000, oldest
-  removed); `loadReport` counts.
+  removed); `loadReport` counts. **Hidden characters (5.2a):** a saved traveler whose
+  name holds an RLO is dropped with its entries (`travelersDropped` 1, the other
+  travelers kept); a `me.name` with a ZWJ is reset to `owner.name` (`nameReset` 1);
+  `setOwnerName` with an NBSP returns `false` and stores nothing.
 - **Migration:** with a fake `MIGRATIONS[1]` and `SCHEMA = 2`, a v1 fixture migrates and
   the same table object is updated in place; a migration that throws halfway leaves the
   table byte-for-byte unchanged and the ledger read-only.
@@ -642,7 +841,9 @@ clock.
   - floods: 41 messages, 81 entries, 1 201 admitted messages from many senders, 1 001
     senders; one sender sending 1 000 messages doesn't stop a second sender being
     admitted (rejected messages don't count globally); a window resets when `now` goes
-    backwards.
+    backwards;
+  - hidden characters in the sender name (5.2a): an RLO, a ZWJ, an NBSP and an overlong
+    sequence in `sender.name` → `"sender"`, nothing stored, no limiter charge.
 - **decideWant:** in sync → nil; count 0 → nil; first mismatch → newest held `t`;
   nothing held → 0; second ask for the same peer within 10 min → 0, **even with a
   different digest**; third → nil for 10 min whatever the digest, then allowed again;
@@ -658,10 +859,20 @@ clock.
 - **Purity:** both modules load in the strict environment; `luacheck` clean;
   `sh scripts/check-apis.sh` passes.
 
+### Other specs (amended 2026-10-07, #119)
+
+- `spec/export_spec.lua`: an owner name with an RLO → `me.name` absent, the rest of the
+  export unchanged.
+- `spec/book_view_spec.lua`: the `plain` cases of
+  [book.md §6.2](book.md#62-specbook_view_speclua-pure-strict-environment).
+
 ## 7. Acceptance criteria
 
 - [ ] `Ledger.lua` implements 4.1–4.5 with the constants in 3.1 and 4.4.
 - [ ] `SyncProtocol.lua` implements 3.2, 3.3, 5.1, 5.1a and 5.2–5.4 with the constants in 3.1 and 5.3.
+- [ ] `Ledger.cleanText` implements 5.2a; `HIDDEN` matches the 5.2a table row for row;
+      `validName` calls it; `Ledger` stays at or above its 95% floor (amended 2026-10-07,
+      #119).
 - [ ] Every test named in §6 exists and passes (`busted` output in the PR).
 - [ ] `luacheck .` clean; `scripts/check-apis.sh` and `scripts/check-libs.sh` pass; CI
       green on the PR.
@@ -735,3 +946,5 @@ Not built here; the `Sync` spec/ticket must honor it.
   these or bump the protocol version.
 - Entries accepted from beta dates (from 2026-09-17) are harmless on live servers.
 - ~400 KB of SavedVariables at the foreign cap is acceptable.
+- No server-issued character or realm name contains a 5.2a code point (#119); a realm
+  name that did would drop that realm's travelers, which the in-client batch would show.

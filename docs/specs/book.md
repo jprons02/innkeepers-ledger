@@ -24,6 +24,11 @@ Amended 2026-10-07 (#110): a place the data doesn't mark complete has `TEXT.more
 `"+"`) after its total, and the `continent` rule's progress picks among complete
 continents only ([§3.5](#35-the-collection-tab), [§3.6](#36-the-cosmetics-tab);
 [collection-cosmetics.md §3.11](collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)).
+Amended 2026-10-07 (#119, self-approved; the maintainer chose to tighten): `plain` falls
+back on any name that fails `Ledger.cleanText` (strictly malformed UTF-8, or a hidden
+character such as a right-to-left override or a zero-width joiner)
+([§3.8](#38-text-safety-and-dates);
+[sync-ledger.md §5.2a](sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119)).
 **Security-sensitive:** yes, moderately. The book **displays other players' names and
 signatures** (peer-derived data) and this slice **wires a hook into `Sync`'s receive
 path** (`onEntries`) and **calls the export** with an opt-in. No wire, export or ledger
@@ -458,15 +463,32 @@ shared = <a fresh copy of a valid snapshot> }`, nothing else.
 ### 3.8 Text safety and dates
 
 **`BookView.plain(s, maxBytes, fallback)`** is the one gate for peer-derived display text
-(travelers' names) and the player's own name:
+(travelers' names) and the player's own name.
+
+**Amended 2026-10-07 (#119):** step 2 runs `Ledger.cleanText` on the whole input, so
+`plain` refuses everything the name rule refuses: strictly malformed UTF-8 (RFC 3629;
+the old structural check let overlongs, surrogates, code points above U+10FFFF and the
+C1 controls `C2 80..9F` through) and every hidden code point (non-ASCII spaces, format
+and bidi controls such as a right-to-left override, zero-width characters, invisible
+fillers, variation selectors, private use, noncharacters). The one table of banned code
+points lives in
+[sync-ledger.md §5.2a](sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119).
+
 1. `s` not a string, or empty → `fallback`.
-2. Any byte `< 32`, `127`, or `|` (124) → `fallback`. **Never escaped** (no `||`): a
-   name that holds a UI escape is replaced, not repaired.
-3. Not well-formed UTF-8 → `fallback`: each lead byte `C2..DF` takes one continuation
-   byte, `E0..EF` two, `F0..F4` three, continuations are `80..BF`; a lone continuation,
-   `C0`, `C1`, `F5..FF` or a truncated sequence fails.
+2. `Ledger.cleanText(s)` isn't `true` → `fallback`. Checked on the **full** input,
+   before any cut, so a hidden character past `maxBytes` still replaces the whole name
+   rather than leaving a clean-looking prefix. This covers every byte `< 32` and `127`,
+   malformed UTF-8 (a lone or missing continuation byte, `C0`, `C1`, `F5..FF`, a
+   truncated sequence, an overlong, a surrogate, anything above U+10FFFF) and the hidden
+   code points. `BookView` reads `Ledger.cleanText` once at load, like `validEntry`, and
+   asserts it is a function.
+3. Any `|` (124) → `fallback`. **Never escaped** (no `||`): a name that holds a UI
+   escape is replaced, not repaired.
 4. Longer than `maxBytes` → cut at `maxBytes`, back off to the start of the last
-   complete character, append `"..."`.
+   complete character, append `"..."`. Step 2 has already proved the structure, so the
+   byte loop needs only each lead byte's length (`< 0x80` 1, `< 0xE0` 2, `< 0xF0` 3,
+   else 4) and step 3's `|` test; drop the failure branches step 2 makes unreachable
+   rather than leave them uncovered.
 5. Else `s` unchanged.
 
 Checks use `string.byte` and plain comparisons only (no patterns over the data, never
@@ -474,7 +496,8 @@ Checks use `string.byte` and plain comparisons only (no patterns over the data, 
 
 **Is extra escaping needed?** No. Every traveler name in the ledger already passed
 `Ledger.validName` on the way in (`addForeign`) and again at load (`normalize`), and that
-rule rejects `|`, control bytes and `\127` (`[%z\1-\31\127|]`), caps names at 96 bytes,
+rule rejects `|`, control bytes and `\127` (`[%z\1-\31\127|]`), malformed UTF-8 and
+hidden characters (`Ledger.cleanText`, #119), caps names at 96 bytes,
 and allows only letters, UTF-8 bytes, one space and a realm suffix. Inn, zone, continent
 and cosmetic names pass `Collection`'s allow-list (no `|`, no `%`), phrase text passes
 `Phrase`'s, dates and numbers are ours. `plain` is defense in depth (a tampered
@@ -790,6 +813,9 @@ fail }, notice }` are readable fields.
 - **Escaping `|` as `||` in names:** a stored name with `|` already means a tampered file
   or a bug; replacing it with "A traveler" shows nothing a peer chose, and `validName`
   makes it unreachable today.
+- **Stripping hidden characters in `plain` instead of falling back** (#119): the shown
+  name would no longer be the stored one, and a stripped forgery could look exactly like
+  another traveler's name; "A traveler" shows nothing a peer chose.
 - **Scrolling lists (`ScrollFrame`, `ScrollBox`):** the maintainer chose page turns
   (decision 2), and they need no unverified template.
 - **Tab and check box templates (`PanelTabButtonTemplate`, `UICheckButtonTemplate`,
@@ -918,7 +944,8 @@ were checked and what hostile input was tried.
 - **Peer data at display.** Travelers' names and entries come only from the ledger, which
   stored them through `SyncProtocol` (every rule of architecture.md → Security model) and
   `addForeign`. The book adds a second gate: names through `plain` (no `|`, control bytes,
-  `\127` or malformed UTF-8 reach a font string; byte-capped), entries through
+  `\127`, malformed UTF-8 or hidden character such as a bidi override or a zero-width
+  joiner reaches a font string, #119; byte-capped), entries through
   `Ledger.validEntry`, phrases rendered from our own allow-listed table (a `nil` render
   shows `TEXT.faded`), seals named from our catalog. No peer string is ever passed to
   `string.format`, `SetFormattedText`, a pattern or a `gsub` replacement, used as a table
@@ -1007,6 +1034,20 @@ book ignores any kind but quill and seal.
   ASCII name at 64 → its first 64 bytes + `"..."`; a name whose 64th–65th bytes are one
   two-byte character → its first 63 bytes + `"..."` (the cut backs off); never returns
   `|`.
+- **`plain`, hidden characters (amended 2026-10-07, #119):** → fallback for an RLO
+  (`E2 80 AE`), a ZWJ (`E2 80 8D`), an NBSP (`C2 A0`), an ideographic space (`E3 80 80`)
+  and a Hangul filler (`E3 85 A4`), each at the start, the middle and the end of
+  `"Mira Ashvale"`; a C1 control (`"Mi\194\133ra"`); an overlong 3-byte
+  (`"\224\128\128"`) and 4-byte (`"\240\128\128\128"`) sequence; a surrogate
+  (`"\237\160\128"`); a code point above U+10FFFF (`"\244\144\128\128"`); a 70-byte
+  ASCII name with an RLO at bytes 66–68 → fallback, **not** a clean 64-byte prefix (the
+  check runs before the cut). Still unchanged: `"Ýrsa"`, `"Weiß"`, `"Алдрик"`,
+  `"알드릭"`, `"艾德리克"`. Cuts still land on a boundary: 23 Hangul syllables (69 bytes)
+  at 64 → the first 63 bytes + `"..."`; 62 ASCII bytes, then U+10000 (`F0 90 80 80`),
+  then 4 ASCII bytes at 64 → the first 62 bytes + `"..."`. **Agreement:** over the
+  seeded fuzz strings of [sync-ledger.md §6](sync-ledger.md#specledger_speclua)
+  (`cleanText`), `plain(x, 64, F)` is `F` whenever `cleanText(x)` is `false`, and no
+  result holds `|`.
 - **`dateText`:** `(1789603200, 0)` → `"17 September 2026"`; `(1789603200, -3600)` →
   `"16 September 2026"`; `(1835395200, 0)` → `"29 February 2028"`; `(1798758000, 0)` →
   `"31 December 2026"` and `(1798758000, 3600)` → `"1 January 2027"`; `offset` of `NaN`,
@@ -1019,7 +1060,8 @@ book ignores any kind but quill and seal.
   the page holding `inn` when set (with `listRows = 5` so it isn't page 1), `0` / `1` when
   `inn` isn't listed (another faction's).
 - **Title and help:** `The ledger of Aldric` for a valid name; `Your ledger` for `nil`,
-  a name with `|`, and malformed UTF-8; `TEXT.sharesText` equals the README's sentence:
+  a name with `|`, malformed UTF-8, and a name with an RLO (#119); `TEXT.sharesText`
+  equals the README's sentence:
   the spec reads `README.md`, takes the text after `What sync shares: ` up to the
   paragraph end, joins lines with single spaces, capitalizes its first letter, and
   compares exactly.
@@ -1045,7 +1087,8 @@ book ignores any kind but quill and seal.
     items → at most 600 and 1 000 read (`rawget` spy), the newest kept, no throw.
   - row content: a phrase that won't render → `TEXT.faded`; seals: a milestone seal's
     name, a zone seal's `"<zone> seal"`, an unknown seal ID → `a seal`; a foreign name
-    with `|` (forced into a fake ledger) → `A traveler`; own rows carry the effective
+    with `|` (forced into a fake ledger) → `A traveler`, and the same for a foreign name
+    with a ZWJ (#119); own rows carry the effective
     quill's flourish and none with the plain quill.
   - hostile ledger: `innEntries` raising, returning `nil`, a string, items that aren't
     tables, entries failing `validEntry`, a `signer` that's a number → those rows
@@ -1177,6 +1220,8 @@ allow-list changed; `check-libs.sh`, `check-links.sh`, `check-coverage.sh`
       as a count; page turns everywhere a list can overflow, no scrolling.
 - [ ] Peer names reach font strings only through `BookView.plain`; nothing is formatted
       or `gsub`bed with data.
+- [ ] `plain` calls `Ledger.cleanText` on the full input before the cut (#119), and no
+      branch of its byte loop is left unreachable.
 - [ ] `/ledger` toggles, `/ledger share` opens Share, `/ledger version` prints the
       version, `/ledger debug` unchanged; the Read button opens the inn's page.
 - [ ] `Sync`'s `onEntries` and `Sign`'s `"added"` call `Book:Changed()` in `pcall`; the
@@ -1190,7 +1235,8 @@ allow-list changed; `check-libs.sh`, `check-links.sh`, `check-coverage.sh`
       `check-links.sh`, `check-coverage.sh` green locally and in CI.
 - [ ] No wire, export or ledger-schema change; no combat read; no new library.
 - [ ] The reviewer checked §5 item by item and tried hostile display data of its own
-      (names with `|`, broken UTF-8, a ledger at the caps, a tampered record).
+      (names with `|`, broken UTF-8, hidden characters such as an RLO or a ZWJ, a ledger
+      at the caps, a tampered record).
 - [ ] Docs of §4.3 updated; the wording and look are under status.md → Open questions;
       §8's checks are on the platform-forever.md checklist (#12).
 

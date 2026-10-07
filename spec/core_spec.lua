@@ -770,12 +770,72 @@ describe("the debug log", function()
     assert.same({}, wow.chat)
   end)
 
-  it("keeps /ledger answering with the version", function()
-    wow.slash("/ledger")
+  it("answers /ledger version with the version; /ledger opens the book instead", function()
+    wow.slash("/ledger version")
     assert.equal(1, #wow.chat)
     assert.truthy(wow.chat[1]:find("version dev", 1, true))
+    wow.slash("/ledger")
     wow.slash("/ledger something")
-    assert.truthy(wow.chat[2]:find("version dev", 1, true))
+    assert.equal(1, #wow.chat)
+    assert.is_table(ns.Book.ui)
+  end)
+
+  it("routes /ledger, /ledger share and any other word to the book", function()
+    local calls = {}
+    ns.Book.Toggle = function(self) calls[#calls + 1] = { "Toggle", self } end
+    ns.Book.Open = function(self, tab) calls[#calls + 1] = { "Open", self, tab } end
+    wow.slash("/ledger")
+    wow.slash("/ledger  SHARE ")
+    wow.slash("/ledger foo bar")
+    assert.same({ { "Toggle", ns.Book }, { "Open", ns.Book, "share" }, { "Toggle", ns.Book } },
+      calls)
+    assert.same({}, wow.chat)
+  end)
+
+  it("logs one line when the book raises, and nothing escapes", function()
+    ns.Book.Toggle = function() error("raised on purpose") end
+    ns.Book.Open = function() error("raised on purpose") end
+    wow.slash("/ledger debug")
+    wow.chat = {}
+    wow.slash("/ledger")
+    wow.slash("/ledger share")
+    assert.equal(2, #wow.chat)
+    assert.truthy(wow.chat[1]:find("book: error in slash", 1, true))
+    assert.truthy(wow.chat[2]:find("book: error in slash", 1, true))
+    ns.Book = nil
+    wow.slash("/ledger")
+    assert.same({}, wow.errors)
+  end)
+end)
+
+describe("Core:PlayerName", function()
+  after_each(wow.uninstall)
+
+  it("is the owner's display name", function()
+    local ns = login()
+    assert.equal("Traveler", ns.Core:PlayerName())
+  end)
+
+  it("is the two-part name on Forever", function()
+    local ns = login({ overrides = wow.foreverNames("Mira", "Ashvale") })
+    assert.equal("Mira Ashvale", ns.Core:PlayerName())
+  end)
+
+  it("is nil when the name is hidden, missing, invalid or the read raises", function()
+    local ns = login()
+    local hiddenName = secret()
+    _G.UnitFullName = function() return hiddenName end
+    _G.UnitName = function() return hiddenName end
+    _G.issecretvalue = function(v) return rawequal(v, hiddenName) end
+    assert.is_nil(ns.Core:PlayerName())
+    _G.issecretvalue = function() return false end
+    _G.UnitFullName = function() return nil end
+    _G.UnitName = function() return nil end
+    assert.is_nil(ns.Core:PlayerName())
+    _G.UnitFullName = function() return "x|cff" end
+    assert.is_nil(ns.Core:PlayerName())
+    ns.Sync.readOwnName = function() error("raised on purpose") end
+    assert.is_nil(ns.Core:PlayerName())
   end)
 end)
 

@@ -8,7 +8,18 @@
 --   Inns[<NPC ID>]     = { name = "...", zone = <zone key>, faction = "Horde" }  -- one faction
 --   Inns[<NPC ID>]     = { alias = <NPC ID of the inn's primary record> }        -- same inn
 --   Zones[<map ID>]    = { name = "...", continent = <continent key>, seal = 101 }
+--   Zones[<map ID>]    = { name = "...", continent = <continent key>, seal = 101, complete = true }
 --   Continents[<map ID>] = { name = "..." }
+--   Continents[<map ID>] = { name = "...", complete = true }
+--   AtlasComplete      = true
+--
+-- Completeness marks (spec section 3.11): `complete = true` on a zone says every inn in it
+-- is in Inns; on a continent, every zone of it that has an inn is in Zones.
+-- AtlasComplete = true says every continent with an inn is in Continents. Only marked
+-- places count for the "every inn" rules (a zone's seal, zones n, continent, all): an
+-- unmarked zone is never "done". Set a mark only from the walk, never by guessing; any
+-- value but true excludes the record. A continent counts as complete only if all its zones
+-- are, and the atlas only if all its continents are. None is set yet.
 --
 -- An inn's continent comes through its zone. Zone and continent keys are the client's own
 -- map IDs. A zone's continent is the first Continent-type map above it, or, with none
@@ -31,3 +42,6 @@ ns.Data.Zones = {
 ns.Data.Continents = {
   [947] = { name = "Azeroth" },
 }
+
+-- True once every continent with an inn is in Continents and marked (spec 3.11).
+ns.Data.AtlasComplete = false

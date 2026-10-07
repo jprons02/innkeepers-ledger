@@ -194,13 +194,18 @@ in the sections above. **Partly** means the rest of the item is still open.
         exercised
   - [x] Sign → "You signed the guestbook of Calmbreeze Inn."; after a restart the saved
         file holds one own entry `{ inn = 254089, phrase = { 1, 1306 } }` (20:45 UTC) and
-        `earned` holds 1101, 1003, 2 and 101 ✅. That all four unlock at once is the
+        `earned` holds 1101 (an ink, dropped 2026-10-06), 1003, 2 and 101 ✅. That all four unlock at once is the
         partial-data effect in [status.md](status.md) → Follow-ups (release gate)
   - [x] a second click the same week → "You've signed this guestbook this week. Sign
         again after the weekly reset (in 19 hours)." ✅, i.e. Tuesday 16:00 UTC
-  - [ ] the voice rows (#100): "Voice: Hearthside" above line 1, stepping it changes
-        the line's templates, line 2's voice follows until stepped, and the taller
-        (530-pixel) composer has no overlapping rows. A screenshot for the maintainer
+  - [ ] the list composer (#102, replacing the voice rows of #100): the voice strip, the
+        template list and the category and word lists render, with the faint gold
+        selection mark (`SetColorTexture`) on the chosen row; clicking a row picks it and
+        the preview follows; `<` `>` page the template and word lists; **the mouse wheel
+        scrolls them** (`EnableMouseWheel` / `OnMouseWheel` are unverified on Forever);
+        the "First line" / "Second line" tabs switch lines and line 2 shows the
+        conjunction strip; long voice and conjunction names fit their buttons; nothing
+        overlaps in the ~600-pixel frame. A screenshot of each line for the maintainer
   - [ ] closing the gossip mid-compose hides the composer; talking to another NPC with it
         open closes it; *I would like to buy from you.* closes it too (`GOSSIP_CLOSED`)
   - [ ] after the next weekly reset (Tuesday 2026-10-06 16:00 UTC): the seal row offers Zephras
@@ -209,6 +214,44 @@ in the sections above. **Partly** means the rest of the item is still open.
         round-trip item above)
   - [ ] at any innkeeper whose rest area doesn't cover where you talk to them: the
         `not_resting` line
+- [ ] The book ([specs/book.md §8](specs/book.md#8-in-client-checks-for-12)), with
+      `/ledger debug` on and Lua errors shown; screenshots go to the maintainer (the
+      look is a DRAFT):
+  - [ ] opening: `/ledger` opens the book mid-screen and closes it; `/ledger version`
+        prints the version; no Lua error
+  - [ ] the look: the dark frame, two parchment pages and the spine render; for each
+        texture candidate (`UI-DialogBox-Background-Dark`, `Spellbook-Page-1` / `-2`,
+        `QuestBG`, `StationeryTest1`), whether it loads (not blank, not green) and looks
+        right; the chosen files' coordinates. A screenshot of each tab
+  - [ ] fonts and glyphs: titles in the Morpheus face (`QuestTitleFont` exists), body
+        text in the game font, the ink readable on the parchment; `‹` `›` and `·` render
+        (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `)
+  - [ ] Escape closes the book; with the Share box focused, the first Escape clears focus
+        and the second closes; Escape in combat closes it too, with no "blocked" or
+        taint message
+  - [ ] page turns: ‹ and › enabled and disabled correctly on the list and on
+        Calmbreeze's page; later, with more travelers or inns, a second page turns and
+        repeats its heading
+  - [ ] the Read button: at Coriella Calmbreeze, "Read the guestbook" sits beside "Sign
+        the guestbook" without overlapping; it opens the book on Calmbreeze Inn's page;
+        both buttons hide when the gossip closes and the book stays open
+  - [ ] Share: `/ledger share` shows the string preselected and the box unticked; Ctrl+C
+        then a paste outside the game gives the whole string (its length equals the
+        debug line's `book: share <n> bytes`); ticking rebuilds it longer when travelers
+        exist; `GetChecked()` returns `true` (a boolean) when ticked; reopening starts
+        unticked. After one more signature, reopening shows "1 new signature since you
+        last shared."
+  - [ ] refresh while open: with a second character in the party, open your inn page and
+        let them sync (`got entries … added n`): their signature appears without anything
+        popping up or printing
+  - [ ] dates: an entry's date matches the local calendar (one made late in the evening,
+        local time, when UTC is already the next day)
+  - [ ] quill: once one is earned (else the plain quill only), Use it, `/reload`, the
+        choice holds and own signatures show its flourish; `InnkeepersLedger.lua` holds
+        `book[<guid>] = { v = 1, quill = … }`
+  - [ ] first open on a fresh character: the title page with the two-part name and the
+        help page; nothing else is written to SavedVariables until a share or a quill
+        choice
 
 ## Sources
 

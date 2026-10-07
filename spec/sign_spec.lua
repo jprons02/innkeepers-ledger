@@ -127,22 +127,75 @@ describe("Sign: the gossip button", function()
     wow.uninstall()
   end)
 
-  it("shows one button under the gossip frame at Coriella Calmbreeze", function()
+  it("shows two buttons under the gossip frame at Coriella Calmbreeze", function()
     local ns = login()
     assert.is_nil(ns.Sign.ui.button)
+    assert.is_nil(ns.Sign.ui.read)
     wow.fire("GOSSIP_SHOW")
-    local b = ns.Sign.ui.button
-    assert.is_table(b)
-    assert.equal(_G.GossipFrame, b.parent)
-    assert.equal("Button", b.kind)
-    assert.equal("UIPanelButtonTemplate", b.template)
+    local b, r = ns.Sign.ui.button, ns.Sign.ui.read
+    for _, button in ipairs({ b, r }) do
+      assert.is_table(button)
+      assert.equal(_G.GossipFrame, button.parent)
+      assert.equal("Button", button.kind)
+      assert.equal("UIPanelButtonTemplate", button.template)
+      assert.is_true(button:IsShown())
+      assert.same({ 160, 24 }, { button.width, button.height })
+    end
     assert.equal("Sign the guestbook", b:GetText())
-    assert.is_true(b:IsShown())
-    assert.same({ "TOP", _G.GossipFrame, "BOTTOM", 0, -4 }, b.points[1])
+    assert.equal("Read the guestbook", r:GetText())
+    assert.same({ "TOPRIGHT", _G.GossipFrame, "BOTTOM", -3, -4 }, b.points[1])
+    assert.same({ "TOPLEFT", _G.GossipFrame, "BOTTOM", 3, -4 }, r.points[1])
     wow.fire("GOSSIP_SHOW")
     wow.fire("GOSSIP_SHOW")
-    assert.equal(1, gossipButtons())
+    assert.equal(2, gossipButtons())
     assert.equal(b, ns.Sign.ui.button)
+    assert.equal(r, ns.Sign.ui.read)
+  end)
+
+  it("shows and hides the Read button with the Sign button", function()
+    local ns = login()
+    wow.fire("GOSSIP_SHOW")
+    local b, r = ns.Sign.ui.button, ns.Sign.ui.read
+    assert.is_true(r:IsShown())
+    state.npc = VENDOR_GUID
+    wow.fire("GOSSIP_SHOW")
+    assert.is_false(b:IsShown())
+    assert.is_false(r:IsShown())
+    state.npc = CALM_GUID
+    wow.fire("GOSSIP_SHOW")
+    assert.is_true(r:IsShown())
+    wow.fire("GOSSIP_CLOSED")
+    assert.is_false(b:IsShown())
+    assert.is_false(r:IsShown())
+  end)
+
+  it("Read opens the book on the inn's page, and never signs", function()
+    local ns = login()
+    local opened = {}
+    ns.Book.OpenInn = function(self, npc) opened[#opened + 1] = { self, npc } end
+    wow.fire("GOSSIP_SHOW")
+    ns.Sign.ui.read:Click()
+    assert.same({ { ns.Book, CALM } }, opened)
+    assert.same({}, saved().own)
+    assert.is_nil(ns.Sign.session)
+    -- Away from an inn (the NPC changed under an open gossip): the book opens on no inn.
+    state.npc = VENDOR_GUID
+    ns.Sign:Read()
+    assert.same({ ns.Book, nil }, opened[2])
+  end)
+
+  it("keeps a broken book inside the Read click", function()
+    local ns = login()
+    ns.Core:ToggleDebug()
+    wow.fire("GOSSIP_SHOW")
+    ns.Book.OpenInn = function() error("raised on purpose") end
+    local n = #wow.chat
+    ns.Sign.ui.read:Click()
+    local lines = chatSince(n)
+    assert.equal(1, #lines)
+    assert.is_true(has(lines[1], "sign: error in read"))
+    ns.Book = nil
+    ns.Sign.ui.read:Click()
   end)
 
   it("hides at a vendor, a malformed, missing, hidden or raising GUID", function()
@@ -168,7 +221,8 @@ describe("Sign: the gossip button", function()
     -- A valid-looking GUID the client flags: only the hidden check can stop it.
     assert.is_false(shownFor(CALM_GUID, function(v) return v == CALM_GUID end))
     assert.is_false(shownFor(CALM_GUID, function() error("raised on purpose") end))
-    assert.equal(1, gossipButtons())
+    assert.equal(2, gossipButtons())
+    assert.is_false(ns.Sign.ui.read:IsShown())
     -- UnitGUID itself raising.
     _G.UnitGUID = function(unit)
       if unit == "npc" then
@@ -317,35 +371,52 @@ describe("Sign: signing", function()
     assert.equal("Sign the guestbook", ui.title:GetText())
     assert.equal("Calmbreeze Inn", ui.inn:GetText())
     assert.equal("Rested here, dreaming of home.", ui.preview:GetText())
-    assert.equal("Rested here, dreaming of ___.", ui.rows.t1.label:GetText())
-    assert.equal("Voice: Hearthside", ui.rows.v1.label:GetText())
-    assert.is_true(ui.rows.v1.next:IsShown())
-    assert.is_false(ui.rows.v2.label:IsShown())
-    assert.is_true(ui.rows.w1.label:IsShown())
-    assert.is_false(ui.rows.c.label:IsShown())
+    local lists = ui.lists
+    assert.equal("Rested here, dreaming of ___.", lists.template.rows[1].text:GetText())
+    assert.is_true(lists.template.rows[1].mark:IsShown())
+    assert.equal("Hearthside", lists.voice.rows[1].button:GetText())
+    assert.is_false(lists.voice.rows[1].button:IsEnabled())
+    assert.is_true(lists.voice.frame:IsShown())
+    assert.is_true(lists.word.frame:IsShown())
+    assert.is_true(lists.cat.frame:IsShown())
+    assert.is_false(lists.conj.frame:IsShown())
+    assert.is_false(ui.line2:IsShown())
     assert.is_false(ui.rows.seal.prev:IsShown())
     assert.equal("Add a second line", ui.toggle:GetText())
 
-    ui.rows.t1.next:Click()
-    ui.rows.w1.next:Click()
+    lists.template.rows[2].button:Click()
+    lists.word.rows[2].button:Click()
     assert.equal("Lingered a day longer for the hearth.", ui.preview:GetText())
     ui.toggle:Click()
     assert.equal("Remove the second line", ui.toggle:GetText())
-    assert.is_true(ui.rows.c.label:IsShown())
-    assert.is_true(ui.rows.v2.label:IsShown())
-    assert.equal("Voice: Hearthside", ui.rows.v2.label:GetText())
-    assert.is_true(ui.rows.w2.next:IsShown())
+    assert.is_true(ui.line2:IsShown())
+    assert.equal("Second line", ui.line2:GetText())
+    assert.is_false(ui.line2:IsEnabled()) -- editing line 2 now
+    assert.is_true(ui.line1:IsEnabled())
+    assert.is_true(lists.conj.frame:IsShown())
+    assert.equal("And then...", lists.conj.rows[1].button:GetText())
+    assert.is_false(lists.conj.rows[1].button:IsEnabled())
+    assert.equal("Hearthside", lists.voice.rows[1].button:GetText())
+    assert.is_false(lists.voice.rows[1].button:IsEnabled()) -- line 2's voice follows
+    assert.is_true(lists.template.rows[1].mark:IsShown()) -- line 2's own template
+    assert.is_false(lists.template.rows[2].mark:IsShown())
+    assert.is_true(lists.word.frame:IsShown())
     assert.equal("Lingered a day longer for the hearth. And then... Rested here, dreaming of "
       .. "home.", ui.preview:GetText())
-    ui.rows.t2.prev:Click() -- the last template has no slot
-    assert.is_false(ui.rows.w2.label:IsShown())
+    for _ = 1, 5 do
+      lists.template.next:Click()
+    end
+    assert.is_false(lists.template.next:IsEnabled())
+    lists.template.rows[8].button:Click() -- the last template has no slot
+    assert.is_false(lists.word.frame:IsShown())
+    assert.is_false(lists.cat.frame:IsShown())
     assert.equal("Lingered a day longer for the hearth. And then... Thank you for everything.",
       ui.preview:GetText())
 
     local n = #wow.chat
     ui.sign:Click()
     assert.same({ { inn = CALM, t = NOW, phrase = { 2, 1002, 501, 111 } } }, saved().own)
-    assert.same({ [2] = NOW, [101] = NOW, [1003] = NOW, [1101] = NOW }, saved().earned)
+    assert.same({}, saved().earned) -- the shipped data marks no place complete (#110)
     assert.equal(1, window.n)
     local lines = chatSince(n)
     assert.equal(1, #lines)
@@ -358,15 +429,22 @@ describe("Sign: signing", function()
     local ns = login()
     click(ns)
     local ui = ns.Sign.ui
-    ui.rows.v1.next:Click()
-    assert.equal("Voice: Bardic", ui.rows.v1.label:GetText())
+    local voices = ui.lists.voice.rows
+    voices[2].button:Click()
+    assert.equal("Bardic", voices[2].button:GetText())
+    assert.is_false(voices[2].button:IsEnabled())
+    assert.is_true(voices[1].button:IsEnabled())
     assert.equal("Let the ballads tell of home!", ui.preview:GetText())
     ui.toggle:Click()
-    assert.equal("Voice: Bardic", ui.rows.v2.label:GetText()) -- follows line 1
-    ui.rows.v2.next:Click()
-    assert.equal("Voice: Grumbler", ui.rows.v2.label:GetText())
+    assert.is_false(voices[2].button:IsEnabled()) -- line 2 follows line 1
+    voices[3].button:Click()
+    assert.equal("Grumbler", voices[3].button:GetText())
+    assert.is_false(voices[3].button:IsEnabled())
     assert.equal("Let the ballads tell of home! Mind you... Can't fault home.",
       ui.preview:GetText())
+    ui.line1:Click()
+    assert.is_false(voices[2].button:IsEnabled()) -- line 1 is still Bardic
+    assert.is_true(voices[3].button:IsEnabled())
     ui.sign:Click()
     assert.same({ { inn = CALM, t = NOW, phrase = { 201, 1001, 521, 231, 1001 } } }, saved().own)
   end)
@@ -376,6 +454,8 @@ describe("Sign: signing", function()
     click(ns)
     ns.Sign.ui.sign:Click()
     assert.is_false(ns.Sign.ui.rows.seal.label:IsShown())
+    -- Seals 2 and 101 recorded under older data (the shipped data marks nothing, #110).
+    assert.is_true(ns.ledger:markEarned(2, NOW) and ns.ledger:markEarned(101, NOW))
     wow.now = RESET + 1
     click(ns)
     local rows = ns.Sign.ui.rows
@@ -396,7 +476,7 @@ describe("Sign: signing", function()
     local window = spyWindow(ns)
     click(ns)
     local composer, session = ns.Sign.ui.composer, ns.Sign.session
-    ns.Sign.ui.rows.t1.next:Click()
+    ns.Sign.ui.lists.template.rows[2].button:Click()
     click(ns)
     assert.equal(composer, ns.Sign.ui.composer)
     assert.equal(session, ns.Sign.session)
@@ -458,7 +538,7 @@ describe("Sign: signing", function()
     state.npc = CALM_GUID
     click(ns)
     local session = ns.Sign.session
-    ns.Sign.ui.rows.t1.next:Click()
+    ns.Sign.ui.lists.template.rows[2].button:Click()
     wow.fire("GOSSIP_SHOW")
     assert.equal(session, ns.Sign.session)
     assert.is_true(composerShown(ns))
@@ -495,10 +575,259 @@ describe("Sign: signing", function()
   end)
 end)
 
+describe("Sign: the composer's lists (#102)", function()
+  after_each(function()
+    assert.same({}, wow.errors)
+    wow.uninstall()
+  end)
+
+  -- A template's label as the composer shows it: the slot as ___.
+  local function label(ns, id)
+    local text = ns.Phrase.text(id)
+    local a = text:find("{w}", 1, true)
+    if a then
+      return text:sub(1, a - 1) .. "___" .. text:sub(a + 3)
+    end
+    return text
+  end
+
+  -- The texts of a list's shown rows.
+  local function texts(list)
+    local out = {}
+    for _, row in ipairs(list.rows) do
+      if row.button:IsShown() then
+        out[#out + 1] = row.text and row.text:GetText() or row.button:GetText()
+      end
+    end
+    return out
+  end
+
+  local function marks(list)
+    local n = 0
+    for _, row in ipairs(list.rows) do
+      if row.button:IsShown() and row.mark:IsShown() then
+        n = n + 1
+      end
+    end
+    return n
+  end
+
+  local function wheel(list, delta)
+    list.frame.scripts.OnMouseWheel(list.frame, delta)
+  end
+
+  it("builds plain lists: text rows with a gold mark, a wheel, page buttons", function()
+    local ns = login()
+    click(ns)
+    local lists = ns.Sign.ui.lists
+    for _, key in ipairs({ "voice", "conj", "template", "cat", "word" }) do
+      local list = lists[key]
+      assert.equal(ns.Sign.ui.composer, list.frame.parent, key)
+      assert.is_true(list.frame.mouseWheel, key)
+      assert.is_function(list.frame.scripts.OnMouseWheel, key)
+      assert.equal("UIPanelButtonTemplate", list.prev.template, key)
+      assert.equal("UIPanelButtonTemplate", list.next.template, key)
+    end
+    for _, key in ipairs({ "template", "cat", "word" }) do
+      for _, row in ipairs(lists[key].rows) do
+        assert.equal("Button", row.button.kind)
+        assert.is_nil(row.button.template)
+        assert.equal("GameFontHighlightSmall", row.text.template)
+        assert.same({ 1, 0.82, 0, 0.25 }, row.mark.color)
+      end
+    end
+    assert.equal(8, #lists.template.rows)
+    assert.equal(9, #lists.cat.rows)
+    assert.equal(9, #lists.word.rows)
+    for _, key in ipairs({ "voice", "conj" }) do
+      assert.equal(8, #lists[key].rows)
+      for _, row in ipairs(lists[key].rows) do
+        assert.equal("UIPanelButtonTemplate", row.button.template)
+      end
+    end
+  end)
+
+  it("shows the voices as a strip, the chosen one disabled", function()
+    local ns = login()
+    click(ns)
+    local ui = ns.Sign.ui
+    local voice = ui.lists.voice
+    assert.same({ "Hearthside", "Bardic", "Grumbler", "Scholar", "Rowdy", "Mystic", "Sailor",
+      "Noble" }, texts(voice))
+    for i, row in ipairs(voice.rows) do
+      assert.equal(i ~= 1, row.button:IsEnabled())
+    end
+    assert.is_false(voice.prev:IsShown()) -- eight voices fit
+    assert.is_false(voice.next:IsShown())
+    assert.is_false(ui.line1:IsEnabled()) -- editing line 1
+    assert.equal("First line", ui.line1:GetText())
+
+    voice.rows[2].button:Click() -- Bardic
+    local P = ns.Phrase
+    assert.equal(label(ns, P.templates(2)[1]), ui.lists.template.rows[1].text:GetText())
+    assert.equal(#P.templates(2) > 8, ui.lists.template.next:IsShown())
+    ui.toggle:Click() -- line 2 follows: Bardic there too
+    assert.is_false(voice.rows[2].button:IsEnabled())
+    assert.equal(#P.conjunctions(2), #texts(ui.lists.conj))
+    assert.equal(P.text(P.conjunctions(2)[1]), ui.lists.conj.rows[1].button:GetText())
+    ui.lists.conj.rows[2].button:Click()
+    assert.is_false(ui.lists.conj.rows[2].button:IsEnabled())
+    assert.is_true(ui.lists.conj.rows[1].button:IsEnabled())
+    ui.line1:Click()
+    assert.is_false(ui.lists.conj.frame:IsShown()) -- line 1 has no conjunction
+    assert.is_false(ui.line1:IsEnabled())
+    assert.is_true(ui.line2:IsEnabled())
+  end)
+
+  it("pages and wheels the template list, stopping at both ends", function()
+    local ns = login()
+    click(ns)
+    local P = ns.Phrase
+    local ids = P.templates(1)
+    assert.equal(36, #ids)
+    local list = ns.Sign.ui.lists.template
+    local function firstShown()
+      return list.rows[1].text:GetText()
+    end
+    assert.equal(8, #texts(list))
+    assert.is_true(list.prev:IsShown())
+    assert.is_true(list.next:IsShown())
+    assert.is_false(list.prev:IsEnabled())
+    assert.is_true(list.next:IsEnabled())
+    assert.equal(label(ns, ids[1]), firstShown())
+
+    list.next:Click()
+    local want = {}
+    for i = 9, 16 do
+      want[#want + 1] = label(ns, ids[i])
+    end
+    assert.same(want, texts(list))
+    assert.is_true(list.prev:IsEnabled())
+    wheel(list, -1) -- down one row
+    assert.equal(label(ns, ids[10]), firstShown())
+    wheel(list, 1)
+    assert.equal(label(ns, ids[9]), firstShown())
+    wheel(list, "junk")
+    assert.equal(label(ns, ids[9]), firstShown())
+
+    for _ = 1, 3 do
+      list.prev:Click()
+      ns.Sign:Scroll("template", -8) -- past the top, even with the button disabled
+    end
+    assert.equal(label(ns, ids[1]), firstShown())
+    wheel(list, 1)
+    assert.equal(label(ns, ids[1]), firstShown())
+    assert.is_false(list.prev:IsEnabled())
+
+    for _ = 1, 10 do
+      ns.Sign:Scroll("template", 8)
+    end
+    assert.equal(label(ns, ids[29]), firstShown())
+    assert.equal(label(ns, ids[36]), list.rows[8].text:GetText())
+    assert.is_false(list.next:IsEnabled())
+    wheel(list, -1)
+    assert.equal(label(ns, ids[29]), firstShown())
+
+    -- The chosen template (the first) is out of view: no row is marked.
+    assert.equal(0, marks(list))
+    list.rows[3].button:Click()
+    assert.equal(1, marks(list))
+    assert.is_true(list.rows[3].mark:IsShown())
+    assert.equal(P.render({ ids[31], P.hasSlot(ids[31]) and 1001 or nil }),
+      ns.Sign.ui.preview:GetText())
+  end)
+
+  it("hides page buttons when all fits, and the word lists for a slotless template", function()
+    local ns = login()
+    click(ns)
+    local lists = ns.Sign.ui.lists
+    assert.equal(9, #texts(lists.cat))
+    assert.is_false(lists.cat.prev:IsShown())
+    assert.is_false(lists.cat.next:IsShown())
+    assert.is_true(lists.word.next:IsShown()) -- 20 words, 9 rows
+    ns.Sign:Scroll("template", 100)
+    lists.template.rows[8].button:Click() -- 111, no slot
+    assert.is_false(lists.cat.frame:IsShown())
+    assert.is_false(lists.word.frame:IsShown())
+    assert.is_false(lists.word.next:IsShown())
+    assert.is_false(lists.word.rows[1].button:IsShown())
+    assert.equal("Thank you for everything.", ns.Sign.ui.preview:GetText())
+  end)
+
+  it("follows the category clicked, with one mark per list", function()
+    local ns = login()
+    click(ns)
+    local P = ns.Phrase
+    local lists = ns.Sign.ui.lists
+    assert.equal(1, marks(lists.cat))
+    assert.is_true(lists.cat.rows[1].mark:IsShown())
+    assert.equal(1, marks(lists.word))
+    lists.word.next:Click()
+    lists.cat.rows[3].button:Click()
+    assert.equal(1, marks(lists.cat))
+    assert.is_true(lists.cat.rows[3].mark:IsShown())
+    local want = {}
+    for i = 1, 9 do
+      want[i] = P.text(P.words(3)[i])
+    end
+    assert.same(want, texts(lists.word)) -- the new category's words, from the top
+    assert.equal(1, marks(lists.word))
+    assert.is_true(lists.word.rows[1].mark:IsShown())
+    lists.word.rows[4].button:Click()
+    assert.equal(1, marks(lists.word))
+    assert.is_true(lists.word.rows[4].mark:IsShown())
+    assert.equal(P.render({ 1, P.words(3)[4] }), ns.Sign.ui.preview:GetText())
+  end)
+
+  it("ignores a click on an empty row or an unknown list", function()
+    local ns = login()
+    click(ns)
+    local before = ns.Sign.ui.preview:GetText()
+    ns.Sign:Pick("template", nil)
+    ns.Sign:Pick("nope", 2)
+    ns.Sign:Scroll("nope", 8)
+    ns.Sign:Pick({}, 2)
+    assert.equal(before, ns.Sign.ui.preview:GetText())
+    ns.Sign:Cancel()
+    ns.Sign:Pick("template", 2) -- no session
+    ns.Sign:Scroll("template", 8)
+    ns.Sign:SetLine(2)
+    assert.is_nil(ns.Sign.session)
+  end)
+end)
+
 describe("Sign: errors stay inside", function()
   after_each(function()
     assert.same({}, wow.errors)
     wow.uninstall()
+  end)
+
+  it("tells the book once after a signature, and a raising book changes nothing", function()
+    local ns = login()
+    local calls = {}
+    ns.Book.Changed = function(self) calls[#calls + 1] = self end
+    click(ns)
+    ns.Sign.ui.sign:Click()
+    assert.same({ ns.Book }, calls)
+    assert.equal(1, #saved().own)
+
+    -- A refusal doesn't tell the book.
+    click(ns)
+    assert.equal(1, #calls)
+
+    wow.now = RESET + 1
+    ns.Core:ToggleDebug()
+    ns.Book.Changed = function() error("raised on purpose") end
+    click(ns)
+    local n = #wow.chat
+    ns.Sign.ui.sign:Click()
+    assert.equal(2, #saved().own)
+    local lines = chatSince(n)
+    assert.equal(3, #lines)
+    assert.is_true(has(lines[1], "sign: error in book"))
+    assert.is_true(has(lines[2], "You signed the guestbook of Calmbreeze Inn."))
+    assert.is_true(has(lines[3], "sign: added"))
+    assert.is_false(composerShown(ns))
   end)
 
   it("keeps the entry and the line when Sync's WindowChanged raises", function()
@@ -538,7 +867,7 @@ describe("Sign: errors stay inside", function()
     click(ns)
     ns.Sign.session.draft = {} -- every draft method is gone now
     local n = #wow.chat
-    ns.Sign.ui.rows.t1.next:Click()
+    ns.Sign.ui.lists.template.rows[2].button:Click()
     ns.Sign.ui.toggle:Click()
     ns.Sign.ui.sign:Click()
     ns.Sign.flow.innAt = function() error("raised on purpose") end
@@ -548,8 +877,28 @@ describe("Sign: errors stay inside", function()
     _G.GossipFrame = nil
     ns.Sign.ui.button = nil
     wow.fire("GOSSIP_CLOSED")
-    local want = { "sign: error in step", "sign: error in toggle", "sign: error in commit",
+    local want = { "sign: error in pick", "sign: error in toggle", "sign: error in commit",
       "sign: error in gossip show", "sign: error in login" }
+    local lines = chatSince(n)
+    assert.equal(#want, #lines)
+    for i, text in ipairs(want) do
+      assert.is_true(has(lines[i], text), lines[i])
+    end
+  end)
+
+  it("logs an error in the seal row, a page button, the wheel or a line tab", function()
+    local ns = login()
+    ns.Core:ToggleDebug()
+    click(ns)
+    local list = ns.Sign.ui.lists.template
+    ns.Sign.session.draft = {}
+    local n = #wow.chat
+    ns.Sign.ui.rows.seal.next:Click()
+    list.next:Click()
+    list.frame.scripts.OnMouseWheel(list.frame, -1)
+    ns.Sign:SetLine(1)
+    local want = { "sign: error in step", "sign: error in scroll", "sign: error in wheel",
+      "sign: error in line" }
     local lines = chatSince(n)
     assert.equal(#want, #lines)
     for i, text in ipairs(want) do
@@ -575,9 +924,34 @@ describe("Core recording unlocks at login", function()
       travelers = {}, earned = {}, quarantine = {} }
   end
 
+  -- Sign's flow over the shipped places with every zone and continent marked complete, so
+  -- recording at login has something to write (the shipped data marks none, #110).
+  local function markedFlow(ns_)
+    local function marked(src)
+      local out = {}
+      for k, v in pairs(src) do
+        local rec = { complete = true }
+        for f, x in pairs(v) do
+          rec[f] = x
+        end
+        out[k] = rec
+      end
+      return out
+    end
+    local D = ns_.Data
+    local atlas = ns_.Collection.bind(D.Inns, marked(D.Zones), marked(D.Continents), true)
+    ns_.Sign.flow = ns_.SignFlow.new({ inns = D.Inns, atlas = atlas, phrase = ns_.Phrase,
+      cosmetics = ns_.Cosmetics.bind(atlas, D.Cosmetics) })
+  end
+
   it("fills earned for a saved signature", function()
     login({ db = db(ledgerData(1)) })
-    assert.same({ [2] = T, [101] = T, [1003] = T, [1101] = T }, saved().earned)
+    assert.same({}, saved().earned) -- the shipped data marks no place complete (#110)
+  end)
+
+  it("fills earned for a saved signature once its places are marked complete", function()
+    login({ db = db(ledgerData(1)), setup = markedFlow })
+    assert.same({ [2] = T, [101] = T, [1003] = T }, saved().earned)
   end)
 
   it("writes nothing to a read-only ledger", function()
@@ -591,7 +965,10 @@ describe("Core recording unlocks at login", function()
   it("opens the ledger and starts Sync when recording raises", function()
     local ns = login({
       db = db(ledgerData(1)),
-      setup = function(ns_) ns_.Sign.RecordUnlocks = function() error("raised on purpose") end end,
+      setup = function(ns_)
+        markedFlow(ns_) -- so recording would write something if it ran
+        ns_.Sign.RecordUnlocks = function() error("raised on purpose") end
+      end,
     })
     assert.is_table(ns.ledger)
     assert.is_false(ns.ledger.readOnly)

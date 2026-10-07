@@ -48,8 +48,30 @@ Proportional, not ceremonial:
   [specs/phrase.md §6](specs/phrase.md#6-test-plan) and a real `Ledger`, plus the real
   data for the draft; NPC GUIDs are `"Creature-0-4615-2991-62-<id>-0000ABCDEF"`. The glue
   cases log in at Coriella Calmbreeze (`254089`), resting, and drive the button and the
-  composer through `Sign.ui` (`button`, `composer`, `rows.<field>.prev/label/next`,
-  `toggle`, `sign`, `cancel`, `preview`, `title`, `inn`) and `Sign.session`.
+  composer through `Sign.ui` (`button`, `composer`, `lists.<voice|conj|template|cat|word>`
+  with `frame`, `rows[i].button/text/mark`, `prev`, `next`; `line1`, `line2`,
+  `rows.seal.prev/label/next`, `toggle`, `sign`, `cancel`, `preview`, `title`, `inn`) and
+  `Sign.session`. The mouse wheel is driven by calling a list frame's
+  `scripts.OnMouseWheel(frame, delta)`; the stub records `EnableMouseWheel` as
+  `frame.mouseWheel`.
+- **The book** (`spec/book_view_spec.lua`, pure; `spec/book_spec.lua`, the glue;
+  [specs/book.md §6](specs/book.md#6-test-plan)): the pure cases build views over the
+  place fixtures, the phrase fixture and catalog C (plus quills where a case needs five),
+  real `Ledger`s and fake ledgers that return hostile or oversized answers; `sizes` shrinks
+  the page sizes to exercise paging. A spy on the strict environment's `rawget` counts the
+  read caps. The glue cases log in at Coriella Calmbreeze with `date` and `time` stubbed to
+  a fixed UTC offset (so dates don't follow the machine's time zone), and drive the book
+  through `Book.ui` (`frame`, `tabs`, `close`, `left` / `right` = `{ prev, next, label,
+  error }`, `title`, `help`, `list.rows`, `inn`, `summary`, `stamps.cells`, `quills.rows`,
+  `seals.rows`, `share = { edit, check, nudge, fail }`, `notice`), `Book.nav`,
+  `Book.model` and `Book.view`. **Stub additions for it:** a named `CreateFrame` also sets
+  the global; `EditBox` (text, focus, `HighlightText` recorded, max letters and bytes) and
+  `CheckButton` (`GetChecked` a boolean, `Click()` toggles then runs `OnClick`);
+  `wow.type(edit, text)` runs `OnTextChanged(self, true)`; `Hide` runs `OnHide`; font
+  strings record `SetFontObject`, `SetTextColor`, `SetShadowOffset`; textures record
+  `SetTexture` (set `wow.textureResult = false` for a file the client can't find);
+  `ClearAllPoints`; and the globals `UIParent`, `UISpecialFrames`, the `GameFont*` and
+  `QuestTitleFont` objects, `date` and `time`, each settable to `nil` per case.
 - **The sync harness** (`spec/helpers/sync_harness.lua`): N `Sync` clients in one Lua
   state, each with its own `ns`, ledger, GUID and fake `api` (no stub, no `_G`), sharing
   a clock, a timer queue, an addon-message bus that echoes to the sender, and the group
@@ -126,4 +148,4 @@ Proportional, not ceremonial:
 - **CI:** every check runs on every push and PR, and each has a local command
   ([CONTRIBUTING.md → Development setup](../CONTRIBUTING.md#development-setup)). Pure
   modules have coverage floors (95% for `Ledger`, `SyncProtocol`, `SyncSchedule`; 90% the
-  rest, `SignFlow` included).
+  rest, `SignFlow` and `BookView` included).

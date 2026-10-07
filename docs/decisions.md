@@ -10,6 +10,163 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-07 — Composer: lists, one line at a time, core frame API only
+
+The signing composer (#102, [specs/sign.md](specs/sign.md) §3.6, §3.7) shows a line's
+choices as lists instead of `<` `>` cyclers: line tabs, a voice strip, a conjunction
+strip on line 2, and template, category and word lists with page buttons and the mouse
+wheel. The seal keeps its cycler (few items). The windows live in the pure draft
+(`pick`, `setLine`, `list`, `scroll`, one setter shared with `step`), so they're tested
+with a coverage floor. **Rejected:** arrow cyclers for 156 templates and 175 words (no
+one browses that); both lines' lists at once (twice a gossip frame's height); dropdowns
+(`UIDropDownMenu` deprecated, the menu API unverified on Forever); `ScrollBox` /
+`FauxScrollFrame` (unverified, more than a few rows need). The look stays a DRAFT.
+
+### 2026-10-07 — Partial atlas: place rules count only places marked complete
+
+**Settles** what the "every inn" rules (a zone's seal, `zones n`, `continent`, `all`) mean
+while `Data/Inns` is still partial (#110, [specs/collection-cosmetics.md
+§3.11](specs/collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)).
+The data marks what it knows in full: `complete = true` on a zone (every inn in it is
+known) or a continent (every zone of it with an inn is known), and `ns.Data.AtlasComplete
+= true` (every continent with an inn is known). Any other value excludes the record.
+A continent counts as complete only if its zones all are, and the atlas only if its
+continents all are. `Collection.progress` sets `done` only for complete places and adds
+`complete` flags, so the cosmetics need no guard of their own; `inns n` stays unguarded
+(a partial atlas can only undercount it). The book follows an incomplete place's total
+with a DRAFT `"+"` ("1 of 1+ inns signed"). Marks are set from the in-client walk, never
+by guessing; the shipped data has none yet. No wire, export-format or SavedVariables
+change: the export's `done` is just absent more often.
+
+**Why:** the progress math counts only the inns the data knows, and earned cosmetics are
+never taken away, so a release with a partial atlas would hand out "every inn" rewards for
+good. The beta showed it: the first signature at Calmbreeze earned seal 101, the
+Cartographer's quill and the Innkeeper's seal at once. An unlock a character already
+recorded is still kept through the `earned` floor (beta saves don't reach live realms).
+**The maintainer chose this guard** over visiting every inn before the beta ends.
+
+**Rejected:** only the maintainer visiting every inn before release (the beta ends
+2026-10-21, and a missed inn would still leak); a release-time switch that turns place
+rules off (zone seals known to be safe would wait too); percent thresholds or rules over
+known inns only (they move as the data grows); taking unlocks back when the data grows
+(earned things are never taken away); marks on inns (an inn can't know it's the last one
+in its zone).
+
+### 2026-10-06 — Book: a pure BookView, one named frame for ESC, a GUID-keyed record, the share mark at build, refresh through `onEntries`
+
+The `UI/Book` slice (#106, [specs/book.md](specs/book.md) §3.11–§3.13) settles how the book
+is built:
+
+- **Every decision lives in a new pure module, `BookView`,** with a **90% coverage floor**
+  (`scripts/check-coverage.sh`, like the other non-boundary pure modules): navigation and
+  its clamps, every page model, paging, ordering, text safety, dates, the quill fallback
+  and flourishes, the share nudge, and the saved record's read and write shapes.
+  `UI/Book.lua` is glue: frames, client reads (hidden-value checked), drawing models. The
+  `SignFlow` split again.
+- **One global name, `InnkeepersLedgerBook`:** the client's `UISpecialFrames` list needs a
+  frame name for Escape to close a plain frame. It is the AddOn's only global; nothing
+  else is named, hooked or captured (no keyboard capture, no bindings).
+- **The book's own record, `db.global.book[guid]`** (`v = 1`, an optional `quill`, an
+  optional `shared` snapshot), keyed by the ledger's owner GUID, separate from the ledger
+  (its schema stays 1). A damaged record is never overwritten; a newer one (`v > 1`) is
+  neither read nor written.
+- **The share mark is recorded when the string is built and shown,** not on copy (that
+  would mean reading keys in the edit box). The nudge compares snapshots (own count,
+  newest own `t`, unlocked count), never strings.
+- **Refresh through `Sync`'s `onEntries` hook and after a signature:** `Book:Changed()`,
+  in `pcall`, redraws only while the book shows and not on the Share page; no timer,
+  and `SyncProtocol`'s rate limits bound the redraws.
+- **Peer names reach a font string only through `BookView.plain`:** a name with `|`, a
+  control byte or broken UTF-8 is replaced by "A traveler", never escaped. Nothing is
+  formatted with data.
+- **An inn page reads the newest entries only:** at most 1 000 own and 600 foreign per
+  NPC ID of the group (8 IDs at most), newest first; the merged list is then trimmed to
+  the same caps (the group's newest 1 000 own and 600 foreign), so a build reads at most
+  8 × the caps. It renders only the 6 rows it shows.
+
+*Rejected:* all the logic in `Book.lua` (no coverage floor, no strict environment);
+scrolling frames and the tab, check box and input templates (unverified on Forever);
+AceDB's `db.char` for the record (two "Mira"s on one realm would share it); the record
+inside the ledger's table (a schema change; a read-only ledger couldn't store it);
+comparing export strings; a timer to coalesce refreshes; escaping `|` as `||`.
+
+*Reflected in:* `BookView.lua`, `UI/Book.lua`, `Core.lua`, `Sign.lua`, `SignFlow.lua`,
+`Sync.lua`, the TOC, `.luacheckrc`, `.luacov`, `scripts/check-coverage.sh`,
+`docs/architecture.md`, `docs/specs/sign.md`, `docs/specs/sync-glue.md`,
+`docs/specs/export.md`, `docs/testing.md`, `docs/security-checklist.md`,
+`docs/platform-forever.md`.
+
+### 2026-10-06 — UI/Book: the parchment ledger
+
+The maintainer chose the book's design from mockups (#106,
+[specs/book.md](specs/book.md)):
+
+1. **A two-page parchment spread in a dark frame**, four tabs at the bottom: **Inns**,
+   **Collection**, **Cosmetics**, **Share**. Custom frames, core frame API only; no new
+   library, no `UIDropDownMenu` / `MenuUtil` / `ScrollBox`. Escape closes it.
+2. **Inns:** the left page lists inns open to your faction by continent → zone, "signed
+   n of m" per zone, a filled mark for signed inns, unsigned inns listed by name, faded.
+   Selecting one shows its page on the right: name, "Zone, Continent", a stamp dated by
+   the first signature, count and last date, your signatures (date, phrase, seal), then
+   travelers' (name, date, phrase, seal). Page turns, **no scrolling**; the list pages
+   too.
+3. **Collection:** "N of M inns signed", a bar per continent, zones completed, total
+   signatures (weekly returns counted), travelers met (a count); the right page is a
+   passport **stamp grid** per continent (paged): signed inns inked and dated, unsigned
+   ones as dashed outlines with their name.
+4. **Cosmetics:** quills (choose among unlocked; a default plain quill always available)
+   and seals (earned ones, and locked ones with their rule and progress). **No inks**
+   (above). A quill is a **flourish** under your own signatures in your book, local
+   only. Every signature is written in one realistic, period-plausible ink. The chosen
+   quill is a per-character saved setting; one that isn't unlocked falls back to the
+   plain quill. Seals are chosen at signing, not in the book.
+5. **Share:** `Core:ExportString(opted)`; the travelers box starts unticked every open;
+   the string preselected in an edit box that takes its full length; no site named;
+   built on open or click, never on a timer; a neutral message on failure. Keep the
+   **"N new signatures since you last shared"** line, comparing data stored at share
+   time. `/ledger share` opens it.
+6. **First open / empty ledger:** a title page ("The ledger of <name>"), three steps for
+   signing, "Open this book any time with /ledger"; on the right a "Travelers"
+   explanation and **"What your ledger shares"** in the README's exact words.
+7. **Opening:** `/ledger` toggles the book (the version moves to `/ledger version`;
+   `/ledger debug` stays), and a **"Read the guestbook"** button at known innkeepers next
+   to "Sign the guestbook" opens the book on that inn's page. No minimap button in v1.
+8. **Travelers only on inn pages,** plus the count. No Travelers tab or per-traveler page
+   (post-v1 *Companions*).
+9. **Fonts:** the client's own (titles in a Morpheus-style font object, text in the
+   standard game font). No shipped font files.
+10. **Quiet updates:** built when opened; if entries arrive while it's open, the visible
+    page refreshes quietly. Never on a timer.
+11. All player-facing strings in one `TEXT` table; the wording, the look and the
+    textures are a **DRAFT** (they ship as written until the maintainer retunes them).
+    A phrase that won't render shows a neutral fallback line.
+
+The labels "Sign the guestbook" and "Read the guestbook" and the four tab names are
+settled.
+
+*Rejected:* a Travelers tab or per-traveler pages (post-v1); a minimap button; scrolling
+lists; inks.
+
+### 2026-10-06 — No inks: one realistic ink for every signature
+
+From the book mockups, the maintainer dropped ink color choices: "we want it to look
+real or somewhat real and to role play with the technology of the times of the game".
+Every signature, the player's and travelers', is written in one period-plausible ink
+(#105).
+
+- **The catalog loses inks:** 1101 Sepia, 1102 Forest-green and 1103 Midnight-blue are
+  gone, and so is the `ink` kind. 1100..1199 stays reserved and is never reused. None
+  had been released, so nothing is taken from anyone.
+- **Quills stay,** earned as before; in the book a quill is a flourish under your own
+  signatures (decided with the rest of the book, #106).
+- **The first signature no longer earns anything of its own:** Sepia ink (`inns 1`) was
+  the only rule meant to fire on it. The cosmetic ladder is still a DRAFT (#63).
+- *Rejected:* colored inks, as anachronistic for the setting.
+- Supersedes the ink parts of
+  [2026-09-27 — Cosmetics: IDs, derived unlocks…](#2026-09-27--cosmetics-ids-derived-unlocks-that-are-never-taken-away-seals-on-signing)
+  and the ink mention in *Cosmetics are earned by play, never paid or gated*
+  ([archive](archive/decisions-2026-09.md)).
+
 ### 2026-10-06 — Phrase voices; free text stays out
 
 The maintainer found the first composer too narrow ("a few preselected options") and

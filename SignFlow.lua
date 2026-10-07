@@ -14,7 +14,7 @@ assert(type(Ledger) == "table", "SignFlow needs ns.Ledger; Ledger.lua comes firs
 local SignFlow = {}
 ns.SignFlow = SignFlow
 
-local floor, ceil = math.floor, math.ceil
+local floor, ceil, huge = math.floor, math.ceil, math.huge
 local find, sub = string.find, string.sub
 local tsort = table.sort
 
@@ -26,6 +26,7 @@ local SEAL_MAX = LIMITS.sealMax
 local SLOT = "{w}"          -- a template's word slot (docs/specs/phrase.md 3.1)
 local SLOT_SHOWN = "___"    -- how the composer shows the slot
 local FACTIONS = { Alliance = true, Horde = true }
+local LIST_MAX = 40         -- the most items one draft:list window holds
 
 -- DRAFT: every player-facing line here is the maintainer's to decide (spec 3.7 and 3.8;
 -- the button's label, "Sign the guestbook", is settled). Our own constants only: no `|`,
@@ -33,6 +34,7 @@ local FACTIONS = { Alliance = true, Horde = true }
 local TEXT = {
   -- The composer (Sign.lua).
   button = "Sign the guestbook",
+  read = "Read the guestbook", -- settled (docs/specs/book.md 3.12): opens the book
   title = "Sign the guestbook",
   addSecond = "Add a second line",
   removeSecond = "Remove the second line",
@@ -40,6 +42,8 @@ local TEXT = {
   cancel = "Cancel",
   noSeal = "No seal",
   voice = "Voice: ",
+  firstLine = "First line",
+  secondLine = "Second line",
   -- The chat lines, one per result code.
   added = "You signed the guestbook of ",
   addedEnd = ".",
@@ -463,7 +467,13 @@ function SignFlow.new(deps)
     local st = {
       v1 = 1, t1 = 1, cat1 = 1, w1 = 1, v2 = 1, c = 1, t2 = 1, cat2 = 1, w2 = 1, seal = 0,
     }
+    -- Each field's window: the position of the first item the composer shows (spec 3.6,
+    -- "Windows"). Positions count from 1; the seal list's position 1 is "No seal".
+    local first = {
+      v1 = 1, t1 = 1, cat1 = 1, w1 = 1, v2 = 1, c = 1, t2 = 1, cat2 = 1, w2 = 1, seal = 1,
+    }
     local second = false
+    local line = 1 -- the line the composer's lists edit
     local v2Chosen = false -- until the player picks line 2's voice, it follows line 1's
 
     -- The list a field steps over, or nil for an unknown field.
@@ -503,45 +513,155 @@ function SignFlow.new(deps)
       return compose(t1, w1, c, t2, w2)
     end
 
+    local function sealLabel(i)
+      local rec = info(sealList[i])
+      local name = type(rec) == "table" and rawget(rec, "name") or nil
+      return type(name) == "string" and name or tostring(sealList[i])
+    end
+
+    -- The one setter behind step and pick, so their resets can't drift apart. `i` is a
+    -- valid index of the field's list. Setting the current index changes and resets nothing.
+    local function setIndex(field, i)
+      if st[field] == i then
+        return
+      end
+      st[field] = i
+      if field == "cat1" then
+        st.w1, first.w1 = 1, 1
+      elseif field == "cat2" then
+        st.w2, first.w2 = 1, 1
+      elseif field == "v1" then
+        st.t1, first.t1 = 1, 1
+        if not v2Chosen then
+          st.v2, st.c, st.t2 = st.v1, 1, 1
+          first.c, first.t2 = 1, 1
+        end
+      elseif field == "v2" then
+        v2Chosen = true
+        st.c, st.t2 = 1, 1
+        first.c, first.t2 = 1, 1
+      end
+    end
+
+    -- How many items a field's list holds (the seal list counts "No seal"), or nil for an
+    -- unknown field.
+    local function totalOf(field)
+      if field == "seal" then
+        return #sealList + 1
+      end
+      local list = listOf(field)
+      return list and #list or nil
+    end
+
+    -- The window's first position, clamped to the list as it is now.
+    local function clampFirst(f, total, count)
+      local top = total - count + 1
+      if f > top then
+        f = top
+      end
+      if f < 1 then
+        f = 1
+      end
+      return f
+    end
+
+    local function isField(field)
+      return type(field) == "string" and rawget(first, field) ~= nil
+    end
+
+    local function isCount(count)
+      return isInt(count, 1, LIST_MAX)
+    end
+
+    -- The text of the item at `index` in a field's list (index 0 is "No seal").
+    local function itemText(field, list, index)
+      if field == "seal" then
+        return index == 0 and TEXT.noSeal or sealLabel(index)
+      elseif field == "v1" or field == "v2" then
+        return list[index].name or ""
+      elseif field == "t1" or field == "t2" then
+        return templateLabel(list[index])
+      elseif field == "cat1" or field == "cat2" then
+        return list[index]
+      end
+      return phraseText(list[index])
+    end
+
     local draft = {}
 
     draft.step = safe(function(_, field, delta)
-      if type(field) ~= "string" or type(delta) ~= "number" or (delta ~= 1 and delta ~= -1) then
+      if not isField(field) or type(delta) ~= "number" or (delta ~= 1 and delta ~= -1) then
         return
       end
       if field == "seal" then
         local n = #sealList
         if n > 0 then
-          st.seal = (st.seal + delta) % (n + 1)
+          setIndex("seal", (st.seal + delta) % (n + 1))
         end
         return
       end
       local list = listOf(field)
-      if list == nil or #list == 0 then
+      if #list == 0 then
         return
       end
-      local before = st[field]
-      st[field] = (st[field] - 1 + delta) % #list + 1
-      if st[field] == before then
-        return -- a one-item list wraps to itself: nothing changed, so nothing resets
+      setIndex(field, (st[field] - 1 + delta) % #list + 1)
+    end, none)
+
+    draft.pick = safe(function(_, field, index)
+      if not isField(field) then
+        return
       end
-      if field == "cat1" then
-        st.w1 = 1
-      elseif field == "cat2" then
-        st.w2 = 1
-      elseif field == "v1" then
-        st.t1 = 1
-        if not v2Chosen then
-          st.v2, st.c, st.t2 = st.v1, 1, 1
-        end
-      elseif field == "v2" then
-        v2Chosen = true
-        st.c, st.t2 = 1, 1
+      local lo = field == "seal" and 0 or 1
+      local hi = field == "seal" and #sealList or #listOf(field)
+      if isInt(index, lo, hi) then
+        setIndex(field, index)
       end
     end, none)
 
     draft.setSecond = safe(function(_, on)
+      local was = second
       second = rawequal(on, true)
+      if not second then
+        line = 1
+      elseif not was then
+        line = 2
+      end
+    end, none)
+
+    draft.setLine = safe(function(_, k)
+      if rawequal(k, 1) then
+        line = 1
+      elseif rawequal(k, 2) and second then
+        line = 2
+      end
+    end, none)
+
+    draft.list = safe(function(_, field, count)
+      if not isField(field) or not isCount(count) then
+        return nil
+      end
+      local total = totalOf(field)
+      local f = clampFirst(first[field], total, count)
+      first[field] = f
+      local list = field ~= "seal" and listOf(field) or nil
+      local base = field == "seal" and 1 or 0 -- position p holds index p - base
+      local items = {}
+      for p = f, total do
+        if #items >= count then
+          break
+        end
+        local index = p - base
+        items[#items + 1] = { index = index, text = itemText(field, list, index),
+          selected = st[field] == index }
+      end
+      return { first = f, total = total, items = items }
+    end, none)
+
+    draft.scroll = safe(function(_, field, delta, count)
+      if not isField(field) or not isCount(count) or not isInt(delta, -huge, huge) then
+        return
+      end
+      first[field] = clampFirst(first[field] + delta, totalOf(field), count)
     end, none)
 
     draft.ids = safe(function()
@@ -560,12 +680,6 @@ function SignFlow.new(deps)
       local t1, t2 = g1.templates[st.t1], g2.templates[st.t2]
       local c = g2.conjs[st.c]
       local w1, w2 = word(1), word(2)
-      local sealLabel = TEXT.noSeal
-      if st.seal ~= 0 then
-        local rec = info(sealList[st.seal])
-        local name = type(rec) == "table" and rawget(rec, "name") or nil
-        sealLabel = type(name) == "string" and name or tostring(sealList[st.seal])
-      end
       local preview = render(idsNow())
       return {
         v1 = g1.name and TEXT.voice .. g1.name or nil,
@@ -577,13 +691,14 @@ function SignFlow.new(deps)
         t2 = templateLabel(t2),
         cat2 = cats[st.cat2],
         w2 = w2 and phraseText(w2) or nil,
-        seal = sealLabel,
+        seal = st.seal == 0 and TEXT.noSeal or sealLabel(st.seal),
         preview = type(preview) == "string" and preview or nil,
         word1 = hasSlot(t1) == true,
         word2 = second and hasSlot(t2) == true,
         second = second,
         sealRow = #sealList > 0,
         voiceRow = g1.name ~= nil,
+        line = line,
       }
     end, none)
 

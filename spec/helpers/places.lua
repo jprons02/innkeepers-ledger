@@ -5,8 +5,8 @@ local M = {}
 
 M.T = 1790000000
 
--- Places F: inns, zones, continents.
-function M.places()
+-- Places F0: inns, zones, continents, with no completeness mark (spec 3.11).
+function M.placesF0()
   return {
     [5001] = { name = "Vale Inn", zone = 10 },
     [5002] = { name = "Hill Inn", zone = 10, faction = "Alliance" },
@@ -24,6 +24,20 @@ function M.places()
     [1] = { name = "East" },
     [2] = { name = "West" },
   }
+end
+
+-- Places F: F0 with every zone and continent marked complete, and a fourth value, true,
+-- for Collection.bind's atlasComplete. So `Collection.bind(fx.places())` binds a complete
+-- atlas; a caller that keeps the three tables passes `true` itself.
+function M.places()
+  local inns, zones, conts = M.placesF0()
+  for _, z in pairs(zones) do
+    z.complete = true
+  end
+  for _, c in pairs(conts) do
+    c.complete = true
+  end
+  return inns, zones, conts, true
 end
 
 -- Own entries E: e1..e7.
@@ -49,8 +63,8 @@ function M.catalog()
     [1] = { kind = "seal", name = "First seal", rule = { kind = "inns", n = 2 } },
     [2] = { kind = "seal", name = "Last seal", rule = { kind = "all" } },
     [1001] = { kind = "quill", name = "Long quill", rule = { kind = "inns", n = 3 } },
-    [1101] = { kind = "ink", name = "Blue ink", rule = { kind = "zones", n = 2 } },
-    [1102] = { kind = "ink", name = "Red ink", rule = { kind = "continent" } },
+    [1002] = { kind = "quill", name = "Blue quill", rule = { kind = "zones", n = 2 } },
+    [1003] = { kind = "quill", name = "Red quill", rule = { kind = "continent" } },
   }
 end
 

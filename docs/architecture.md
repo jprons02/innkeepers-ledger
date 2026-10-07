@@ -24,21 +24,22 @@ vs **client glue** (events, frames, API calls).
 
 | Module | Kind | Responsibility |
 |---|---|---|
-| `Core` | glue | AceAddon setup, AceDB SavedVariables, slash command, wiring |
-| `Data/Inns` | data | Innkeeper NPC ID → inn record (name, zone, faction) or alias of one; zones and continents keyed by the client's map IDs, each zone with its seal ID ([spec](specs/collection-cosmetics.md#31-places-inns-zones-continents)). One table per game flavor. |
+| `Core` | glue | AceAddon setup, AceDB SavedVariables, the `/ledger` command (toggles the book; `share`, `version`, `debug`), wiring |
+| `Data/Inns` | data | Innkeeper NPC ID → inn record (name, zone, faction) or alias of one; zones and continents keyed by the client's map IDs, each zone with its seal ID ([spec](specs/collection-cosmetics.md#31-places-inns-zones-continents)); optional completeness marks on zones and continents, and `AtlasComplete` ([spec](specs/collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)). One table per game flavor. |
 | `Data/Phrases` | data | Phrase templates + word lists, each with a stable numeric ID; templates and conjunctions grouped into voices (UI only) |
-| `Data/Cosmetics` | data | The cosmetic catalog: milestone seals, quills and inks, each with a stable numeric ID and its unlock rule ([spec](specs/collection-cosmetics.md#35-cosmetic-ids)) |
+| `Data/Cosmetics` | data | The cosmetic catalog: milestone seals and quills, each with a stable numeric ID and its unlock rule ([spec](specs/collection-cosmetics.md#35-cosmetic-ids)) |
 | `Sign` | glue | The "Sign the guestbook" button under the gossip frame, the phrase composer, the client reads (hidden-value checked), chat lines, `Sync:WindowChanged()` after a signature ([spec](specs/sign.md)) |
 | `SignFlow` | pure | Every signing decision: when to offer signing, the checks and their reasons, the seals a signature may carry, the commit (`addOwn`, then unlocks recorded), the composer's state ([spec](specs/sign.md)) |
 | `Ledger` | pure | The entry store: add, dedupe, query by inn/signer, prune, storage caps |
 | `Phrase` | pure | Builds, renders and validates phrase IDs → text ([spec](specs/phrase.md)) |
-| `Collection` | pure | Progress over your own signatures: signed/total by continent and zone, per inn ([spec](specs/collection-cosmetics.md)) |
-| `Cosmetics` | pure | The catalog, unlocked quills/inks/seals and when each was earned, `SEALS` for peer validation, the seal check on signing ([spec](specs/collection-cosmetics.md)) |
+| `Collection` | pure | Progress over your own signatures: signed/total by continent and zone, per inn; a place is "done" only if the data marks it complete ([spec](specs/collection-cosmetics.md)) |
+| `Cosmetics` | pure | The catalog, unlocked quills and seals and when each was earned, `SEALS` for peer validation, the seal check on signing ([spec](specs/collection-cosmetics.md)) |
 | `SyncProtocol` | pure | Own fixed-format message codec, digest comparison, **all validation** |
 | `SyncSchedule` | pure | What `Sync` sends and when: send budget, HELLO / WANT / reply gates, pending queues, combat hold state, the pump ([spec](specs/sync-glue.md#35-send-path-syncschedule)) |
 | `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers, the pump that drives `SyncSchedule`, the combat hold ([spec](specs/sync-glue.md)) |
 | `Export` | pure | Builds the v1 export table, then serialize + compress + base64 per [export-format.md](export-format.md) ([spec](specs/export.md)) |
-| `UI/Book` | glue | The parchment book: pages per inn, collection view, cosmetics |
+| `BookView` | pure | Every decision of the book: page models, paging, ordering, text safety (`plain`), dates, the quill fallback, the share nudge, the book's saved record ([spec](specs/book.md)) |
+| `UI/Book` | glue | The parchment book: four tabs, inn pages with travelers' signatures, the stamp grid, quills as a local flourish, the Share page; draws `BookView` models; its own record in `db.global.book[guid]` ([spec](specs/book.md)) |
 
 Pure modules receive anything they'd get from the client (time, GUIDs, inn data) as
 arguments, so tests don't need a WoW stub. That includes libraries: `Export` can't call
@@ -51,12 +52,15 @@ arguments, so tests don't need a WoW stub. That includes libraries: `Export` can
    differ in every locale, so **never match inns by name**.
 2. If the NPC ID is in `Data/Inns` for the current flavor (and `Collection` kept the
    record), a "Sign the guestbook" button shows under the gossip frame (verified in the
-   beta: a `UIPanelButtonTemplate` button parented to `GossipFrame`). It shows at every
-   known innkeeper; a click that can't sign says why in one chat line (no ledger,
-   read-only, signed this week, not resting).
-3. The player composes a phrase in the composer (arrow cyclers over a voice per line,
-   templates, categories, words and conjunctions, an optional second line and an optional
-   seal) and confirms. No recent phrases in v1.
+   beta: a `UIPanelButtonTemplate` button parented to `GossipFrame`), with a "Read the
+   guestbook" button beside it that opens the book on that inn's page
+   ([specs/book.md](specs/book.md) §3.12). Both show at every known innkeeper; a Sign
+   click that can't sign says why in one chat line (no ledger, read-only, signed this
+   week, not resting).
+3. The player composes a phrase in the composer, one line at a time (lists of voices,
+   templates, categories, words and conjunctions, an optional second line, and a cycler
+   for the optional seal; [specs/sign.md](specs/sign.md) §3.7) and confirms. No recent
+   phrases in v1.
 4. Conditions: `IsResting()` must be exactly `true`, and the ledger's weekly rule must
    allow the inn. There is no sitting requirement: the client has no query for it
    ([platform-forever.md](platform-forever.md) → *Sitting detection*).
@@ -96,7 +100,9 @@ Transport: addon messages, prefix `InnLedger` (≤16 chars). Channels: `PARTY`/`
 - **Receiving:** `Sync` registers the prefix itself and handles `CHAT_MSG_ADDON`
   directly. It does **not** receive through AceComm, which reassembles multi-part
   messages with no size limit before we could reject them
-  ([libraries.md → Findings](libraries.md#findings-that-shape-our-design)).
+  ([libraries.md → Findings](libraries.md#findings-that-shape-our-design)). After
+  entries are stored, `onEntries` only tells the book to redraw (`Book:Changed()` in
+  `pcall`, no arguments, no peer data).
 - **One message per payload:** every message fits in a single addon message (255 bytes,
   **verify** on Forever). Anything longer, or anything multi-part, is dropped unread.
   Batches are several single messages, never one long one.
@@ -175,10 +181,11 @@ See [export-format.md](export-format.md) (v1) and [specs/export.md](specs/export
 Pipeline: `Export.build` (validated, fresh data table) → AceSerializer `Serialize` →
 LibDeflate `CompressDeflate` (raw DEFLATE) → our own standard base64 → `!IL1!…`, all on
 our own outgoing data. `Export` is pure: the glue passes the serializer and compressor
-in. **`Core:ExportString(includeTravelers)` is the one glue entry** the Share window and
-`/ledger share` will call (both arrive with the UI slice; `/ledger` handles only `debug`
-today); it prints, sends and writes nothing. The UI shows the string in a
-copyable edit box. Exporting other travelers' entries is **opt-in** per export (only
+in. **`Core:ExportString(includeTravelers)` is the one glue entry**, called by the book's
+Share page (also opened by `/ledger share`); it prints, sends and writes nothing. The
+Share page shows the string preselected in a copyable edit box
+([specs/book.md §3.11.6](specs/book.md#3116-the-share-page)). Exporting other travelers'
+entries is **opt-in** per export (only
 `includeTravelers == true`; they're other people's names), and the default exports only
 your own signatures and collection. **No decoder or import ships;** the forbidden-API
 check enforces it ([security-checklist.md](security-checklist.md#the-forbidden-api-check)).

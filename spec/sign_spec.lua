@@ -924,9 +924,34 @@ describe("Core recording unlocks at login", function()
       travelers = {}, earned = {}, quarantine = {} }
   end
 
+  -- Sign's flow over the shipped places with every zone and continent marked complete, so
+  -- recording at login has something to write (the shipped data marks none, #110).
+  local function markedFlow(ns_)
+    local function marked(src)
+      local out = {}
+      for k, v in pairs(src) do
+        local rec = { complete = true }
+        for f, x in pairs(v) do
+          rec[f] = x
+        end
+        out[k] = rec
+      end
+      return out
+    end
+    local D = ns_.Data
+    local atlas = ns_.Collection.bind(D.Inns, marked(D.Zones), marked(D.Continents), true)
+    ns_.Sign.flow = ns_.SignFlow.new({ inns = D.Inns, atlas = atlas, phrase = ns_.Phrase,
+      cosmetics = ns_.Cosmetics.bind(atlas, D.Cosmetics) })
+  end
+
   it("fills earned for a saved signature", function()
     login({ db = db(ledgerData(1)) })
     assert.same({}, saved().earned) -- the shipped data marks no place complete (#110)
+  end)
+
+  it("fills earned for a saved signature once its places are marked complete", function()
+    login({ db = db(ledgerData(1)), setup = markedFlow })
+    assert.same({ [2] = T, [101] = T, [1003] = T }, saved().earned)
   end)
 
   it("writes nothing to a read-only ledger", function()
@@ -940,7 +965,10 @@ describe("Core recording unlocks at login", function()
   it("opens the ledger and starts Sync when recording raises", function()
     local ns = login({
       db = db(ledgerData(1)),
-      setup = function(ns_) ns_.Sign.RecordUnlocks = function() error("raised on purpose") end end,
+      setup = function(ns_)
+        markedFlow(ns_) -- so recording would write something if it ran
+        ns_.Sign.RecordUnlocks = function() error("raised on purpose") end
+      end,
     })
     assert.is_table(ns.ledger)
     assert.is_false(ns.ledger.readOnly)

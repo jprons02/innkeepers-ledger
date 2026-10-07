@@ -10,6 +10,18 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-07 — Composer: lists, one line at a time, core frame API only
+
+The signing composer (#102, [specs/sign.md](specs/sign.md) §3.6, §3.7) shows a line's
+choices as lists instead of `<` `>` cyclers: line tabs, a voice strip, a conjunction
+strip on line 2, and template, category and word lists with page buttons and the mouse
+wheel. The seal keeps its cycler (few items). The windows live in the pure draft
+(`pick`, `setLine`, `list`, `scroll`, one setter shared with `step`), so they're tested
+with a coverage floor. **Rejected:** arrow cyclers for 156 templates and 175 words (no
+one browses that); both lines' lists at once (twice a gossip frame's height); dropdowns
+(`UIDropDownMenu` deprecated, the menu API unverified on Forever); `ScrollBox` /
+`FauxScrollFrame` (unverified, more than a few rows need). The look stays a DRAFT.
+
 ### 2026-10-07 — Partial atlas: place rules count only places marked complete
 
 **Settles** what the "every inn" rules (a zone's seal, `zones n`, `continent`, `all`) mean

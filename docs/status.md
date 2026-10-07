@@ -5,8 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-06 (**`UI/Book` merged** (#106, #108) and **inks dropped** (#105,
-#107), both into `dev`; the beta install holds them. Not yet released to `main`)
+**Updated:** 2026-10-07 (**list composer merged** (#102, #111) and **completeness marks**
+(#110) into `dev`; with the book and no-inks of 2026-10-06, none released to `main` yet)
 
 ## Current state
 
@@ -29,20 +29,30 @@
   names, tampered records, ledgers at every cap). Wording, look and textures are DRAFT.
 - **No inks (#105, decision 2026-10-06):** every signature is in one realistic ink;
   1100..1199 is reserved. Quills and seals remain.
-- **Not built:** the list-style composer (#102, `ready`).
+- **The composer shows lists (#102, #111):** line tabs, a voice strip, a conjunction
+  strip on line 2, and template, category and word lists with page buttons and the mouse
+  wheel; the seal keeps its `<` `>`. Built, not yet seen in the client; the look is DRAFT.
+- **Place rules wait for completeness marks (#110, decision 2026-10-07):** a zone seal,
+  `zones n`, `continent` and `all` count only zones, continents and an atlas that
+  `Data/Inns` marks `complete` ([collection-cosmetics.md §3.11](specs/collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)).
+  The shipped data marks nothing, so a signature now earns only `inns n` items; the book
+  shows "1 of 1+". This answers the release gate on a partial atlas.
 - **Releasing is wired up** ([CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing)).
-  `main` holds everything through #104; #107 and #108 are on `dev` only. No tags yet
+  `main` holds everything through #104; #107, #108, #111 and #110 are on `dev` only. No tags yet
   (maintainer gate). **CI:** eight required checks, all green on `dev`.
 
 ## Next step
 
-- **Agents:** #102 (browse phrases in lists instead of arrow cyclers). Then a `dev → main`
-  release PR with its security review.
+- **Agents:** a `dev → main` release PR with its security review (the book, no inks, the
+  list composer, completeness marks). No `ready` ticket is queued after it; #12 drives
+  what's next.
 - **In the client (maintainer):** restart the client (a new file, `BookView.lua`, needs a
-  full restart, not `/reload`), then run the book's checks on the
+  full restart, not `/reload`), then run the book's and the composer's checks on the
   [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
   Two matter most: do the parchment textures load, and do `‹ › ·` render. A screenshot of
-  each tab helps retune the DRAFT look. Keep talking to every innkeeper you pass.
+  each tab and of each composer line helps retune the DRAFT look. Keep talking to every
+  innkeeper you pass, and **note per zone whether you've seen every inn in it**: that is
+  what lets a zone be marked `complete` (#110).
 
 ## Client access
 
@@ -52,12 +62,9 @@ In the beta until **2026-10-21**; launch **2026-11-04**. Beta client
 ## Open questions (maintainer to decide)
 
 None block work; DRAFTs ship until answered.
-- **Release gate, decide before 2026-10-21: `Data/Inns`.** The `zone`, `continent` and
-  `all` rules count only the inns the data knows, and earned cosmetics are never taken
-  away, so a partial atlas in a release hands out "every inn" for good (the beta's first
-  signature earned 101, 1003 and 2 at once). Either you visit every Forever inn during the
-  beta, or the rules gain a guard (e.g. a per-zone "complete" mark,
-  [collection-cosmetics.md](specs/collection-cosmetics.md) change).
+- **Which places to mark complete:** your call from the walk (#12), zone by zone. Until
+  a zone is marked, its seal can't be earned; zones you never finish just keep their
+  seals locked. The book's `"+"` ("1 of 1+") is DRAFT wording.
 - **The book ([book.md → Open questions](specs/book.md#open-questions-maintainer)):** the
   wording and look (flourishes, ink, textures, layout); entries newest or oldest first;
   whether a share counts when shown or only when copied; a movable book.
@@ -73,7 +80,9 @@ None block work; DRAFTs ship until answered.
 
 **In the client** (#12, the unticked items in
 [platform-forever.md → Verification checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)):
-the book's 11 checks; more innkeepers; the rest of the signing checks; a second character
+the book's 11 checks; the list composer
+(rendering, the mouse wheel, conjunctions fitting their buttons); more innkeepers, with
+which zones you've fully walked; the rest of the signing checks; a second character
 in a party (round-trips, `got hello PARTY`, `UnitFullName("partyN")`, cross-realm); a guild
 round-trip and one dungeon run. **Accounts:** nothing waiting.
 
@@ -81,6 +90,10 @@ round-trip and one dungeon run. **Accounts:** nothing waiting.
 
 - **Before the first tag:** `CHANGELOG.md` notes; answer #62 and #63 (IDs freeze);
   Interface `16001` → Forever on CurseForge and Wago is unverified until the first upload.
+- **Completeness over excluded records (low, #110 review):** a marked continent whose
+  zones were all excluded, or a marked zone that lost an inn to a bad record, still counts
+  as complete. Only the real-data `invalid == {}` test catches it today; failing closed
+  in `Collection.bind` would be cheap.
 - **Book redraws aren't coalesced:** each ENTRIES message with new entries redraws an open
   book (2–6 ms on a capped ledger in desktop Lua). Watch it in the party test (#12).
 - **CI runners:** `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19; watch the first

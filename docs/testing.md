@@ -107,7 +107,8 @@ Proportional, not ceremonial:
   `schemaOk`, the v1 schema check that every export test runs on every build result and
   every decoded string. No decoder ships; `scripts/check-apis.sh` keeps it that way.
 - **Long simulations are tagged `#sim`** (the 40-player raid, an hour in a guild, the
-  10-minute flood, the large export size rows). `busted` runs them (about 10 s); the coverage run skips them with
+  10-minute flood, the large export size rows, the `cleanText` sweep over every code point
+  of planes 0 and 1). `busted` runs them (about 10 s); the coverage run skips them with
   `--exclude-tags=sim`, since under luacov they take minutes and cover no pure-module
   line the module specs don't.
 - **Peer data is hostile in tests.** For every rule in the security model, cover

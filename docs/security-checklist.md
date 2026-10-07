@@ -177,9 +177,10 @@ launch the session does this on its own. A finding that needs a maintainer decis
    `Sync`, and only in response to the documented triggers. No new message types
    without a spec.
 8. **Rendering:** peer-derived strings are shown as plain text; `|` escape sequences are
-   rejected before display. Peer names pass `BookView.plain` (no `|`, control bytes or
-   broken UTF-8 reach a font string), and nothing passes peer text through
-   `string.format`, `SetFormattedText` or a `gsub` replacement.
+   rejected before display. Peer names pass `BookView.plain` (no `|`, control bytes,
+   broken UTF-8 or hidden characters, per `Ledger.cleanText`, reach a font string), and
+   nothing passes peer text through `string.format`, `SetFormattedText` or a `gsub`
+   replacement.
 9. **Policy:** no new external references, links, paid or gated features; in-game
    wording follows [addon-policy.md](addon-policy.md).
 10. **Export:** the export string gained no data beyond the player's own ledger, and

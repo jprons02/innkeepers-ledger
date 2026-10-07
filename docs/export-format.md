@@ -92,6 +92,14 @@ bytes, not characters.
   - **Realm** (only after a `-`): 1..48 bytes of letters, digits `0-9`, `'` and `-`,
     not ending in `-` (so `Zoë-Azjol-Nerub` is the name `Zoë` on the realm
     `Azjol-Nerub`).
+- **Name, hidden characters** (added 2026-10-07, #119; the format stays v1): the whole
+  name is also well-formed UTF-8 (RFC 3629: no overlong form, surrogate or code point
+  above U+10FFFF) and holds no hidden code point: no control (C0, DEL, C1), no space
+  but U+0020, no format or bidi control, no invisible filler, variation selector,
+  private-use code point or noncharacter. The exact ranges are one table in
+  [specs/sync-ledger.md §5.2a](specs/sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119).
+  This only narrows what the AddOn writes, so a consumer that checks just the rules
+  above still accepts every name it exports.
 
 ### Notes
 

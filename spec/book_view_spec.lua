@@ -195,6 +195,15 @@ describe("BookView.new", function()
     end)
   end)
 
+  it("raises without Ledger.cleanText (#119)", function()
+    local ns = {}
+    load.file("Ledger.lua", ns, load.pure_env())
+    ns.Ledger.cleanText = nil
+    assert.has_error(function()
+      load.file("BookView.lua", ns, load.pure_env())
+    end)
+  end)
+
   it("raises without deps, a dep table or a needed function", function()
     assert.has_error(function() BookView.new() end)
     assert.has_error(function() BookView.new("x") end)
@@ -351,6 +360,84 @@ describe("BookView.plain", function()
       assert.is_nil(out:find("|", 1, true), b)
     end
   end)
+
+  -- Ledger spec 5.2a (#119).
+  it("replaces a name holding a hidden character, wherever it sits", function()
+    for _, x in ipairs({
+      "\226\128\174", -- RLO
+      "\226\128\141", -- ZWJ
+      "\194\160",     -- NBSP
+      "\227\128\128", -- ideographic space
+      "\227\133\164", -- Hangul filler
+    }) do
+      for _, s in ipairs({ x .. "Mira Ashvale", "Mira" .. x .. " Ashvale", "Mira Ashvale" .. x }) do
+        assert.equal("F", plain(s, 64, "F"), s)
+      end
+    end
+    for _, s in ipairs({
+      "Mi\194\133ra",       -- a C1 control, U+0085
+      "\224\128\128",       -- overlong 3-byte
+      "\240\128\128\128",   -- overlong 4-byte
+      "\237\160\128",       -- a surrogate
+      "\244\144\128\128",   -- above U+10FFFF
+    }) do
+      assert.equal("F", plain(s, 64, "F"), s)
+    end
+  end)
+
+  it("checks the whole name before the cut", function()
+    -- An RLO at bytes 66-68: past the cut, and still the whole name is replaced.
+    local s = string.rep("a", 65) .. "\226\128\174" .. "aa"
+    assert.equal(70, #s)
+    assert.equal("F", plain(s, 64, "F"))
+  end)
+
+  it("keeps real names in every script and still cuts on a boundary", function()
+    for _, s in ipairs({
+      "\195\157rsa",                                        -- Yrsa with an acute
+      "Wei\195\159",                                        -- Weiss with a sharp s
+      "\208\144\208\187\208\180\209\128\208\184\208\186",   -- Cyrillic
+      "\236\149\140\235\147\156\235\166\173",               -- Hangul
+      "\232\137\190\229\190\183\233\135\140\229\133\139",   -- Chinese
+    }) do
+      assert.equal(s, plain(s, 64, "F"))
+    end
+    local hangul = string.rep("\236\149\140", 23) -- 69 bytes
+    assert.equal(hangul:sub(1, 63) .. "...", plain(hangul, 64, "F"))
+    local wide = string.rep("a", 62) .. "\240\144\128\128" .. "bcde" -- U+10000 at 63-66
+    assert.equal(string.rep("a", 62) .. "...", plain(wide, 64, "F"))
+  end)
+
+  it("agrees with Ledger.cleanText over the seeded fuzz strings", function()
+    -- The generator of the Ledger spec's cleanText fuzz (same seed, same edge bytes).
+    local EDGE = { 0x00, 0x1F, 0x20, 0x7E, 0x7F, 0x80, 0x8F, 0x90, 0x9F, 0xA0, 0xBF, 0xC0,
+      0xC1, 0xC2, 0xDF, 0xE0, 0xE1, 0xEC, 0xED, 0xEE, 0xEF, 0xF0, 0xF1, 0xF3, 0xF4, 0xF5, 0xFF }
+    local seed = 20261007
+    local function rand(n)
+      seed = seed * 16807 % 2147483647
+      return seed % n
+    end
+    local bytes, kept, wrong = {}, 0, {}
+    for _ = 1, 10000 do
+      local len = rand(17)
+      for k = 1, len do
+        bytes[k] = rand(4) == 0 and rand(256) or EDGE[rand(#EDGE) + 1]
+      end
+      local x = string.char(unpack(bytes, 1, len))
+      local out = plain(x, 64, "F")
+      local want = x
+      if not Ledger.cleanText(x) or x == "" or x:find("|", 1, true) then
+        want = "F"
+      else
+        kept = kept + 1
+      end
+      if (out ~= want or out:find("|", 1, true)) and #wrong < 10 then
+        wrong[#wrong + 1] = { x, out }
+      end
+    end
+    assert.same({}, wrong)
+    assert.is_true(kept > 0)
+  end)
 end)
 
 describe("BookView.dateText", function()
@@ -483,7 +570,7 @@ describe("BookView: the title and help pages", function()
     assert.same({ kind = "title", title = "The ledger of Aldric",
       steps = { TEXT.step1, TEXT.step2, TEXT.step3 }, hint = TEXT.hint, page = 0, pages = 1 },
       m.left)
-    for _, name in ipairs({ false, "Ald|cric", "Zo\195", "", 7 }) do
+    for _, name in ipairs({ false, "Ald|cric", "Zo\195", "", 7, "Ald\226\128\174ric" }) do
       local s = sit(nil)
       s.name = name or nil
       assert.equal("Your ledger", view.build(s, {}).left.title)
@@ -887,6 +974,8 @@ describe("BookView: an inn's page", function()
           { signer = traveler(3), name = nil, entry = { inn = 5001, t = T + 2, phrase = { 2 } } },
           { signer = traveler(4), name = string.rep("x", 80), entry = { inn = 5001, t = T + 3,
             phrase = { 2 } } },
+          { signer = traveler(5), name = "Mi\226\128\141ra", entry = { inn = 5001, t = T - 1,
+            phrase = { 2 } } }, -- a ZWJ (#119)
         } }
       end }
     local m = newView({ sizes = { innRows = 10 } }).build(sit(fake), { inn = 5101 })
@@ -896,8 +985,8 @@ describe("BookView: an inn's page", function()
         names[#names + 1] = r.name
       end
     end
-    assert.same({ string.rep("x", 64) .. "...", "A traveler", "A traveler", "A traveler" },
-      names)
+    assert.same({ string.rep("x", 64) .. "...", "A traveler", "A traveler", "A traveler",
+      "A traveler" }, names)
   end)
 
   it("draws the quill's flourish under own rows only, none for the plain quill", function()

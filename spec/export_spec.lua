@@ -597,6 +597,14 @@ describe("Export.build (6.2)", function()
       end
     end)
 
+    it("me.name with a hidden character; the rest unchanged (#119)", function()
+      local input = F()
+      input.me.name = "Ald\226\128\174ric" -- an RLO
+      local expected = EXPECTED_F()
+      expected.me.name = nil
+      assert.same(expected, buildOk(input))
+    end)
+
     it("own entries that fail validEntry; siblings kept", function()
       local bad = {
         { inn = 0, t = T, phrase = { 1 } },

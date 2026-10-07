@@ -5,8 +5,9 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-07 (**released to `main` (#114):** the book, no inks, the list
-composer (#102) and completeness marks (#110); release security review passed)
+**Updated:** 2026-10-07 (after the release (#114), on `dev`: completeness fails closed
+(#118), hidden characters in names rejected (#119), CI runners pinned (#117),
+September decisions archived (#120))
 
 ## Current state
 
@@ -26,9 +27,15 @@ composer (#102) and completeness marks (#110); release security review passed)
   [collection-cosmetics.md §3.11](specs/collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)):**
   a zone seal, `zones n`, `continent` and `all` count only places `Data/Inns` marks
   `complete`. Nothing is marked, so a signature earns only `inns n` items; the book shows
-  "1 of 1+". This settles the partial-atlas release gate.
-- **Releasing:** `main` and `dev` hold the same content (#114). No tags yet (maintainer
-  gate). **CI:** eight required checks, green.
+  "1 of 1+". This settles the partial-atlas release gate. **Fails closed (#118):** if
+  any `Data/Inns` record is excluded, nothing counts as complete.
+- **Names (#119, [sync-ledger.md §5.2a](specs/sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119)):**
+  `Ledger.cleanText` rejects malformed UTF-8 and hidden characters (bidi controls,
+  zero-width, non-ASCII spaces, fillers, private use); `validName` and the book's `plain`
+  both use it.
+- **Releasing:** `dev` is four squash-merges ahead of `main` (#117–#120); nothing
+  user-visible beyond names with hidden characters now being dropped. No tags yet (maintainer
+  gate). **CI:** eight required checks on `ubuntu-24.04`, green.
 
 ## Next step
 
@@ -56,9 +63,6 @@ None block work; DRAFTs ship until answered.
 - **The book** ([book.md → Open questions](specs/book.md#open-questions-maintainer)) and
   **the composer** ([sign.md → Open questions](specs/sign.md#open-questions-maintainer)):
   wording and look.
-- **Traveler names:** `BookView.plain` (like `Ledger.validName`) lets invisible format
-  characters (right-to-left override, zero-width joiner) through. Worst case: odd glyphs
-  or reordered text. Tighten, or leave?
 - **Phrase wording (#62)**, **cosmetic catalog (#63)**, **export (#64)**: as in each
   spec's Open questions.
 
@@ -80,6 +84,9 @@ rest of the signing checks; a second character in a party (round-trips,
 - **Revisit once in groups (#12):** server-clock jumps; other AddOns' traffic; group-map
   rescan budget; a dropped `C_Timer.After`; export build time. Weekly reset rows for live
   regions after launch.
+- **Name hardening, if wanted (low, #119 review):** stacked combining marks, strong RTL
+  letters, blank-rendering symbols (U+1D159) still pass; see sync-ledger.md §5.2a Out of
+  scope.
 - **Code tidy (low):** `isInt` / name allow-lists copied across modules; `Phrase`'s
   load-time asserts; `Ledger`'s quadratic load-time cap pass on a tampered file;
   `Sign.lua`'s `listField` builds a full `view()` per click. Publish `Data/*` for export

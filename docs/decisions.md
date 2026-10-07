@@ -10,6 +10,25 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-07 — Names with hidden characters or malformed UTF-8 are rejected
+
+The maintainer chose to tighten (#119, [specs/sync-ledger.md
+§5.2a](specs/sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119)).
+`Ledger.cleanText` decodes strictly per RFC 3629 (no overlongs, surrogates or code points
+above U+10FFFF) and rejects any code point in one sorted 48-row table: controls, every
+space but U+0020, line and paragraph separators, format and bidi controls (a
+right-to-left override, zero-width joiners), invisible fillers, variation selectors,
+private use and noncharacters. `validName` requires it, so sync receive, the ledger load,
+`addForeign`, the export and our own name all drop such names; the book's `plain` shows
+the fallback. No real character name in any supported locale contains one, so no player
+is lost; a stored traveler with such a name is dropped at load like any invalid record.
+No wire, export or SavedVariables version change: the export only narrows what it
+writes. **Rejected:** *stripping the characters* (it changes the sender's name, so a
+forgery could look exactly like someone else); *allow-listing scripts* (too many locales);
+*a Unicode database at runtime* (size, and no need); *checking only at display* (the
+ledger and export would still carry them). Combining-mark stacks and strong RTL letters
+stay out of scope.
+
 ### 2026-10-07 — Completeness fails closed on any excluded record
 
 If `Collection.bind` excludes any record of the atlas, no zone, continent or the atlas

@@ -7,6 +7,7 @@ local Ledger = {}
 ns.Ledger = Ledger
 
 local floor = math.floor
+local byte = string.byte
 local tinsert, tremove, tsort = table.insert, table.remove, table.sort
 
 -- Shared limits (spec 3.1). SyncProtocol reads these; don't repeat the literals there.
@@ -92,6 +93,140 @@ function Ledger.validGUID(s)
   return type(s) == "string" and #s <= 40 and s:match("^Player%-%d+%-%x+$") ~= nil
 end
 
+-- Banned code points (spec 5.2a): sorted, non-overlapping { from, to } rows, copied row for
+-- row from the spec's table (complete for Unicode 16.0). Keep it in step with the spec.
+local HIDDEN = {
+  { 0x0000, 0x001F },   --  1 C0 controls
+  { 0x007F, 0x009F },   --  2 DEL, C1 controls
+  { 0x00A0, 0x00A0 },   --  3 no-break space
+  { 0x00AD, 0x00AD },   --  4 soft hyphen
+  { 0x034F, 0x034F },   --  5 combining grapheme joiner
+  { 0x0600, 0x0605 },   --  6 Arabic number signs (format)
+  { 0x061C, 0x061C },   --  7 Arabic letter mark (bidi)
+  { 0x06DD, 0x06DD },   --  8 Arabic end of ayah
+  { 0x070F, 0x070F },   --  9 Syriac abbreviation mark
+  { 0x0890, 0x0891 },   -- 10 Arabic pound and piastre marks above
+  { 0x08E2, 0x08E2 },   -- 11 Arabic disputed end of ayah
+  { 0x115F, 0x1160 },   -- 12 Hangul choseong and jungseong fillers
+  { 0x1680, 0x1680 },   -- 13 Ogham space mark
+  { 0x17B4, 0x17B5 },   -- 14 Khmer inherent vowels (invisible)
+  { 0x180B, 0x180F },   -- 15 Mongolian free variation selectors, vowel separator
+  { 0x2000, 0x200F },   -- 16 en quad .. hair space, ZWSP, ZWNJ, ZWJ, LRM, RLM
+  { 0x2028, 0x202F },   -- 17 line/paragraph separators, LRE RLE PDF LRO RLO, narrow NBSP
+  { 0x205F, 0x206F },   -- 18 medium math space, word joiner, invisible operators, isolates
+  { 0x2800, 0x2800 },   -- 19 Braille pattern blank
+  { 0x3000, 0x3000 },   -- 20 ideographic space
+  { 0x3164, 0x3164 },   -- 21 Hangul filler
+  { 0xE000, 0xF8FF },   -- 22 private use
+  { 0xFDD0, 0xFDEF },   -- 23 noncharacters
+  { 0xFE00, 0xFE0F },   -- 24 variation selectors
+  { 0xFEFF, 0xFEFF },   -- 25 zero-width no-break space (BOM)
+  { 0xFFA0, 0xFFA0 },   -- 26 halfwidth Hangul filler
+  { 0xFFF0, 0xFFFF },   -- 27 specials
+  { 0x110BD, 0x110BD }, -- 28 Kaithi number sign
+  { 0x110CD, 0x110CD }, -- 29 Kaithi number sign above
+  { 0x13430, 0x1343F }, -- 30 Egyptian hieroglyph format controls
+  { 0x1BCA0, 0x1BCA3 }, -- 31 shorthand format controls
+  { 0x1D173, 0x1D17A }, -- 32 musical symbol format controls
+  { 0x1FFFE, 0x1FFFF }, -- 33 noncharacters
+  { 0x2FFFE, 0x2FFFF }, -- 34 noncharacters
+  { 0x3FFFE, 0x3FFFF }, -- 35 noncharacters
+  { 0x4FFFE, 0x4FFFF }, -- 36 noncharacters
+  { 0x5FFFE, 0x5FFFF }, -- 37 noncharacters
+  { 0x6FFFE, 0x6FFFF }, -- 38 noncharacters
+  { 0x7FFFE, 0x7FFFF }, -- 39 noncharacters
+  { 0x8FFFE, 0x8FFFF }, -- 40 noncharacters
+  { 0x9FFFE, 0x9FFFF }, -- 41 noncharacters
+  { 0xAFFFE, 0xAFFFF }, -- 42 noncharacters
+  { 0xBFFFE, 0xBFFFF }, -- 43 noncharacters
+  { 0xCFFFE, 0xCFFFF }, -- 44 noncharacters
+  { 0xDFFFE, 0xDFFFF }, -- 45 noncharacters
+  { 0xE0000, 0xE0FFF }, -- 46 tags, variation selectors supplement, default-ignorable
+  { 0xEFFFE, 0xEFFFF }, -- 47 noncharacters
+  { 0xF0000, 0x10FFFF }, -- 48 supplementary private use, planes 15 and 16
+}
+local HIDDEN_ROWS = #HIDDEN
+
+-- True if code point `cp` lies inside a HIDDEN row (binary search).
+local function hidden(cp)
+  local lo, hi = 1, HIDDEN_ROWS
+  while lo <= hi do
+    local mid = floor((lo + hi) / 2)
+    local row = HIDDEN[mid]
+    if cp < row[1] then
+      hi = mid - 1
+    elseif cp > row[2] then
+      lo = mid + 1
+    else
+      return true
+    end
+  end
+  return false
+end
+
+-- Well-formed UTF-8 (RFC 3629) with no HIDDEN code point (spec 5.2a). Bytes through
+-- string.byte only: no patterns, nothing allocated. Never errors.
+local function cleanText(s)
+  if type(s) ~= "string" then
+    return false
+  end
+  local n, i = #s, 1
+  while i <= n do
+    local b = byte(s, i)
+    if b >= 0x20 and b <= 0x7E then
+      -- Printable ASCII: no HIDDEN row touches U+0020..U+007E, so skip the search.
+      i = i + 1
+    else
+      -- The lead byte fixes the length, the code point's high bits and the second
+      -- byte's range (spec 5.2a step 2); later bytes are 80..BF.
+      local cp, len
+      local lo, hi = 0x80, 0xBF
+      if b < 0x80 then
+        cp, len = b, 1 -- a C0 control or DEL
+      elseif b < 0xC2 then
+        return false -- a lone continuation byte, C0 or C1
+      elseif b < 0xE0 then
+        cp, len = b - 0xC0, 2
+      elseif b < 0xF0 then
+        cp, len = b - 0xE0, 3
+        if b == 0xE0 then
+          lo = 0xA0 -- no overlong
+        elseif b == 0xED then
+          hi = 0x9F -- no surrogate
+        end
+      elseif b < 0xF5 then
+        cp, len = b - 0xF0, 4
+        if b == 0xF0 then
+          lo = 0x90 -- no overlong
+        elseif b == 0xF4 then
+          hi = 0x8F -- nothing above U+10FFFF
+        end
+      else
+        return false -- F5..FF
+      end
+      local last = i + len - 1
+      if last > n then
+        return false -- cut short by the end of s
+      end
+      for j = i + 1, last do
+        local c = byte(s, j)
+        if c < lo or c > hi then
+          return false
+        end
+        cp = cp * 64 + c - 0x80
+        lo, hi = 0x80, 0xBF
+      end
+      if hidden(cp) then
+        return false
+      end
+      i = last + 1
+    end
+  end
+  return true
+end
+
+Ledger.cleanText = cleanText
+
 -- The name rule (spec 5.2). Explicit byte ranges only: %a and friends follow the C locale.
 local WORD = "[A-Za-z\128-\255]"
 local ONE_WORD = "^(" .. WORD .. "+)$"
@@ -100,6 +235,10 @@ local REALM = "^[A-Za-z0-9'%-\128-\255]+$"
 
 function Ledger.validName(s)
   if type(s) ~= "string" or #s < 2 or #s > LIMITS.nameMaxBytes then
+    return false
+  end
+  -- Well-formed UTF-8 with no hidden character (spec 5.2a, #119).
+  if not cleanText(s) then
     return false
   end
   -- Redundant with the patterns below, kept as the explicit UI-escape guard.

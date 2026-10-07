@@ -22,7 +22,7 @@ on:
 
 jobs:
   package:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -71,7 +71,7 @@ jobs:
   publish:
     needs: package
     if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: release # the maintainer approves; only v* tags may use it
     permissions:
       contents: write # the packager's GitHub release for the tag

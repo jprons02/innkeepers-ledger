@@ -954,6 +954,390 @@ describe("the draft", function()
   end)
 end)
 
+-- The real data's list sizes, per field, from the initial draft (Hearthside, category 1).
+local function realSizes()
+  local P = REAL.Phrase
+  return { v1 = #P.voices(), t1 = #P.templates(1), cat1 = #P.categories(), w1 = #P.words(1),
+    v2 = #P.voices(), c = #P.conjunctions(1), t2 = #P.templates(1), cat2 = #P.categories(),
+    w2 = #P.words(1) }
+end
+
+-- Junk for an index, a count or a delta.
+local function junkNumbers()
+  return { 1.5, 0 / 0, 1 / 0, -1 / 0, "1", true, {}, fx.hostileTable(), fx.hostileProxy() }
+end
+
+describe("the draft's lists (#102)", function()
+  local real = realFlow()
+  local P = REAL.Phrase
+
+  describe("pick", function()
+    it("sets each field to its last and first index, exactly as step would", function()
+      for field, n in pairs(realSizes()) do
+        assert.is_true(n > 1, field)
+        local picked, stepped = real.newDraft({}), real.newDraft({})
+        picked:setSecond(true)
+        stepped:setSecond(true)
+        picked:pick(field, n)
+        stepped:step(field, -1)
+        assert.same(stepped:view(), picked:view(), field)
+        assert.same(stepped:ids(), picked:ids(), field)
+        picked:pick(field, 1)
+        stepped:step(field, 1)
+        assert.same(stepped:view(), picked:view(), field)
+        assert.same(stepped:ids(), picked:ids(), field)
+      end
+    end)
+
+    it("applies step's resets: category to word, v1 while following, v2 stops it", function()
+      local d = real.newDraft({})
+      d:pick("w1", 5)
+      d:pick("cat1", 3)
+      assert.equal(P.text(P.words(3)[1]), d:view().w1)
+      d:setSecond(true)
+      d:pick("w2", 4)
+      d:pick("cat2", 2)
+      assert.equal(P.text(P.words(2)[1]), d:view().w2)
+
+      d = real.newDraft({})
+      d:setSecond(true)
+      d:pick("t1", 3)
+      d:pick("t2", 3)
+      d:pick("c", 2)
+      d:pick("v1", 2) -- Bardic; line 2 follows and resets
+      assert.equal("Voice: Bardic", d:view().v2)
+      assert.same({ 201, 1001, 511, 201, 1001 }, d:ids())
+      d:pick("t2", 2)
+      d:pick("v2", 8) -- chosen now: Noble, its conjunction and template reset
+      assert.same({ 201, 1001, 571, 381, 1001 }, d:ids())
+      d:pick("v1", 3) -- line 2 keeps its own voice
+      assert.equal("Voice: Noble", d:view().v2)
+      assert.equal("Voice: Grumbler", d:view().v1)
+    end)
+
+    it("resets nothing when it picks the current index", function()
+      local d = real.newDraft({})
+      d:pick("w1", 5)
+      d:pick("t1", 3)
+      d:pick("cat1", 1)
+      d:pick("v1", 1)
+      assert.equal(P.text(P.words(1)[5]), d:view().w1)
+      assert.equal(3, d:ids()[1])
+      d:setSecond(true)
+      d:pick("v2", 1) -- the current voice: line 2 still follows
+      d:pick("v1", 2)
+      assert.equal("Voice: Bardic", d:view().v2)
+    end)
+
+    it("ignores an index out of range, a non-integer and a bad field", function()
+      local d = real.newDraft({ 2, 101 })
+      d:setSecond(true)
+      d:pick("t1", 2)
+      local before, ids = d:view(), d:ids()
+      for field, n in pairs(realSizes()) do
+        for _, index in ipairs({ 0, -1, n + 1 }) do
+          d:pick(field, index)
+        end
+        for _, index in ipairs(junkNumbers()) do
+          d:pick(field, index)
+        end
+        d:pick(field)
+      end
+      for _, index in ipairs({ -1, 3, 1.5, 0 / 0, "1" }) do
+        d:pick("seal", index)
+      end
+      for _, field in ipairs({ "x", "second", "line", "preview", 1, {}, fx.hostileTable(),
+        fx.hostileProxy() }) do
+        d:pick(field, 1)
+      end
+      assert.same(before, d:view())
+      assert.same(ids, d:ids())
+      assert.is_nil(d:seal())
+    end)
+
+    it("picks a seal by its position, or none with 0", function()
+      local d = real.newDraft({ 2, 101 })
+      d:pick("seal", 2)
+      assert.equal(101, d:seal())
+      assert.equal("Zephras Isle", d:view().seal)
+      d:pick("seal", 1)
+      assert.equal(2, d:seal())
+      d:pick("seal", 0)
+      assert.is_nil(d:seal())
+      assert.equal("No seal", d:view().seal)
+      local none = real.newDraft({})
+      none:pick("seal", 1)
+      assert.is_nil(none:seal())
+    end)
+
+    it("gives a valid phrase for every pick from the initial draft", function()
+      local n = 0
+      for field, size in pairs(realSizes()) do
+        for _, two in ipairs({ false, true }) do
+          for i = 1, size do
+            local d = real.newDraft({})
+            d:setSecond(two)
+            d:pick(field, i)
+            assert.is_true(P.validIds(d:ids()), field .. " " .. i)
+            assert.is_string(d:view().preview)
+            n = n + 1
+          end
+        end
+      end
+      assert.is_true(n > 200)
+    end)
+  end)
+
+  it("setLine edits line 2 only while there is one", function()
+    local d = real.newDraft({})
+    assert.equal(1, d:view().line)
+    d:setLine(2)
+    assert.equal(1, d:view().line)
+    d:setSecond(true)
+    assert.equal(2, d:view().line)
+    d:setLine(1)
+    assert.equal(1, d:view().line)
+    d:setSecond(true) -- already on: the line stays
+    assert.equal(1, d:view().line)
+    d:setLine(2)
+    assert.equal(2, d:view().line)
+    for _, k in ipairs({ 0, 3, 1.5, 0 / 0, "1", "2", true, {}, fx.hostileTable(),
+      fx.hostileProxy() }) do
+      d:setLine(k)
+      assert.equal(2, d:view().line)
+    end
+    d:setLine()
+    assert.equal(2, d:view().line)
+    d:setSecond(false)
+    assert.equal(1, d:view().line)
+    assert.is_false(d:view().second)
+    d:setLine(2)
+    assert.equal(1, d:view().line)
+    d:setSecond(true)
+    d:setSecond("yes") -- anything but true removes it, and goes back to line 1
+    assert.equal(1, d:view().line)
+  end)
+
+  describe("list", function()
+    it("shows the voices with the chosen one selected, as view names them", function()
+      local d = real.newDraft({})
+      local w = d:list("v1", 8)
+      assert.equal(1, w.first)
+      assert.equal(8, w.total)
+      assert.equal(8, #w.items)
+      assert.same({ index = 1, text = "Hearthside", selected = true }, w.items[1])
+      for i = 2, 8 do
+        assert.is_false(w.items[i].selected)
+        assert.equal(i, w.items[i].index)
+      end
+      for i = 1, 8 do
+        d:pick("v1", i)
+        w = d:list("v1", 8)
+        assert.equal("Voice: " .. w.items[i].text, d:view().v1)
+        assert.is_true(w.items[i].selected)
+      end
+      assert.equal("Noble", d:list("v2", 8).items[8].text)
+      assert.is_true(d:list("v2", 8).items[8].selected) -- line 2 follows
+    end)
+
+    it("windows Hearthside's 36 templates eight at a time", function()
+      local d = real.newDraft({})
+      local w = d:list("t1", 8)
+      assert.equal(1, w.first)
+      assert.equal(36, w.total)
+      assert.equal(8, #w.items)
+      for i = 1, 8 do
+        assert.equal(i, w.items[i].index)
+      end
+      assert.equal("Rested here, dreaming of ___.", w.items[1].text)
+      assert.is_true(w.items[1].selected)
+      assert.is_false(w.items[2].selected)
+      assert.equal(36, #d:list("t1", 40).items)
+      assert.equal(1, #d:list("t1", 1).items)
+    end)
+
+    it("lists the seals after No seal, by position", function()
+      local d = real.newDraft({ 2, 101 })
+      assert.same({ first = 1, total = 3, items = {
+        { index = 0, text = "No seal", selected = true },
+        { index = 1, text = "Innkeeper's seal", selected = false },
+        { index = 2, text = "Zephras Isle", selected = false },
+      } }, d:list("seal", 8))
+      d:pick("seal", 2)
+      local w = d:list("seal", 2) -- a pick doesn't move the window
+      assert.equal(1, w.first)
+      assert.same({ 0, 1 }, { w.items[1].index, w.items[2].index })
+      assert.is_false(w.items[1].selected or w.items[2].selected)
+      d:scroll("seal", 1, 2)
+      w = d:list("seal", 2)
+      assert.equal(2, w.first)
+      assert.same({ index = 2, text = "Zephras Isle", selected = true }, w.items[2])
+      assert.same({ first = 1, total = 1, items = { { index = 0, text = "No seal",
+        selected = true } } }, real.newDraft({}):list("seal", 8))
+    end)
+
+    it("names an unnamed voice group with an empty string", function()
+      local w = newFlow().newDraft({}):list("v1", 8)
+      assert.same({ first = 1, total = 1, items = { { index = 1, text = "", selected = true } } },
+        w)
+    end)
+
+    it("is nil for a bad count or field", function()
+      local d = real.newDraft({})
+      for _, count in ipairs({ 0, 41, -1, 1.5, 0 / 0, 1 / 0, "8", true, {}, fx.hostileTable(),
+        fx.hostileProxy() }) do
+        assert.is_nil(d:list("t1", count))
+      end
+      assert.is_nil(d:list("t1"))
+      for _, field in ipairs({ "x", "line", "second", 1, {}, fx.hostileTable(),
+        fx.hostileProxy() }) do
+        assert.is_nil(d:list(field, 8))
+      end
+      assert.is_nil(d:list(nil, 8))
+      assert.is_table(d:list("t1", 40))
+      assert.is_table(d:list("t1", 1))
+    end)
+
+    it("gives the selected item view's text for every field", function()
+      local d = real.newDraft({ 2, 101 })
+      d:setSecond(true)
+      d:pick("t1", 5)
+      d:pick("w1", 7)
+      d:pick("cat2", 4)
+      d:pick("seal", 1)
+      local v = d:view()
+      for _, field in ipairs({ "t1", "cat1", "w1", "c", "t2", "cat2", "w2", "seal" }) do
+        local found
+        for _, item in ipairs(d:list(field, 40).items) do
+          if item.selected then
+            assert.is_nil(found, field)
+            found = item.text
+          end
+        end
+        assert.equal(v[field], found, field)
+      end
+    end)
+
+    it("holds no | or % in any text over the real data", function()
+      local d = real.newDraft({ 2, 101 })
+      d:setSecond(true)
+      local n = 0
+      local function check(field)
+        local w = d:list(field, 40)
+        assert.is_true(w.total <= 40, field)
+        for _, item in ipairs(w.items) do
+          assert.is_string(item.text)
+          assert.is_false(hasPipe(item.text), item.text)
+          assert.is_nil(item.text:find("%", 1, true), item.text)
+          n = n + 1
+        end
+      end
+      for v = 1, #P.voices() do
+        d:pick("v1", v)
+        d:pick("v2", v)
+        check("v1")
+        check("t1")
+        check("c")
+      end
+      for cat = 1, #P.categories() do
+        d:pick("cat1", cat)
+        check("cat1")
+        check("w1")
+      end
+      check("seal")
+      assert.is_true(n > 300)
+    end)
+  end)
+
+  describe("scroll", function()
+    it("clamps at both ends", function()
+      local d = real.newDraft({})
+      d:scroll("t1", -5, 8)
+      assert.equal(1, d:list("t1", 8).first)
+      d:scroll("t1", 8, 8)
+      assert.equal(9, d:list("t1", 8).first)
+      assert.equal(9, d:list("t1", 8).items[1].index)
+      d:scroll("t1", 100, 8)
+      local w = d:list("t1", 8)
+      assert.equal(29, w.first)
+      assert.equal(36, w.items[8].index)
+      d:scroll("t1", 1, 8)
+      assert.equal(29, d:list("t1", 8).first)
+      d:scroll("t1", -1, 8)
+      assert.equal(28, d:list("t1", 8).first)
+      d:scroll("t1", -1000, 8)
+      assert.equal(1, d:list("t1", 8).first)
+      d:scroll("seal", 3, 1) -- no seals: one item, "No seal"
+      assert.equal(1, d:list("seal", 1).first)
+    end)
+
+    it("keeps a list shorter than its window at 1", function()
+      local d = real.newDraft({})
+      d:scroll("v1", 3, 8)
+      assert.equal(1, d:list("v1", 8).first)
+      d:scroll("cat1", 1, 9)
+      assert.equal(1, d:list("cat1", 9).first)
+      d:scroll("t1", 5, 40)
+      assert.equal(1, d:list("t1", 40).first)
+    end)
+
+    it("saves the window list clamped", function()
+      local d = real.newDraft({})
+      d:scroll("t1", 100, 1)
+      assert.equal(36, d:list("t1", 1).first)
+      assert.equal(29, d:list("t1", 8).first)
+      assert.equal(29, d:list("t1", 1).first)
+    end)
+
+    it("resets a window when its index is reset", function()
+      local d = real.newDraft({})
+      d:scroll("t1", 100, 8)
+      d:pick("v1", 8) -- Noble: 15 templates
+      local w = d:list("t1", 8)
+      assert.equal(1, w.first)
+      assert.equal(15, w.total)
+      assert.is_true(w.items[1].selected)
+
+      d:scroll("w1", 5, 9)
+      assert.equal(6, d:list("w1", 9).first)
+      d:pick("cat1", 2)
+      assert.equal(1, d:list("w1", 9).first)
+
+      -- Line 2 follows line 1's voice: its conjunction and template windows reset too.
+      d = real.newDraft({})
+      d:setSecond(true)
+      d:scroll("t2", 10, 8)
+      d:scroll("c", 1, 2)
+      d:step("v1", 1)
+      assert.equal(1, d:list("t2", 8).first)
+      assert.equal(1, d:list("c", 2).first)
+      d:scroll("t2", 10, 8)
+      d:pick("v2", 1) -- line 2's own choice resets its windows
+      assert.equal(1, d:list("t2", 8).first)
+
+      -- A window the change didn't reset stays where it was.
+      d:scroll("w1", 5, 9)
+      d:pick("t1", 4)
+      assert.equal(6, d:list("w1", 9).first)
+    end)
+
+    it("ignores a junk delta, count or field", function()
+      local d = real.newDraft({})
+      d:scroll("t1", 8, 8)
+      for _, x in ipairs(junkNumbers()) do
+        d:scroll("t1", x, 8)
+        d:scroll("t1", 8, x)
+        d:scroll(x, 8, 8)
+      end
+      d:scroll("t1", 8, 0)
+      d:scroll("t1", 8, 41)
+      d:scroll("t1")
+      d:scroll("nope", 8, 8)
+      assert.equal(9, d:list("t1", 8).first)
+    end)
+  end)
+end)
+
 describe("SignFlow.message and SignFlow.untilText", function()
   local message, untilText = SignFlow.message, SignFlow.untilText
 
@@ -1064,6 +1448,14 @@ describe("never throws", function()
       end
       local d = flow.newDraft({ 1 })
       try("step", d.step, d, bad, bad)
+      try("pick", d.pick, d, bad, bad)
+      try("pick index", d.pick, d, "t1", bad)
+      try("setLine", d.setLine, d, bad)
+      try("list", d.list, d, bad, bad)
+      try("list count", d.list, d, "t1", bad)
+      try("scroll", d.scroll, d, bad, bad, bad)
+      try("scroll delta", d.scroll, d, "t1", bad, 8)
+      try("scroll count", d.scroll, d, "t1", 1, bad)
       try("setSecond", d.setSecond, d, bad)
       try("ids", d.ids, bad)
       try("seal", d.seal, bad)
@@ -1108,7 +1500,9 @@ describe("never throws", function()
     broken = true
     assert.is_nil(draft:ids())
     assert.is_nil(draft:view())
+    assert.is_nil(draft:list("t1", 8))
     draft:step("t1", 1)
+    draft:pick("t1", 2)
 
     -- Unlocks that raise only once the entry is in: the entry stays, earned is empty.
     local cosmetics, n = {}, 0

@@ -48,8 +48,12 @@ Proportional, not ceremonial:
   [specs/phrase.md §6](specs/phrase.md#6-test-plan) and a real `Ledger`, plus the real
   data for the draft; NPC GUIDs are `"Creature-0-4615-2991-62-<id>-0000ABCDEF"`. The glue
   cases log in at Coriella Calmbreeze (`254089`), resting, and drive the button and the
-  composer through `Sign.ui` (`button`, `composer`, `rows.<field>.prev/label/next`,
-  `toggle`, `sign`, `cancel`, `preview`, `title`, `inn`) and `Sign.session`.
+  composer through `Sign.ui` (`button`, `composer`, `lists.<voice|conj|template|cat|word>`
+  with `frame`, `rows[i].button/text/mark`, `prev`, `next`; `line1`, `line2`,
+  `rows.seal.prev/label/next`, `toggle`, `sign`, `cancel`, `preview`, `title`, `inn`) and
+  `Sign.session`. The mouse wheel is driven by calling a list frame's
+  `scripts.OnMouseWheel(frame, delta)`; the stub records `EnableMouseWheel` as
+  `frame.mouseWheel`.
 - **The book** (`spec/book_view_spec.lua`, pure; `spec/book_spec.lua`, the glue;
   [specs/book.md §6](specs/book.md#6-test-plan)): the pure cases build views over the
   place fixtures, the phrase fixture and catalog C (plus quills where a case needs five),

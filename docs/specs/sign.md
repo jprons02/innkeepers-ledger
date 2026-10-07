@@ -377,7 +377,8 @@ lists = { voice, conj, template, cat, word = { frame, rows = { { button, text, m
 prev, next } }, line1, line2, toggle, sign, cancel, preview, title }` and `Sign.session`
 are readable fields (#102). The lists map to the edited line's fields (`voice` → `v1` or
 `v2`, `template` → `t1` or `t2`, `cat` → `cat1` or `cat2`, `word` → `w1` or `w2`,
-`conj` → `c`).
+`conj` → `c`). A strip's rows (`voice`, `conj`) have only `button`: the button shows its
+own text, and the chosen one is disabled instead of marked.
 
 **Combat:** `Sign` reads neither combat data nor combat state. The button and composer are
 plain, unprotected frames, which combat lockdown doesn't restrict, and signing sends

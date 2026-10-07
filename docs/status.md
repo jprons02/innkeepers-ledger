@@ -73,9 +73,7 @@ rest of the signing checks; a second character in a party (round-trips,
 
 - **Before the first tag:** `CHANGELOG.md` notes; answer #62 and #63 (IDs freeze);
   Interface `16001` → Forever on CurseForge and Wago is unverified until the first upload.
-- **Fail closed on completeness (low, #110 review):** a marked place that lost a record to
-  validation still counts as complete; only the real-data `invalid == {}` test catches it.
-  The `continent` rule's "0 of 1" fallback has no "+" (DRAFT wording pass).
+- **DRAFT wording:** the `continent` rule's "0 of 1" fallback has no "+".
 - **Book redraws aren't coalesced** (2–6 ms per ENTRIES on a capped ledger). Watch in #12.
 - **CI runners:** pinned to `ubuntu-24.04` (#117); move on purpose before GitHub retires it. If GitHub's GraphQL
   API fails, `gh api` (REST) still works ([CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-pull-requests)).

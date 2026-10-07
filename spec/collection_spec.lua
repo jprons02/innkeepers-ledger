@@ -985,14 +985,14 @@ describe("Collection completeness marks", function()
 
   -- #118: on F (all marked), one excluded record of any kind makes nothing complete.
   for _, case in ipairs(fx.excludedCases()) do
-    it("fails closed on " .. case[1] .. ": nothing complete, no done (#118)", function()
+    it("fails closed on " .. case.label .. ": nothing complete, no done (#118)", function()
       local inns, zones, conts = fx.places()
-      case[2](inns, zones, conts)
+      case.change(inns, zones, conts)
       local atlas
       assert.has_no.errors(function()
         atlas = Collection.bind(inns, zones, conts, true)
       end)
-      assert.same(case[3], atlas.invalid)
+      assert.same(case.invalid, atlas.invalid)
       assert.is_false(atlas.complete())
       local zoneKeys = atlas.zoneKeys()
       assert.is_true(#zoneKeys >= 3)
@@ -1016,6 +1016,57 @@ describe("Collection completeness marks", function()
       end
     end)
   end
+
+  -- The guard on each level on its own. In the cases above every continent has a kept
+  -- zone, so the zones' guard alone would make it incomplete; these cases have none.
+  it("a marked continent with no kept zone isn't complete after an exclusion (#118)",
+    function()
+      local inns, zones, conts = fx.places()
+      conts[3] = { name = "North", complete = true }
+      -- The control: with nothing excluded, North (no zone) and the atlas are complete.
+      local atlas = Collection.bind(inns, zones, conts, true)
+      assert.same({}, atlas.invalid)
+      assert.is_true(atlas.continent(3).complete)
+      assert.is_true(atlas.complete())
+      inns[5401] = "Glen Inn"
+      atlas = Collection.bind(inns, zones, conts, true)
+      assert.same({ "inn 5401" }, atlas.invalid)
+      assert.same({ name = "North", complete = false }, atlas.continent(3))
+      assert.is_false(atlas.complete())
+    end)
+
+  it("every zone excluded: the marked continents and the atlas aren't complete (#118)",
+    function()
+      local inns, zones, conts = fx.places()
+      for _, z in pairs(zones) do
+        z.name = z.name:lower()
+      end
+      local atlas = Collection.bind(inns, zones, conts, true)
+      assert.same({ "inn 5001", "inn 5002", "inn 5003", "inn 5101", "inn 5201", "inn 5202",
+        "inn 5301", "zone 10", "zone 11", "zone 20", "zone 21" }, atlas.invalid)
+      assert.same({}, atlas.zoneKeys())
+      assert.same({ name = "East", complete = false }, atlas.continent(1))
+      assert.same({ name = "West", complete = false }, atlas.continent(2))
+      assert.is_false(atlas.complete())
+      local p = atlas.progress(fx.entries(), "Alliance")
+      assert.is_false(p.complete)
+      assert.is_nil(p.done)
+    end)
+
+  it("every continent excluded: atlasComplete true is still not complete (#118)", function()
+    -- The control: no records at all, nothing excluded, atlasComplete true → complete.
+    assert.is_true(Collection.bind({}, {}, {}, true).complete())
+    local inns, zones, conts = fx.places()
+    for _, c in pairs(conts) do
+      c.name = c.name:lower()
+    end
+    local atlas = Collection.bind(inns, zones, conts, true)
+    assert.same({ "continent 1", "continent 2", "inn 5001", "inn 5002", "inn 5003", "inn 5101",
+      "inn 5201", "inn 5202", "inn 5301", "zone 10", "zone 11", "zone 20", "zone 21" },
+      atlas.invalid)
+    assert.is_false(atlas.complete())
+    assert.is_false(atlas.progress(fx.entries(), "Alliance").complete)
+  end)
 
   it("the #118 guard changes only complete and done: signed, total and keys as before",
     function()

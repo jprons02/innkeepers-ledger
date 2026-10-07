@@ -801,6 +801,11 @@ ns.Data.Cosmetics).SEALS` on a fresh ledger: the `101` entry is stored too
       `Data/Inns.lua`'s header documents the marks and ships none; a decision-log entry
       (2026-10-07, *Partial atlas: place rules count only places marked complete*);
       status.md's release-gate question answered.
+- [ ] (#118) §3.11: any excluded record (`invalid` not empty, after the alias step) makes
+      no zone, no continent and not the atlas complete; `signed`, `total`, keys and `SEALS`
+      unchanged; the six fail-closed cases, plus a marked continent with no kept zone and
+      an atlas with every zone excluded, each pin the guard; a decision-log entry
+      (2026-10-07).
 
 ## 8. Contract for later slices
 

@@ -550,15 +550,17 @@ describe("Cosmetics unlocked", function()
     end)
 
     -- #118: on F (all marked), one excluded record withholds every place-based unlock.
+    -- SEALS is left alone: only an excluded zone's own seal goes.
     for _, case in ipairs(fx.excludedCases()) do
-      it("fails closed on " .. case[1] .. ": only the inns n items (#118)", function()
+      it("fails closed on " .. case.label .. ": only the inns n items (#118)", function()
         local inns, zones, conts = fx.places()
-        case[2](inns, zones, conts)
+        case.change(inns, zones, conts)
         local atlas = Collection.bind(inns, zones, conts, true)
-        assert.same(case[3], atlas.invalid)
+        assert.same(case.invalid, atlas.invalid)
         local s = Cosmetics.bind(atlas, fx.catalog())
         assert.same({}, s.invalid)
-        assert.same(U(case[4]), s.unlocked(fx.entries(), "Alliance"))
+        assert.same(case.seals, keys(s.SEALS))
+        assert.same(U(case.alliance), s.unlocked(fx.entries(), "Alliance"))
         for _, faction in ipairs({ "Horde", false }) do
           for _, u in ipairs(s.unlocked(fx.entries(), faction or nil)) do
             assert.is_true(u.id == 1 or u.id == 1001, u.id .. " for " .. tostring(faction))
@@ -566,19 +568,6 @@ describe("Cosmetics unlocked", function()
         end
       end)
     end
-
-    it("the #118 guard leaves SEALS alone: an excluded zone's seal goes, the rest stay",
-      function()
-        local cases = fx.excludedCases()
-        for i, case in ipairs(cases) do
-          local inns, zones, conts = fx.places()
-          case[2](inns, zones, conts)
-          local s = Cosmetics.bind(Collection.bind(inns, zones, conts, true), fx.catalog())
-          local want = i == 5 and { 1, 2, 101, 102, 104 } or { 1, 2, 101, 102, 103, 104 }
-          assert.same(want, keys(s.SEALS), case[1])
-        end
-        assert.matches("^a zone record", cases[5][1])
-      end)
   end)
 
   describe("the kept floor", function()

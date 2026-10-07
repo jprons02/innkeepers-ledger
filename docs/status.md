@@ -33,17 +33,18 @@ September decisions archived (#120))
   `Ledger.cleanText` rejects malformed UTF-8 and hidden characters (bidi controls,
   zero-width, non-ASCII spaces, fillers, private use); `validName` and the book's `plain`
   both use it.
-- **Releasing:** `dev` is four squash-merges ahead of `main` (#117–#120); nothing
-  user-visible beyond names with hidden characters now being dropped. No tags yet (maintainer
-  gate). **CI:** eight required checks on `ubuntu-24.04`, green.
+- **Releasing:** `dev` is four squash-merges ahead of `main` (#117–#120); the only
+  player-visible change is that names with hidden characters are dropped. No tags yet
+  (maintainer gate). **CI:** eight required checks on `ubuntu-24.04`, green.
 
 ## Next step
 
-- **Agents:** no `ready` ticket. #12's in-client results drive what's next: retune the
-  DRAFT look from screenshots, add inns and mark zones complete from the walk. Small
-  follow-ups below can fill gaps.
-- **In the client (maintainer):** restart fully (new file `BookView.lua`; `/reload` isn't
-  enough), then run the book's and the composer's checks on the
+- **Agents:** no `ready` ticket (#117–#120 closed 2026-10-07). #12's in-client results
+  drive what's next: retune the DRAFT look from screenshots, add inns and mark zones
+  complete from the walk. A `dev → main` release PR (with its security review) can go
+  out whenever the maintainer wants; small follow-ups below can fill gaps.
+- **In the client (maintainer), before the beta ends 2026-10-21:** restart fully (new
+  file `BookView.lua`; `/reload` isn't enough), then run the book's and the composer's checks on the
   [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
   Most important: parchment textures load, `‹ › ·` render, the mouse wheel scrolls the
   lists, long conjunctions fit their buttons. A screenshot of each book tab and each
@@ -77,16 +78,20 @@ rest of the signing checks; a second character in a party (round-trips,
 
 - **Before the first tag:** `CHANGELOG.md` notes; answer #62 and #63 (IDs freeze);
   Interface `16001` → Forever on CurseForge and Wago is unverified until the first upload.
-- **DRAFT wording:** the `continent` rule's "0 of 1" fallback has no "+".
-- **Book redraws aren't coalesced** (2–6 ms per ENTRIES on a capped ledger). Watch in #12.
-- **CI runners:** pinned to `ubuntu-24.04` (#117); move on purpose before GitHub retires it. If GitHub's GraphQL
-  API fails, `gh api` (REST) still works ([CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-pull-requests)).
+- **DRAFT wording:** the `continent` rule's "0 of 1" fallback has no "+". **Book redraws
+  aren't coalesced** (2–6 ms per ENTRIES on a capped ledger); watch in #12.
+- **CI runners:** pinned to `ubuntu-24.04` (#117); move on purpose before GitHub retires
+  it. If GitHub's GraphQL API fails (it did on 2026-10-07), `gh api` (REST) still opens
+  and merges PRs ([CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-pull-requests)).
+  **Jobs have no `timeout-minutes`** (GitHub's default is 6 h): on 2026-10-07 the
+  `apt`-installing jobs (luacheck, busted, coverage) hung for 30+ min on three CI runs of
+  #125 while the same checks passed elsewhere. Add job timeouts and an `apt` retry.
 - **Revisit once in groups (#12):** server-clock jumps; other AddOns' traffic; group-map
   rescan budget; a dropped `C_Timer.After`; export build time. Weekly reset rows for live
   regions after launch.
 - **Name hardening, if wanted (low, #119 review):** stacked combining marks, strong RTL
-  letters, blank-rendering symbols (U+1D159) still pass; see sync-ledger.md §5.2a Out of
-  scope.
+  letters and blank-rendering symbols (U+1D159) still pass (sync-ledger.md §5.2a, Out of
+  scope).
 - **Code tidy (low):** `isInt` / name allow-lists copied across modules; `Phrase`'s
   load-time asserts; `Ledger`'s quadratic load-time cap pass on a tampered file;
   `Sign.lua`'s `listField` builds a full `view()` per click. Publish `Data/*` for export

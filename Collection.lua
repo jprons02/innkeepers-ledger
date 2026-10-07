@@ -1,9 +1,11 @@
 -- Collection (pure): the passport math. Validates the place data (inns, zones,
 -- continents; a zone's "continent" is a World map when no Continent map is above it) once,
 -- then counts the player's own signatures: signed / total overall, by
--- continent, by zone, and per inn.
+-- continent, by zone, and per inn. A zone, a continent or the whole atlas is "done" only if
+-- the data marks it complete (every inn there is known), so a partial atlas can't hand out
+-- "every inn" rewards.
 -- No WoW API here. Client values come in as arguments (docs/architecture.md -> Modules).
--- Spec: docs/specs/collection-cosmetics.md (sections 3.1-3.4, 3.8, 3.9). Own entries come
+-- Spec: docs/specs/collection-cosmetics.md (sections 3.1-3.4, 3.8, 3.9, 3.11). Own entries come
 -- from SavedVariables, which a player can edit: every argument is read with rawget only,
 -- with bounded work, never written to, and nothing here throws on any argument. Only the
 -- load itself can raise (the assert).
@@ -89,8 +91,9 @@ local function exactFields(v, fields)
   return true
 end
 
-local CONTINENT_FIELDS = { name = true }
-local ZONE_FIELDS = { name = true, continent = true, seal = true }
+-- `complete` is optional on zones and continents (spec 3.11); if present it must be true.
+local CONTINENT_FIELDS = { name = true, complete = false }
+local ZONE_FIELDS = { name = true, continent = true, seal = true, complete = false }
 local INN_FIELDS = { name = true, zone = true, faction = false }
 local ALIAS_FIELDS = { alias = true }
 
@@ -103,10 +106,15 @@ local function label(prefix, k)
   return prefix .. " <" .. type(k) .. ">"
 end
 
+-- A completeness mark (spec 3.11): absent, or exactly true. Anything else fails the record.
+local function validMark(v)
+  return v == nil or rawequal(v, true)
+end
+
 -- ---------------------------------------------------------------------------
 -- bind (spec 3.8): validate and index once, return closures over the private copy.
 
-function Collection.bind(inns, zones, continents)
+function Collection.bind(inns, zones, continents, atlasComplete)
   if type(inns) ~= "table" then
     inns = {}
   end
@@ -121,11 +129,12 @@ function Collection.bind(inns, zones, continents)
   -- 1. Continents (a zone's group: a Continent map, or a World map with no Continent
   -- between). A map ID is one map, so a key in both tables excludes both records, whatever
   -- they hold: we can't tell which one is wrong (rule 6).
-  local conts = {} -- key -> { name }
+  local conts = {} -- key -> { name, marked }
   for k, v in next, continents do
     if isInt(k, 1, MAP_KEY_MAX) and rawget(zones, k) == nil and type(v) == "table"
-      and exactFields(v, CONTINENT_FIELDS) and validName(rawget(v, "name")) then
-      conts[k] = { name = rawget(v, "name") }
+      and exactFields(v, CONTINENT_FIELDS) and validName(rawget(v, "name"))
+      and validMark(rawget(v, "complete")) then
+      conts[k] = { name = rawget(v, "name"), marked = rawget(v, "complete") == true }
     else
       invalid[#invalid + 1] = label("continent", k)
     end
@@ -140,24 +149,43 @@ function Collection.bind(inns, zones, continents)
       sealUses[seal] = (sealUses[seal] or 0) + 1
     end
   end
-  local zoneRecs, zoneKeys = {}, {} -- key -> { name, continent, seal }; sorted keys
+  local zoneRecs, zoneKeys = {}, {} -- key -> { name, continent, seal, complete }; sorted keys
   for k, v in next, zones do
     local ok = isInt(k, 1, MAP_KEY_MAX) and rawget(continents, k) == nil and type(v) == "table"
       and exactFields(v, ZONE_FIELDS)
-    local name, continent, seal
+    local name, continent, seal, mark
     if ok then
       name, continent, seal = rawget(v, "name"), rawget(v, "continent"), rawget(v, "seal")
+      mark = rawget(v, "complete")
       ok = validName(name) and isInt(continent, 1, MAP_KEY_MAX) and conts[continent] ~= nil
         and isInt(seal, ZONE_SEAL_MIN, ZONE_SEAL_MAX) and sealUses[seal] == 1
+        and validMark(mark)
     end
     if ok then
-      zoneRecs[k] = { name = name, continent = continent, seal = seal }
+      zoneRecs[k] = { name = name, continent = continent, seal = seal, complete = mark == true }
       zoneKeys[#zoneKeys + 1] = k
     else
       invalid[#invalid + 1] = label("zone", k)
     end
   end
   tsort(zoneKeys)
+
+  -- Effective completeness (spec 3.11): a zone as marked; a continent if marked and every
+  -- kept zone on it is complete; the atlas if marked and every kept continent is complete.
+  for _, rec in next, conts do
+    rec.complete = rec.marked
+  end
+  for _, rec in next, zoneRecs do
+    if not rec.complete then
+      conts[rec.continent].complete = false
+    end
+  end
+  local atlasDone = rawequal(atlasComplete, true)
+  for _, rec in next, conts do
+    if not rec.complete then
+      atlasDone = false
+    end
+  end
 
   -- 3. Primary inns; aliases wait for step 4.
   local primaries, primaryKeys, innOf = {}, {}, {} -- key -> record; sorted keys; NPC -> key
@@ -236,7 +264,7 @@ function Collection.bind(inns, zones, continents)
 
     local res = {
       faction = f, signed = 0, total = 0, byContinent = {}, byZone = {}, inns = {},
-      unknown = unknown, truncated = truncated,
+      unknown = unknown, truncated = truncated, complete = atlasDone,
     }
     -- The largest `first` among signed open inns, per zone, per continent and overall.
     local zoneMax, contMax, allMax = {}, {}, nil
@@ -252,12 +280,12 @@ function Collection.bind(inns, zones, continents)
         local ckey = zoneRecs[zkey].continent
         local z = res.byZone[zkey]
         if z == nil then
-          z = { signed = 0, total = 0, continent = ckey }
+          z = { signed = 0, total = 0, continent = ckey, complete = zoneRecs[zkey].complete }
           res.byZone[zkey] = z
         end
         local cont = res.byContinent[ckey]
         if cont == nil then
-          cont = { signed = 0, total = 0 }
+          cont = { signed = 0, total = 0, complete = conts[ckey].complete }
           res.byContinent[ckey] = cont
         end
         z.total, cont.total, res.total = z.total + 1, cont.total + 1, res.total + 1
@@ -276,17 +304,18 @@ function Collection.bind(inns, zones, continents)
         end
       end
     end
+    -- `done` only for a place the data knows in full (spec 3.11).
     for zkey, z in next, res.byZone do
-      if z.signed == z.total then
+      if z.complete and z.signed == z.total then
         z.done = zoneMax[zkey]
       end
     end
     for ckey, cont in next, res.byContinent do
-      if cont.signed == cont.total then
+      if cont.complete and cont.signed == cont.total then
         cont.done = contMax[ckey]
       end
     end
-    if res.total >= 1 and res.signed == res.total then
+    if atlasDone and res.total >= 1 and res.signed == res.total then
       res.done = allMax
     end
     return res
@@ -312,7 +341,7 @@ function Collection.bind(inns, zones, continents)
     if rec == nil then
       return nil
     end
-    return { name = rec.name, continent = rec.continent, seal = rec.seal }
+    return { name = rec.name, continent = rec.continent, seal = rec.seal, complete = rec.complete }
   end
 
   function atlas.continent(key)
@@ -320,7 +349,12 @@ function Collection.bind(inns, zones, continents)
     if rec == nil then
       return nil
     end
-    return { name = rec.name }
+    return { name = rec.name, complete = rec.complete }
+  end
+
+  -- Spec 3.11: true if the data marks every continent with an inn, and each is complete.
+  function atlas.complete()
+    return atlasDone
   end
 
   function atlas.zoneKeys()
@@ -338,12 +372,14 @@ end
 -- The default atlas, over the shipped data (spec 3.9). Missing data binds an empty atlas;
 -- a bad record is left out and named in `invalid`, never raised.
 
-local inns, zones, continents
+local inns, zones, continents, atlasComplete
 if type(ns.Data) == "table" then
   inns, zones, continents = ns.Data.Inns, ns.Data.Zones, ns.Data.Continents
+  atlasComplete = ns.Data.AtlasComplete
 end
-Collection.atlas = Collection.bind(inns, zones, continents)
-for _, name in ipairs({ "progress", "innOf", "inn", "zone", "continent", "zoneKeys" }) do
+Collection.atlas = Collection.bind(inns, zones, continents, atlasComplete)
+for _, name in ipairs({ "progress", "innOf", "inn", "zone", "continent", "zoneKeys",
+  "complete" }) do
   Collection[name] = Collection.atlas[name]
 end
 Collection.invalid = Collection.atlas.invalid

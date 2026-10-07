@@ -10,6 +10,36 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-07 — Partial atlas: place rules count only places marked complete
+
+**Settles** what the "every inn" rules (a zone's seal, `zones n`, `continent`, `all`) mean
+while `Data/Inns` is still partial (#110, [specs/collection-cosmetics.md
+§3.11](specs/collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)).
+The data marks what it knows in full: `complete = true` on a zone (every inn in it is
+known) or a continent (every zone of it with an inn is known), and `ns.Data.AtlasComplete
+= true` (every continent with an inn is known). Any other value excludes the record.
+A continent counts as complete only if its zones all are, and the atlas only if its
+continents all are. `Collection.progress` sets `done` only for complete places and adds
+`complete` flags, so the cosmetics need no guard of their own; `inns n` stays unguarded
+(a partial atlas can only undercount it). The book follows an incomplete place's total
+with a DRAFT `"+"` ("1 of 1+ inns signed"). Marks are set from the in-client walk, never
+by guessing; the shipped data has none yet. No wire, export-format or SavedVariables
+change: the export's `done` is just absent more often.
+
+**Why:** the progress math counts only the inns the data knows, and earned cosmetics are
+never taken away, so a release with a partial atlas would hand out "every inn" rewards for
+good. The beta showed it: the first signature at Calmbreeze earned seal 101, the
+Cartographer's quill and the Innkeeper's seal at once. An unlock a character already
+recorded is still kept through the `earned` floor (beta saves don't reach live realms).
+**The maintainer chose this guard** over visiting every inn before the beta ends.
+
+**Rejected:** only the maintainer visiting every inn before release (the beta ends
+2026-10-21, and a missed inn would still leak); a release-time switch that turns place
+rules off (zone seals known to be safe would wait too); percent thresholds or rules over
+known inns only (they move as the data grows); taking unlocks back when the data grows
+(earned things are never taken away); marks on inns (an inn can't know it's the last one
+in its zone).
+
 ### 2026-10-06 — Book: a pure BookView, one named frame for ESC, a GUID-keyed record, the share mark at build, refresh through `onEntries`
 
 The `UI/Book` slice (#106, [specs/book.md](specs/book.md) §3.11–§3.13) settles how the book

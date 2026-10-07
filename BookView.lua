@@ -72,6 +72,7 @@ local TEXT = {
     .. "guildmates who use the AddOn can see where and when you signed. Nothing else about "
     .. "you is sent: no location, chat, gear or play time beyond those signatures.",
   of = " of ",
+  more = "+", -- after a total the data doesn't know in full yet: "1 of 1+ inns signed"
   signedPrefix = "signed ",
   innsSigned = " inns signed",
   notSigned = "Not signed yet",
@@ -396,6 +397,16 @@ local function nameOf(rec)
     return name
   end
   return ""
+end
+
+-- "signed of total" for a progress item, with TEXT.more after the total unless the item is
+-- marked complete (collection-cosmetics.md 3.11): there may be inns the data doesn't know.
+local function ofTotal(item)
+  local text = item.signed .. TEXT.of .. item.total
+  if rawequal(rawget(item, "complete"), true) then
+    return text
+  end
+  return text .. TEXT.more
 end
 
 -- Orders tree nodes by name in byte order, ties by key.
@@ -723,14 +734,13 @@ function BookView.new(deps)
     for _, cnode in ipairs(tree) do
       local c = p.byContinent[cnode.key]
       if c ~= nil then
-        local crow = { kind = "continent", text = cnode.name, sub = c.signed .. TEXT.of .. c.total,
-          heads = {} }
+        local crow = { kind = "continent", text = cnode.name, sub = ofTotal(c), heads = {} }
         rows[#rows + 1] = crow
         for _, znode in ipairs(cnode.zones) do
           local z = p.byZone[znode.key]
           if z ~= nil then
             local zrow = { kind = "zone", text = znode.name,
-              sub = TEXT.signedPrefix .. z.signed .. TEXT.of .. z.total, heads = { crow } }
+              sub = TEXT.signedPrefix .. ofTotal(z), heads = { crow } }
             rows[#rows + 1] = zrow
             for _, inode in ipairs(znode.inns) do
               local st = p.inns[inode.key]
@@ -1040,7 +1050,7 @@ function BookView.new(deps)
       local c = p.byContinent[cnode.key]
       if c ~= nil and c.total >= 1 then
         bars[#bars + 1] = { name = cnode.name, signed = c.signed, total = c.total,
-          fraction = c.signed / c.total, text = c.signed .. TEXT.of .. c.total }
+          fraction = c.signed / c.total, text = ofTotal(c) }
       end
     end
     local barPages = ceilDiv(#bars, size.barRows)
@@ -1051,7 +1061,7 @@ function BookView.new(deps)
     end
     model.left = {
       kind = "summary",
-      signedText = p.signed .. TEXT.of .. p.total .. TEXT.innsSigned,
+      signedText = ofTotal(p) .. TEXT.innsSigned,
       zonesText = TEXT.zonesDone .. done .. TEXT.of .. zones,
       signaturesText = TEXT.signatures .. ownCount,
       travelersText = TEXT.travelersMet .. travelers,
@@ -1099,22 +1109,26 @@ function BookView.new(deps)
   -- The Cosmetics tab (spec 3.6).
 
   -- The continent nearest done: largest signed / total, then more signed, then smaller key.
+  -- Only a complete continent can earn the rule (collection-cosmetics.md 3.11), so only
+  -- those are candidates.
   local function nearestContinent(p)
     local best, bestKey
     for key, c in next, p.byContinent do
-      local better = best == nil
-      if not better then
-        local a, b = c.signed * best.total, best.signed * c.total
-        if a ~= b then
-          better = a > b
-        elseif c.signed ~= best.signed then
-          better = c.signed > best.signed
-        else
-          better = key < bestKey
+      if rawequal(rawget(c, "complete"), true) then
+        local better = best == nil
+        if not better then
+          local a, b = c.signed * best.total, best.signed * c.total
+          if a ~= b then
+            better = a > b
+          elseif c.signed ~= best.signed then
+            better = c.signed > best.signed
+          else
+            better = key < bestKey
+          end
         end
-      end
-      if better then
-        best, bestKey = c, key
+        if better then
+          best, bestKey = c, key
+        end
       end
     end
     return best
@@ -1141,15 +1155,15 @@ function BookView.new(deps)
     elseif kind == "continent" then
       text = TEXT.ruleContinent
       local c = nearestContinent(p)
-      progress = c and (c.signed .. TEXT.of .. c.total) or (0 .. TEXT.of .. 1)
+      progress = c and ofTotal(c) or (0 .. TEXT.of .. 1)
     elseif kind == "all" then
       text = TEXT.ruleAll
-      progress = p.signed .. TEXT.of .. p.total
+      progress = ofTotal(p)
     elseif kind == "zone" then
       local z = rawget(rule, "zone")
       text = TEXT.ruleZone .. nameOf(z ~= nil and zoneRec(z) or nil)
       local zp = z ~= nil and p.byZone[z] or nil
-      progress = zp and (zp.signed .. TEXT.of .. zp.total) or (0 .. TEXT.of .. 0)
+      progress = zp and ofTotal(zp) or (0 .. TEXT.of .. 0)
     else
       return ""
     end

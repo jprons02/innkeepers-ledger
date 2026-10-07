@@ -1447,11 +1447,45 @@ describe("hostile and tampered input (6.6)", function()
       local input = F()
       input.own, input.progress, input.unlocked = own, progress, unlocked
       local data = buildOk(input)
+      -- The export copies only its named fields: not `inns`, `unknown`, `truncated`, nor the
+      -- `complete` flags of collection-cosmetics.md 3.11 (the format is unchanged).
       local want = deepcopy(progress)
-      want.inns, want.unknown, want.truncated = nil, nil, nil
+      want.inns, want.unknown, want.truncated, want.complete = nil, nil, nil, nil
+      for _, map in ipairs({ want.byContinent, want.byZone }) do
+        for _, item in pairs(map) do
+          item.complete = nil
+        end
+      end
       assert.same(want, data.collection)
       assert.same(unlocked, data.cosmetics)
       assert.same(want, decode(exportOk(input)).collection)
+    end
+  end)
+
+  it("carries no done for a place not marked complete (F0), in the same format", function()
+    local atlas = NS.Collection.bind(fx.placesF0())
+    local set = NS.Cosmetics.bind(atlas, fx.catalog())
+    local own = fx.entries()
+    local input = F()
+    input.own, input.progress = own, atlas.progress(own, "Alliance")
+    input.unlocked = set.unlocked(own, "Alliance")
+    local coll = decode(exportOk(input)).collection
+    assert.same({ "byContinent", "byZone", "faction", "signed", "total" }, (function()
+      local keys = {}
+      for k in pairs(coll) do
+        keys[#keys + 1] = k
+      end
+      table.sort(keys)
+      return keys
+    end)())
+    assert.equal(4, coll.signed)
+    assert.equal(4, coll.total)
+    for _, map in ipairs({ coll.byContinent, coll.byZone }) do
+      for _, item in pairs(map) do
+        assert.is_nil(item.done)
+        assert.is_nil(item.complete)
+        assert.equal(item.total, item.signed)
+      end
     end
   end)
 end)

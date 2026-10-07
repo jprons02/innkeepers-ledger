@@ -469,19 +469,92 @@ describe("Cosmetics unlocked", function()
     function()
       local world = Cosmetics.bind(Collection.bind(
         { [251001] = { name = "Zephras Inn", zone = 2521 } },
-        { [2521] = { name = "Zephras Isle", continent = 947, seal = 101 } },
-        { [947] = { name = "Azeroth" } }), fx.catalog())
+        { [2521] = { name = "Zephras Isle", continent = 947, seal = 101, complete = true } },
+        { [947] = { name = "Azeroth", complete = true } }, true), fx.catalog())
       assert.same({}, world.invalid)
       assert.same({ 1, 2, 101 }, keys(world.SEALS))
       assert.same(U({ { 2, T }, { 101, T }, { 1003, T } }),
         world.unlocked({ { inn = 251001, t = T, phrase = { 1 } } }, "Alliance"))
     end)
 
+  describe("completeness marks (spec 3.11)", function()
+    -- F0 plus the marks named: { zones = { keys }, conts = { keys } }, and atlasComplete.
+    local function setMarked(zoneKeys, contKeys, atlasComplete)
+      local inns, zones, conts = fx.placesF0()
+      for _, k in ipairs(zoneKeys) do
+        zones[k].complete = true
+      end
+      for _, k in ipairs(contKeys) do
+        conts[k].complete = true
+      end
+      return Cosmetics.bind(Collection.bind(inns, zones, conts, atlasComplete), fx.catalog())
+    end
+
+    it("F0, E: only the inns n items (1 and 1001 at their F times)", function()
+      local s = Cosmetics.bind(Collection.bind(fx.placesF0()), fx.catalog())
+      assert.same({}, s.invalid)
+      assert.same({ 1, 2, 101, 102, 103, 104 }, keys(s.SEALS)) -- SEALS doesn't change
+      assert.same(U({ { 1, T + 100 }, { 1001, T + 300 } }), s.unlocked(fx.entries(), "Alliance"))
+      assert.same(U({ { 1, T + 100 } }), s.unlocked(fx.entries(), "Horde"))
+      assert.same(U({ { 1, T + 100 }, { 1001, T + 300 } }), s.unlocked(fx.entries(), nil))
+      -- Even with atlasComplete, unmarked places complete nothing.
+      assert.same(U({ { 1, T + 100 }, { 1001, T + 300 } }),
+        setMarked({}, {}, true).unlocked(fx.entries(), "Alliance"))
+    end)
+
+    it("Vale marked: seal 101 returns at F's time, nothing else", function()
+      assert.same(U({ { 1, T + 100 }, { 101, T + 300 }, { 1001, T + 300 } }),
+        setMarked({ 10 }, {}).unlocked(fx.entries(), "Alliance"))
+    end)
+
+    it("East marked with Marsh unmarked: East isn't complete, no 1003", function()
+      assert.same(U({ { 1, T + 100 }, { 101, T + 300 }, { 1001, T + 300 } }),
+        setMarked({ 10 }, { 1 }).unlocked(fx.entries(), "Alliance"))
+    end)
+
+    it("East with both its zones marked: 1003 at East's done, and 1002", function()
+      assert.same(U({ { 1, T + 100 }, { 101, T + 300 }, { 1001, T + 300 }, { 102, T + 400 },
+        { 1002, T + 400 }, { 1003, T + 400 } }),
+        setMarked({ 10, 11 }, { 1 }).unlocked(fx.entries(), "Alliance"))
+    end)
+
+    it("every place marked, no atlasComplete: F's list without 2", function()
+      local want = {}
+      for _, u in ipairs(ALLIANCE) do
+        if u.id ~= 2 then
+          want[#want + 1] = u
+        end
+      end
+      assert.same(want, setMarked({ 10, 11, 20, 21 }, { 1, 2 }).unlocked(fx.entries(), "Alliance"))
+    end)
+
+    it("atlasComplete without every continent complete: no all (seal 2)", function()
+      local got = setMarked({ 10, 11, 20 }, { 1, 2 }, true).unlocked(fx.entries(), "Alliance")
+      for _, u in ipairs(got) do
+        assert.are_not.equal(2, u.id)
+      end
+      -- West isn't complete (Ridge unmarked): 1003 comes from East at T + 400, not T + 100.
+      assert.same(U({ { 1, T + 100 }, { 103, T + 100 }, { 101, T + 300 }, { 1001, T + 300 },
+        { 1002, T + 300 }, { 102, T + 400 }, { 1003, T + 400 } }), got)
+    end)
+
+    it("every mark and atlasComplete: the F list", function()
+      assert.same(ALLIANCE,
+        setMarked({ 10, 11, 20, 21 }, { 1, 2 }, true).unlocked(fx.entries(), "Alliance"))
+    end)
+
+    it("the kept floor still honors an unlock recorded under older data", function()
+      local kept = { [101] = T, [2] = T + 400, [1003] = T + 100 }
+      assert.same(U({ { 101, T }, { 1, T + 100 }, { 1003, T + 100 }, { 1001, T + 300 },
+        { 2, T + 400 } }), setMarked({}, {}).unlocked(fx.entries(), "Alliance", kept))
+    end)
+  end)
+
   describe("the kept floor", function()
     local function withNewInn()
       local inns, zones, conts = fx.places()
       inns[5004] = { name = "Brook Inn", zone = 10 }
-      return Cosmetics.bind(Collection.bind(inns, zones, conts), fx.catalog())
+      return Cosmetics.bind(Collection.bind(inns, zones, conts, true), fx.catalog())
     end
 
     it("a new inn in a done zone: 101 and 2 gone, 1002 moves to T+400 without kept", function()
@@ -501,7 +574,7 @@ describe("Cosmetics unlocked", function()
     it("a zone that loses its only inn keeps its seal at e5's time", function()
       local inns, zones, conts = fx.places()
       inns[5101] = nil
-      local s = Cosmetics.bind(Collection.bind(inns, zones, conts), fx.catalog())
+      local s = Cosmetics.bind(Collection.bind(inns, zones, conts, true), fx.catalog())
       local got = s.unlocked(fx.entries(), "Alliance", { [102] = T + 400 })
       local found
       for _, u in ipairs(got) do
@@ -745,19 +818,36 @@ describe("Data/Cosmetics (the draft catalog)", function()
     end
   end)
 
+  it("with the shipped (unmarked) data, one signature at Calmbreeze unlocks no place rule",
+    function()
+      -- The beta's first signature earned 101, 1003 and 2 at once (#110). Not any more.
+      local own = { { inn = 254089, t = T, phrase = { 1 } } }
+      for _, faction in ipairs({ "Alliance", "Horde", false }) do
+        assert.same({}, Cosmetics.unlocked(own, faction or nil))
+      end
+      -- An unlock already recorded at that signature's time is kept (the floor, spec 3.6).
+      assert.same(U({ { 2, T }, { 101, T }, { 1003, T } }),
+        Cosmetics.unlocked(own, "Alliance", { [101] = T, [1003] = T, [2] = T }))
+    end)
+
   it("every rule is reachable: 40 neutral inns in 20 zones on 2 continents", function()
     -- Zone keys 1001..1020, apart from the continent keys: a map ID is one or the other.
-    local inns, zones, conts = {}, {}, { [1] = { name = "East" }, [2] = { name = "West" } }
+    -- Every place marked complete (spec 3.11), or no place rule could be met.
+    local inns, zones = {}, {}
+    local conts = { [1] = { name = "East", complete = true },
+      [2] = { name = "West", complete = true } }
     for z = 1, 20 do
-      zones[1000 + z] = { name = "Zone " .. z, continent = z <= 10 and 1 or 2, seal = 100 + z }
+      zones[1000 + z] = { name = "Zone " .. z, continent = z <= 10 and 1 or 2, seal = 100 + z,
+        complete = true }
     end
     local own = {}
     for i = 1, 40 do
       inns[i] = { name = "Inn " .. i, zone = 1000 + math.ceil(i / 2) }
       own[i] = { inn = i, t = T + i }
     end
-    local atlas = Collection.bind(inns, zones, conts)
+    local atlas = Collection.bind(inns, zones, conts, true)
     assert.same({}, atlas.invalid)
+    assert.is_true(atlas.complete())
     local set = Cosmetics.bind(atlas, DATA)
     local got = {}
     for _, u in ipairs(set.unlocked(own, "Alliance")) do

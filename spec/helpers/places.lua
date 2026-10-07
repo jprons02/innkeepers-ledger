@@ -5,8 +5,8 @@ local M = {}
 
 M.T = 1790000000
 
--- Places F: inns, zones, continents.
-function M.places()
+-- Places F0: inns, zones, continents, with no completeness mark (spec 3.11).
+function M.placesF0()
   return {
     [5001] = { name = "Vale Inn", zone = 10 },
     [5002] = { name = "Hill Inn", zone = 10, faction = "Alliance" },
@@ -24,6 +24,20 @@ function M.places()
     [1] = { name = "East" },
     [2] = { name = "West" },
   }
+end
+
+-- Places F: F0 with every zone and continent marked complete, and a fourth value, true,
+-- for Collection.bind's atlasComplete. So `Collection.bind(fx.places())` binds a complete
+-- atlas; a caller that keeps the three tables passes `true` itself.
+function M.places()
+  local inns, zones, conts = M.placesF0()
+  for _, z in pairs(zones) do
+    z.complete = true
+  end
+  for _, c in pairs(conts) do
+    c.complete = true
+  end
+  return inns, zones, conts, true
 end
 
 -- Own entries E: e1..e7.

@@ -20,6 +20,10 @@ line ([§3.10](#310-text-draft)), the look, the layout and the textures
 gate); they ship as written until then ([decisions.md](../decisions.md) → *Maintainer-gated
 content ships as a DRAFT and doesn't block merge*). The labels "Sign the guestbook" and
 "Read the guestbook" and the four tab names are settled.
+Amended 2026-10-07 (#110): a place the data doesn't mark complete has `TEXT.more` (DRAFT
+`"+"`) after its total, and the `continent` rule's progress picks among complete
+continents only ([§3.5](#35-the-collection-tab), [§3.6](#36-the-cosmetics-tab);
+[collection-cosmetics.md §3.11](collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)).
 **Security-sensitive:** yes, moderately. The book **displays other players' names and
 signatures** (peer-derived data) and this slice **wires a hook into `Sync`'s receive
 path** (`onEntries`) and **calls the export** with an opt-in. No wire, export or ledger
@@ -263,6 +267,9 @@ sharesTitle, sharesText }`, all from `TEXT`. `TEXT.sharesText` is the README's s
 - for each of the zone's inns with `p.inns[key].open`: `{ kind = "inn", key, text =
   <name>, signed = count >= 1, faded = count == 0, selected = key == nav.inn }`.
 
+A continent or zone row whose progress item isn't `complete` gets `TEXT.more` after its
+total, as in [§3.5](#35-the-collection-tab) (#110).
+
 Paging: at most `listRows` rows per page. **A page never starts mid-group without its
 headers:** when a page's first row would be a zone or inn row, the page begins with its
 continent's header (and, before an inn row, its zone's header) repeated with `cont =
@@ -339,6 +346,14 @@ integer in `0..10^7`, else 0). `bars` holds one item per continent in `p.byConti
 in place-tree order, `fraction = signed / total` (always `total >= 1` there), at most
 `barRows` per page. With `p.total == 0`: no bars and `empty = TEXT.noInns`.
 
+**Places not known in full (#110, [collection-cosmetics.md
+§3.11](collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)):** wherever
+the book prints `signed .. TEXT.of .. total` for a place whose progress item (or `p`
+itself, for the inns line) isn't `complete`, the total is followed by `TEXT.more` (DRAFT
+`"+"`): "1 of 1+ inns signed", a bar's "3 of 3+", a list row's "signed 1 of 1+", and the
+rule progress of §3.6. `zonesText` counts zones with `done`, so an unmarked zone never
+counts as completed.
+
 **`stamps`** (right): the open inns in place-tree order, **each continent starting a new
 page**, at most `stampCells` cells per page:
 `{ kind = "stamps", title = <continent name>, cells = { { key, name, signed, date? } },
@@ -392,6 +407,12 @@ goal:
 | `zone z` | `TEXT.ruleZone .. <zone name>` | `p.byZone[z].signed .. TEXT.of .. total` |
 
 So the maintainer's example reads "Sign 10 inns · 4 of 10".
+
+**Amended 2026-10-07 (#110):** the `continent`, `all` and `zone z` progress follow the
+total with `TEXT.more` when the place (or `p`) isn't `complete` ("Sign every inn in
+Vale · 2 of 2+"). The `continent` rule's nearest-done continent is chosen **among
+complete continents only** (only those can earn it); none → `0 .. TEXT.of .. 1`, as
+before. `inns n` and `zones n` are unchanged.
 
 ### 3.7 The Share tab and the saved record
 
@@ -526,6 +547,7 @@ written as UTF-8 byte escapes in the source.
 | `sharesTitle` | `What your ledger shares` |
 | `sharesText` | `Your own newest signatures (up to 40), each with its inn, the date and time you signed, your phrase and your seal. It goes to your group and your guild, so guildmates who use the AddOn can see where and when you signed. Nothing else about you is sent: no location, chat, gear or play time beyond those signatures.` (the README's words; tested) |
 | `of`, `signedPrefix`, `innsSigned` | ` of `, `signed `, ` inns signed` |
+| `more` | `+` (after the total of a place the data doesn't know in full; #110) |
 | `notSigned`, `signedOnce`, `signedTimes1`, `signedTimes2`, `lastSigned` | `Not signed yet`, `Signed once`, `Signed `, ` times`, `Last signed ` |
 | `yours`, `travelers` | `Your signatures`, `Travelers' signatures` |
 | `noOwn`, `noForeign` | `You haven't signed this guestbook yet.`, `No traveler you've met has signed here yet.` |

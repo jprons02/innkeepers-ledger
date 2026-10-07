@@ -416,7 +416,7 @@ describe("Sign: signing", function()
     local n = #wow.chat
     ui.sign:Click()
     assert.same({ { inn = CALM, t = NOW, phrase = { 2, 1002, 501, 111 } } }, saved().own)
-    assert.same({ [2] = NOW, [101] = NOW, [1003] = NOW }, saved().earned)
+    assert.same({}, saved().earned) -- the shipped data marks no place complete (#110)
     assert.equal(1, window.n)
     local lines = chatSince(n)
     assert.equal(1, #lines)
@@ -454,6 +454,8 @@ describe("Sign: signing", function()
     click(ns)
     ns.Sign.ui.sign:Click()
     assert.is_false(ns.Sign.ui.rows.seal.label:IsShown())
+    -- Seals 2 and 101 recorded under older data (the shipped data marks nothing, #110).
+    assert.is_true(ns.ledger:markEarned(2, NOW) and ns.ledger:markEarned(101, NOW))
     wow.now = RESET + 1
     click(ns)
     local rows = ns.Sign.ui.rows
@@ -924,7 +926,7 @@ describe("Core recording unlocks at login", function()
 
   it("fills earned for a saved signature", function()
     login({ db = db(ledgerData(1)) })
-    assert.same({ [2] = T, [101] = T, [1003] = T }, saved().earned)
+    assert.same({}, saved().earned) -- the shipped data marks no place complete (#110)
   end)
 
   it("writes nothing to a read-only ledger", function()

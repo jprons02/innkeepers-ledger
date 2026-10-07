@@ -490,7 +490,8 @@ if `ns.Data` is a table). `Cosmetics.bind` reads zones as before (an extra field
 
 **The book** ([book.md](book.md) §3.5, §3.6, amended with this): wherever it prints
 `signed .. TEXT.of .. total` for a place that isn't complete (the summary's inns line,
-a continent bar, the `continent`, `all` and `zone z` rule progress), `total` is followed
+a continent bar, the Inns tab's continent and zone rows, the `continent`, `all` and
+`zone z` rule progress), `total` is followed
 by `TEXT.more` (DRAFT `"+"`, so "1 of 1+ inns signed"). The nearest-done continent for
 the `continent` rule is chosen among complete continents only; none → `0 .. TEXT.of ..
 1`, as today.

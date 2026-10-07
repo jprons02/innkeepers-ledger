@@ -10,6 +10,15 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-07 — CI runners pinned to `ubuntu-24.04`
+
+Every workflow job runs on `ubuntu-24.04` instead of `ubuntu-latest` (#117). GitHub moves
+`ubuntu-latest` to Ubuntu 26 from 2026-10-19, between the beta and launch; a new image can
+change apt's `lua5.1` or luarocks under us and turn required checks red in launch week.
+Moving to a newer image is a deliberate PR, before GitHub retires 24.04. Job names are
+unchanged, so branch protection's required checks still match. **Rejected:** *staying on
+`-latest` and fixing breakage when it comes* (the timing is the worst possible).
+
 ### 2026-10-07 — Composer: lists, one line at a time, core frame API only
 
 The signing composer (#102, [specs/sign.md](specs/sign.md) §3.6, §3.7) shows a line's

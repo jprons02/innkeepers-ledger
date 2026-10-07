@@ -77,7 +77,7 @@ rest of the signing checks; a second character in a party (round-trips,
   validation still counts as complete; only the real-data `invalid == {}` test catches it.
   The `continent` rule's "0 of 1" fallback has no "+" (DRAFT wording pass).
 - **Book redraws aren't coalesced** (2–6 ms per ENTRIES on a capped ledger). Watch in #12.
-- **CI runners:** `ubuntu-latest` moves to Ubuntu 26 from 2026-10-19. If GitHub's GraphQL
+- **CI runners:** pinned to `ubuntu-24.04` (#117); move on purpose before GitHub retires it. If GitHub's GraphQL
   API fails, `gh api` (REST) still works ([CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-pull-requests)).
 - **Revisit once in groups (#12):** server-clock jumps; other AddOns' traffic; group-map
   rescan budget; a dropped `C_Timer.After`; export build time. Weekly reset rows for live

@@ -3,7 +3,9 @@ name: ci
 # Lint, tests, the vendored-library check and the forbidden-API check. Every job name
 # here is a required status check on main and dev (CLAUDE.md -> Branch flow); renaming
 # a job means updating branch protection too. Actions are pinned by commit SHA.
-# Toolchain comes from apt and luarocks.org only, at the versions in CONTRIBUTING.md.
+# Runners use a named image (ubuntu-24.04), not -latest, so an image move can't change
+# the toolchain under us. Toolchain comes from apt and luarocks.org only, at the versions
+# in CONTRIBUTING.md.
 
 permissions:
   contents: read
@@ -14,7 +16,7 @@ on:
 
 jobs:
   luacheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -30,7 +32,7 @@ jobs:
           luacheck .
 
   busted:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -50,7 +52,7 @@ jobs:
           busted
 
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -70,7 +72,7 @@ jobs:
           sh scripts/check-coverage.sh
 
   docs-links:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -79,7 +81,7 @@ jobs:
         run: sh scripts/check-links.sh
 
   libs-manifest:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -88,7 +90,7 @@ jobs:
         run: sh scripts/check-libs.sh
 
   forbidden-apis:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

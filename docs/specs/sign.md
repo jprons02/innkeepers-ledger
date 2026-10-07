@@ -15,7 +15,9 @@ and every player-facing line** in [§3.7](#37-the-composer-draft) and
 [§3.8](#38-messages-draft): those are a DRAFT and the maintainer decides them (a
 `CLAUDE.md` gate). They ship as written until then ([decisions.md](../decisions.md) →
 *Maintainer-gated content ships as a DRAFT and doesn't block merge*). The button's label,
-"Sign the guestbook", is settled (2026-10-02).
+"Sign the guestbook", is settled (2026-10-02). **Amended 2026-10-07 (#102,
+self-approved):** the composer shows lists instead of arrow cyclers (§3.6 `pick`,
+`setLine`, `list`, `scroll`; §3.7); its look stays a DRAFT.
 **Security-sensitive:** moderately. `Sign` reads no peer data and changes no sync or export
 format, but every entry it creates is broadcast to peers, and it reads client values that
 may be hidden. The reviewer checks [§5](#5-security-notes) item by item.
@@ -227,7 +229,19 @@ no `voice` isn't offered; the shipped data gives every one a voice (a test check
 | `draft:setSecond(on)` | `on == true` adds the second part; anything else removes it |
 | `draft:ids()` | `phrase.compose(T1, W1, C, T2, W2)` where `W1` is the word only if `hasSlot(T1)`, and `C, T2, W2` only if `second` (W2 only if `hasSlot(T2)`); so `nil` only for a set with an empty category or no conjunction |
 | `draft:seal()` | the chosen seal ID, or `nil` for none |
-| `draft:view()` | the strings to show: `{ v1, t1, cat1, w1, v2, c, t2, cat2, w2, seal, preview, word1 = bool, word2 = bool, second = bool, sealRow = bool, voiceRow = bool }` |
+| `draft:view()` | the strings to show: `{ v1, t1, cat1, w1, v2, c, t2, cat2, w2, seal, preview, word1 = bool, word2 = bool, second = bool, sealRow = bool, voiceRow = bool, line = 1 or 2 }` |
+| `draft:pick(field, index)` | (#102) sets `field` to `index` directly: the same fields and lists as `step`, `index` an integer in `1..#list` (`seal`: `0..#seals`). Picking the current index changes nothing; any other pick applies `step`'s resets (category → its word, `v1` → `t1` and, while following, line 2; `v2` → `c`, `t2`, and line 2 stops following). An index out of range, a non-integer or a bad field is a no-op |
+| `draft:setLine(k)` | (#102) which line the composer's lists edit: `1`, or `2` while `second`; anything else is a no-op. `setSecond(true)` (when it was off) moves to line 2; `setSecond(false)` moves to line 1 |
+| `draft:list(field, count)` | (#102) the visible window of a field's list: `{ first = f, total = n, items = { { index = i, text = s, selected = bool }, ... } }`, at most `count` items starting at position `f`. `count` is an integer in `1..40`, else `nil`; a bad field → `nil`. `total` counts every item (the seal list counts "No seal" too, at `index = 0`). Texts are the `view` strings without the "Voice: " prefix (voice names, template labels with `___`, category names, word and conjunction texts, seal names) |
+| `draft:scroll(field, delta, count)` | (#102) moves that list's window by `delta` positions (any integer; a page is `±count`), clamped so `first` stays in `1..max(1, total - count + 1)` |
+
+**Windows** (#102): the draft keeps a `first` per field, starting at 1. `list` clamps it
+to the current `total` and `count` (a shorter list after a voice change never shows an
+empty window), and saves the clamped value. A field whose index is **reset** (a new voice
+resets `t1`; a new category resets its word; a following `v2` resets `c`, `t2`) also gets
+`first = 1`, so the reset selection is in view. `pick` and `step` don't move windows
+otherwise: the composer picks only what it shows, and `step` remains for the seal row
+and tests.
 
 - **`view` strings:** template text with its slot shown as `___` (plain `find` + `sub`,
   never `gsub` with data), `v1` / `v2` as the DRAFT "Voice: " plus the voice name (`nil`
@@ -247,21 +261,38 @@ functional draft.** It uses only pieces the beta has shown or that are core fram
   `SetColorTexture(0, 0, 0, 0.85)` (no backdrop template, nothing unverified). Parented to
   `GossipFrame`, so it hides when the gossip does; the `GOSSIP_CLOSED` handler hides it
   too ([§3.9](#39-signlua-the-glue)).
-- **Rows**, fixed positions (a hidden row leaves a gap, no relayout), each a
-  `UIPanelButtonTemplate` `<` button, a font string (`GameFontHighlight`, word-wrapped)
-  and a `>` button wired to `draft:step(field, ∓1)`:
+- **Lists, not cyclers (amended 2026-10-07, #102).** The composer edits one line at a
+  time and shows that line's choices as lists you can see at a glance. The arrow cyclers
+  of the first draft are gone, except for the seal. About 420×600, fixed positions (a
+  hidden part leaves a gap, no relayout), top to bottom:
   1. title "Sign the guestbook" and the inn's name (`flow.innName`);
-  2. `v1` (shown when `voiceRow`), `t1` (the first line's template); `cat1`, `w1` (shown
-     when `word1`);
-  3. a toggle button, "Add a second line" / "Remove the second line" → `setSecond`;
-  4. when `second`: `v2` (when `voiceRow`), `c`, `t2`, and `cat2`, `w2` (when `word2`);
-  5. `seal` (shown when `sealRow`);
-  6. the preview, word-wrapped, up to 160 bytes;
-  7. **Sign** and **Cancel** buttons.
-- Every change re-reads `draft:view()` and refreshes every string and row.
-- No dropdowns (the modern menu API is unverified on Forever), no scroll lists, no
-  `UISpecialFrames` (it needs a named global frame); Escape closes the gossip frame, and
-  the composer with it.
+  2. **line tabs:** "First line" and "Second line" (`setLine`; the second shows only when
+     `second`; the one being edited is disabled, as the book marks its tab), and the
+     toggle "Add a second line" / "Remove the second line" → `setSecond`;
+  3. **voice strip** (when `voiceRow`): a window of 8 buttons, 4 per row, over the edited
+     line's voice field (`v1` or `v2`); the chosen voice is disabled; a click → `pick`;
+  4. **conjunction strip** (line 2 only): the same, over `c`;
+  5. **template list:** 8 rows over `t1` or `t2`;
+  6. **category list** (left, 9 rows over `cat1` / `cat2`) and **word list** (right, 9 rows
+     over `w1` / `w2`), shown when the edited line's template has a slot (`word1` /
+     `word2`);
+  7. `seal` as before: `<` label `>` → `step` (shown when `sealRow`);
+  8. the preview, word-wrapped, up to 160 bytes;
+  9. **Sign** and **Cancel** buttons.
+- **A list** is a frame of rows, each a plain `CreateFrame("Button")` with its own font
+  string (`GameFontHighlightSmall`), and a selection texture (`SetColorTexture`, a faint
+  gold) behind the chosen row. A click on a row → `draft:pick(field, item.index)`. When
+  `total > count`, two small `UIPanelButtonTemplate` buttons `<` `>` page it
+  (`draft:scroll(field, ∓count, count)`); they hide when everything fits. The mouse wheel
+  over the list scrolls one row (`EnableMouseWheel`, `OnMouseWheel` →
+  `scroll(field, -delta, count)`); the page buttons work if the wheel doesn't.
+- Every change re-reads `draft:view()` and every shown `draft:list(...)`, and refreshes
+  every string, row and button. The new labels ("First line", "Second line") join
+  `SignFlow.TEXT` (DRAFT); "Voice: " stays for `view`.
+- Built from core frame API only: no dropdowns (`UIDropDownMenu` is deprecated and the
+  modern menu API is unverified on Forever), no `ScrollBox` or `FauxScrollFrame`
+  templates, no `UISpecialFrames` (it needs a named global frame); Escape closes the
+  gossip frame, and the composer with it.
 
 ### 3.8 Messages (DRAFT)
 
@@ -341,8 +372,12 @@ click and `RecordUnlocks` runs inside a guard: `pcall`, and on error one debug l
 **`Sign:Cancel()`** closes the composer and ends the session. **`Sign:RecordUnlocks()`**
 is §3.5.
 
-**For tests,** `Sign.ui = { button, read, composer, rows = { t1 = { prev, label, next },
-… }, toggle, sign, cancel, preview, title }` and `Sign.session` are readable fields.
+**For tests,** `Sign.ui = { button, read, composer, rows = { seal = { prev, label, next } },
+lists = { voice, conj, template, cat, word = { frame, rows = { { button, text, mark }, … },
+prev, next } }, line1, line2, toggle, sign, cancel, preview, title }` and `Sign.session`
+are readable fields (#102). The lists map to the edited line's fields (`voice` → `v1` or
+`v2`, `template` → `t1` or `t2`, `cat` → `cat1` or `cat2`, `word` → `w1` or `w2`,
+`conj` → `c`).
 
 **Combat:** `Sign` reads neither combat data nor combat state. The button and composer are
 plain, unprotected frames, which combat lockdown doesn't restrict, and signing sends
@@ -368,8 +403,15 @@ never binds a hearthstone. The NPC's name and gossip text are never read or show
   frame; injecting into `GossipFrame.GreetingPanel.ScrollBox` means hooking Blizzard's
   data provider (hooks are forbidden).
 - **Dropdowns for templates and words:** `UIDropDownMenu` is deprecated on the modern API
-  and the newer menu API is unverified on Forever; arrow cyclers use only the verified
-  button template.
+  and the newer menu API is unverified on Forever. The lists of §3.7 use only buttons,
+  font strings and textures.
+- **Arrow cyclers for every part** (the first draft, replaced by #102): 156 templates and
+  175 words seen one click at a time; nobody browses that.
+- **Both lines' lists on screen at once:** twice the height of a gossip frame; line tabs
+  keep it to one set of lists.
+- **Blizzard's scroll templates** (`ScrollBox`, `FauxScrollFrame`): unverified on Forever
+  and more than a window of a few rows needs; the draft's `list` / `scroll` are pure and
+  tested.
 - **Reading combat state to keep the composer closed in combat:** nothing in signing is
   protected, and it would widen the `combat state` allow-list for no gain.
 - **Dropping a seal that stopped being allowed at commit:** it would sign something the
@@ -520,6 +562,23 @@ for these, and say so in the review:
     caller changing its `seals` table afterwards changes nothing.
   - `step` with a bad field, delta `0`, `2`, `NaN`, a stand-in → no-op, no throw.
   - view strings: the slot shows as `___`; no `|` in any string over the real data.
+  - **(#102) `pick`:** each field to its last and first index; the same resets as `step`
+    (category → word, `v1` while following, `v2` stops following); picking the current
+    index resets nothing; `0`, `#list + 1`, `1.5`, `NaN`, a string, a stand-in and a bad
+    field are no-ops; `seal` to `0` and to `#seals`; every pick from the initial draft
+    still gives `ids()` that pass `validIds`.
+  - **`setLine`:** `2` without `second` is a no-op; `setSecond(true)` → `line = 2`,
+    `setLine(1)` → 1, `setSecond(false)` → 1; junk arguments are no-ops.
+  - **`list`:** the voice list of the real data has 8 items and `selected` on the chosen
+    one; Hearthside's templates `total = 36`, a window of 8 from `first = 1`; the seal list
+    over `{2, 101}` is `No seal`, then both names, with `index` 0, 2's position, 101's;
+    `count` `0`, `41`, `1.5`, `NaN` → `nil`; a bad field → `nil`; texts match `view` (the
+    voice without its prefix); no `|` in any text over the real data.
+  - **`scroll`:** clamps at both ends (`first` never below 1 nor past
+    `total - count + 1`); a list shorter than `count` stays at 1; a voice change resets
+    `t1`'s window to 1, a category change resets its word's; after scrolling Hearthside's
+    templates to the end, picking Noble (15 templates) gives a window that starts at 1;
+    junk `delta` / `count` are no-ops.
 - **Messages:** every reason in `SignFlow.REASONS` and `added` has a line; an unknown
   code → the `error` line; `too_soon` includes `untilText(wait)`; `added` with a `nil`
   name uses "the inn"; no line contains `|`, `%` or `http`. `untilText`: `0` → `in 1
@@ -548,8 +607,9 @@ Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
   read-only ledger (`ledgers[guid]` a string); no ledger (GUID unreadable at login);
   `GetServerTime` hidden.
 - **Sign end to end:** click → composer shown with the preview `Rested here, dreaming of
-  home.`; step `t1` and `w1` through the row buttons and toggle the second line → the
-  preview follows; Sign → one own entry in `db.global.ledgers[guid].own` with the
+  home.`; pick a template and a word by clicking their list rows and toggle the second
+  line (the line tabs switch to "Second line", the conjunction strip shows) → the preview
+  follows; Sign → one own entry in `db.global.ledgers[guid].own` with the
   composed IDs and no seal; `earned` holds 1003, 2 and 101 at the entry's time;
   `ns.Sync.WindowChanged` called once (spy); one `added` chat line naming *Calmbreeze
   Inn*; composer hidden.
@@ -562,6 +622,13 @@ Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
   `UnitGUID("npc")` returning `nil` gives the `changed` line and no entry.
 - **NPC changes while the composer is open:** `GOSSIP_SHOW` for a vendor → composer
   closed; for the same innkeeper again → draft kept.
+- **(#102) The lists:** the voice strip shows 8 buttons with Hearthside disabled; a click
+  on Bardic changes the template list (and line 2's voice while following); the template
+  list shows 8 rows and its page buttons; `>` then shows rows 9–16, the mouse wheel
+  (`OnMouseWheel` with `-1`) moves one row, and both stop at the ends; a list that fits
+  hides its page buttons; a slotless template hides the category and word lists; the
+  word list follows the category clicked; the selection texture sits on the chosen row
+  only; the first line's tab is disabled while editing it.
 - **Faction hidden or raising** → signing still works (counted as `nil`).
 - **Errors:** `ns.Sync.WindowChanged` raising → the entry is kept, the `added` line still
   prints, no error escapes; after `"added"`, `ns.Book.Changed` is called once (spy) and a
@@ -601,6 +668,9 @@ global); `sh scripts/check-apis.sh` passes with no rule changed; `check-libs.sh`
       (hidden and malformed GUIDs, a bad clock, a tampered `earned`).
 - [ ] Docs of §4 updated; the composer and messages are under status.md → Open questions;
       §8's checks are on the platform-forever.md checklist (#12).
+- [ ] (#102) The draft's `pick`, `setLine`, `list` and `scroll` and the list composer of
+      §3.7, with their §6.2 and §6.3 tests; `SignFlow.lua` stays ≥ 90%; `check-apis.sh`
+      unchanged; platform-forever.md's composer item says what the lists need checked.
 
 ## 8. In-client checks (for #12)
 
@@ -612,9 +682,12 @@ from disk after a `/reload`:
    strings and the `<` `>` buttons render (`CreateFontString`, `SetColorTexture` are
    unverified on Forever); cycling and the second line work; the preview follows.
    **A screenshot for the maintainer** (the DRAFT look).
-   The voice rows (#100): "Voice: Hearthside" over line 1; stepping it changes line 1's
-   template set; the second line's voice follows until stepped; nothing overlaps in the
-   530-pixel frame.
+   The lists (#102, replacing the voice rows of #100): the voice strip, the template
+   list and the category and word lists render, with the selection mark on the chosen
+   row; clicking a row picks it; `<` `>` page the template and word lists; **the mouse
+   wheel scrolls them** (`OnMouseWheel` is unverified on Forever); the line tabs switch
+   lines and show the conjunction strip on line 2; nothing overlaps in the ~600-pixel
+   frame. **A screenshot of each line for the maintainer.**
 3. Sign → the `added` line; after `/reload`, `InnkeepersLedger.lua` holds one own entry
    at `254089` and `earned` holds 1003, 2, 101 (and 1101 in a
    save from before 2026-10-06: an ink, since dropped, and ignored).

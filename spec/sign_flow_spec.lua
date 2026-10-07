@@ -1335,6 +1335,54 @@ describe("the draft's lists (#102)", function()
       d:scroll("nope", 8, 8)
       assert.equal(9, d:list("t1", 8).first)
     end)
+
+    it("clamps a huge delta and ignores a huge index", function()
+      local d = real.newDraft({})
+      local last = #P.templates(1) - 8 + 1
+      for _, x in ipairs({ 2 ^ 53, 1e308 }) do
+        d:scroll("t1", x, 8)
+        assert.equal(last, d:list("t1", 8).first)
+        d:scroll("t1", -x, 8)
+        assert.equal(1, d:list("t1", 8).first)
+        d:pick("t1", x)
+        d:pick("t1", -x)
+        assert.is_true(d:list("t1", 8).items[1].selected)
+      end
+    end)
+  end)
+
+  it("keeps a valid phrase and sane windows through random sequences", function()
+    local fields = { "v1", "t1", "cat1", "w1", "v2", "c", "t2", "cat2", "w2", "seal" }
+    local seed = 12345
+    local function rnd(n) -- a small LCG, so the run is the same every time
+      seed = (seed * 1103515245 + 12345) % 2147483648
+      return seed % n + 1
+    end
+    for _ = 1, 100 do
+      local d = real.newDraft({ 2, 101 })
+      for _ = 1, 40 do
+        local field, op = fields[rnd(#fields)], rnd(5)
+        if op == 1 then
+          d:pick(field, rnd(40) - 1)
+        elseif op == 2 then
+          d:step(field, rnd(2) == 1 and 1 or -1)
+        elseif op == 3 then
+          d:setSecond(rnd(2) == 1)
+        elseif op == 4 then
+          d:setLine(rnd(2))
+        else
+          d:scroll(field, rnd(81) - 41, rnd(10))
+        end
+        assert.is_true(P.validIds(d:ids()))
+        local v = d:view()
+        assert.is_string(v.preview)
+        assert.is_true(v.second or v.line == 1)
+        local count = rnd(10)
+        local w = d:list(field, count)
+        assert.is_true(w.first >= 1 and w.first <= math.max(1, w.total - count + 1))
+        assert.equal(math.min(count, w.total - w.first + 1), #w.items)
+      end
+    end
   end)
 end)
 

@@ -680,9 +680,8 @@ from disk after a `/reload`:
 1. "Sign the guestbook" shows under her gossip frame, and **not** under a non-innkeeper's
    (a vendor, a quest giver); it hides when the gossip closes.
 2. A click opens the composer to the right of the gossip frame: the background, the font
-   strings and the `<` `>` buttons render (`CreateFontString`, `SetColorTexture` are
-   unverified on Forever); cycling and the second line work; the preview follows.
-   **A screenshot for the maintainer** (the DRAFT look).
+   strings and the buttons render (verified 2026-10-05 for the first draft); the second
+   line and the seal row's `<` `>` work; the preview follows.
    The lists (#102, replacing the voice rows of #100): the voice strip, the template
    list and the category and word lists render, with the selection mark on the chosen
    row; clicking a row picks it; `<` `>` page the template and word lists; **the mouse
@@ -726,12 +725,12 @@ from disk after a `/reload`:
 
 None blocks the build or the merge; the DRAFT ships until answered.
 
-1. **The composer's look and wording** (§3.7): a plain dark panel with arrow cyclers to
-   the right of the gossip frame. Keep it for launch, or describe the look you want (a
+1. **The composer's look and wording** (§3.7): a plain dark panel with line tabs, a
+   voice strip and plain lists (#102) to the right of the gossip frame. Keep it for launch, or describe the look you want (a
    parchment page, handwriting font, where it sits)?
 2. **The messages** (§3.8): wording and tone, and whether reasons belong in chat at all
    or on the frame.
 3. **Announcing earned cosmetics:** should signing say when it earns a seal or quill
    (for example "Zephras Isle's seal is yours"), or leave that to the book?
-4. **Recent phrases:** worth a follow-up (the last few phrases offered first), or is the
-   cycler enough?
+4. **Recent phrases:** worth a follow-up (the last few phrases offered first), or are the
+   lists enough?

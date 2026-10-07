@@ -52,17 +52,17 @@ local function catalogPlus()
   return c
 end
 
--- Fixture deps: places F (or `over.places`), the phrase fixture, catalog C (or
--- `over.catalog`). `over` replaces any field.
+-- Fixture deps: places F (or `over.places`, which may return atlasComplete fourth, as F
+-- does), the phrase fixture, catalog C (or `over.catalog`). `over` replaces any field.
 local function deps(over)
   over = over or {}
-  local inns, zones, conts
+  local inns, zones, conts, atlasComplete
   if over.places then
-    inns, zones, conts = over.places()
+    inns, zones, conts, atlasComplete = over.places()
   else
-    inns, zones, conts = fx.places()
+    inns, zones, conts, atlasComplete = fx.places()
   end
-  local atlas = NS.Collection.bind(inns, zones, conts)
+  local atlas = NS.Collection.bind(inns, zones, conts, atlasComplete)
   assert(#atlas.invalid == 0 or over.allowInvalid)
   local d = {
     inns = inns,
@@ -544,6 +544,29 @@ describe("BookView: the inn list", function()
     }, listLines(m.left))
   end)
 
+  it("follows a total with + where the data doesn't know the place in full (F0)", function()
+    local m = newView({ places = fx.placesF0 }).build(sit(ledgerE()), { listPage = 1 })
+    assert.same({
+      "c East 3 of 3+",
+      "z Marsh signed 1 of 1+",
+      "i 5101 Marsh Inn +",
+      "z Vale signed 2 of 2+",
+      "i 5002 Hill Inn +",
+      "i 5001 Vale Inn +",
+      "c West 1 of 1+",
+      "z Dunes signed 1 of 1+",
+      "i 5201 Dune Inn +",
+    }, listLines(m.left))
+    -- Vale marked alone: only its row loses the +.
+    m = newView({ places = function()
+      local inns, zones, conts = fx.placesF0()
+      zones[10].complete = true
+      return inns, zones, conts
+    end }).build(sit(ledgerE()), { listPage = 1 })
+    assert.equal("z Vale signed 2 of 2", listLines(m.left)[4])
+    assert.equal("c East 3 of 3+", listLines(m.left)[1])
+  end)
+
   it("lists every inn with no faction", function()
     local s = sit(ledgerE())
     s.faction = nil
@@ -993,12 +1016,12 @@ describe("BookView: the Collection tab", function()
   local function fourContinents()
     local inns, zones, conts = {}, {}, {}
     for i = 1, 4 do
-      conts[i] = { name = "Land " .. string.char(68 - i) } -- Land C, B, A, @
-      zones[10 + i] = { name = "Zone " .. i, continent = i, seal = 100 + i }
+      conts[i] = { name = "Land " .. string.char(68 - i), complete = true } -- Land C, B, A, @
+      zones[10 + i] = { name = "Zone " .. i, continent = i, seal = 100 + i, complete = true }
       inns[5000 + i] = { name = "Inn " .. i, zone = 10 + i }
     end
     conts[4].name = "Land D"
-    return inns, zones, conts
+    return inns, zones, conts, true
   end
 
   it("pages the continent bars", function()
@@ -1037,8 +1060,29 @@ describe("BookView: the Collection tab", function()
     local m = view.build(sit(ledgerE()), { tab = "collection" })
     assert.same({}, m.left.bars)
     assert.equal(TEXT.noInns, m.left.empty)
-    assert.equal("0 of 0 inns signed", m.left.signedText)
+    -- Unmarked (as empty shipped data is): there may be inns the data doesn't know yet.
+    assert.equal("0 of 0+ inns signed", m.left.signedText)
     assert.same({ kind = "stamps", cells = {}, empty = TEXT.noInns, page = 1, pages = 1 }, m.right)
+  end)
+
+  it("follows a total with + where the data doesn't know the place in full", function()
+    local m = newView({ places = fx.placesF0 }).build(sit(ledgerE()), { tab = "collection" })
+    assert.equal("4 of 4+ inns signed", m.left.signedText)
+    assert.equal("Zones completed: 0 of 3", m.left.zonesText)
+    assert.same({
+      { name = "East", signed = 3, total = 3, fraction = 1, text = "3 of 3+" },
+      { name = "West", signed = 1, total = 1, fraction = 1, text = "1 of 1+" },
+    }, m.left.bars)
+    -- Every place marked but not the atlas: the bars lose the +, the inns line keeps it.
+    m = newView({ places = function()
+      local inns, zones, conts = fx.places()
+      return inns, zones, conts
+    end }).build(sit(ledgerE()), { tab = "collection" })
+    assert.equal("4 of 4+ inns signed", m.left.signedText)
+    assert.equal("Zones completed: 3 of 3", m.left.zonesText)
+    assert.equal("3 of 3", m.left.bars[1].text)
+    assert.equal("1 of 1", m.left.bars[2].text)
+    assert.equal("+", TEXT.more)
   end)
 
   it("stamps the open inns, each continent on its own page", function()
@@ -1236,8 +1280,41 @@ describe("BookView: the Cosmetics tab", function()
       unlocked = function() return {} end }
     lines = seals(BookView.new(empty).build(sit(newLedger()), { tab = "cosmetics" }))
     assert.equal("4 Land seal | Sign every inn on one continent" .. dot .. "0 of 1", lines[4])
-    assert.equal("2 Last seal | Sign every inn open to you" .. dot .. "0 of 0", lines[2])
+    -- The empty atlas isn't marked complete, so its total gets the + (spec 3.11).
+    assert.equal("2 Last seal | Sign every inn open to you" .. dot .. "0 of 0+", lines[2])
   end)
+
+  it("shows + after an incomplete place's total; the continent rule picks complete ones",
+    function()
+      local dot = " \194\183 "
+      -- F0: nothing is complete, so nothing place-based is earned and every total has a +.
+      local m = newView({ places = fx.placesF0, catalog = sealCatalog(),
+        sizes = { sealRows = 10 } }).build(sit(ledgerE()), { tab = "cosmetics" })
+      assert.same({
+        "1 First seal | Earned " .. date(T + 100) .. " +",
+        "2 Last seal | Sign every inn open to you" .. dot .. "4 of 4+",
+        "3 Zones seal | Complete 5 zones" .. dot .. "0 of 5",
+        "4 Land seal | Sign every inn on one continent" .. dot .. "0 of 1",
+        "101 Vale seal | Sign every inn in Vale" .. dot .. "2 of 2+",
+        "102 Marsh seal | Sign every inn in Marsh" .. dot .. "1 of 1+",
+        "103 Dunes seal | Sign every inn in Dunes" .. dot .. "1 of 1+",
+      }, seals(m))
+      local red = quills(m)[4]
+      assert.equal(1003, red.id)
+      assert.equal("Sign every inn on one continent" .. dot .. "0 of 1", red.status)
+      -- Horde, West and its zones marked, East not: East (1 of 1) would be nearer, but only
+      -- a complete continent can earn the rule, so West shows (1 of 3).
+      local d = deps({ catalog = sealCatalog(), sizes = { sealRows = 10 }, places = function()
+        local inns, zones, conts = fx.placesF0()
+        conts[2].complete, zones[20].complete, zones[21].complete = true, true, true
+        return inns, zones, conts
+      end })
+      local lines = seals(BookView.new(d).build(sit(ledgerE(), { faction = "Horde" }),
+        { tab = "cosmetics" }))
+      assert.equal("4 Land seal | Sign every inn on one continent" .. dot .. "1 of 3", lines[4])
+      assert.equal("101 Vale seal | Sign every inn in Vale" .. dot .. "1 of 1+", lines[5])
+      assert.equal("103 Dunes seal | Sign every inn in Dunes" .. dot .. "1 of 2", lines[6])
+    end)
 
   it("leaves out another faction's zone seal unless it's earned", function()
     local view = newView({ sizes = { sealRows = 10 } })

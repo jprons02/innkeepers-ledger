@@ -17,7 +17,10 @@ and the maintainer decides them (a `CLAUDE.md` gate). They ship as written until
 the questions are tracked in [status.md](../status.md). Nothing else here waits on them.
 Amended 2026-09-30 (#76): a zone with no Continent map above it is grouped under its
 World map ([§3.1](#31-places-inns-zones-continents)), and a map ID can't key both a zone
-and a continent ([§3.2](#32-record-rules) rule 6).
+and a continent ([§3.2](#32-record-rules) rule 6). Amended 2026-10-07 (#110,
+self-approved; the maintainer chose the guard): place rules count only zones,
+continents and an atlas the data marks complete
+([§3.11](#311-completeness-marks-amended-2026-10-07-110)).
 **Security-sensitive:** moderately. `Cosmetics.SEALS` is the `seals` table of
 `SyncProtocol`'s rule 16, so it decides which peer entries are stored. The reviewer
 applies security-level scrutiny to [§5](#5-security-notes) and must try hostile input of
@@ -433,6 +436,88 @@ Same pattern as `Phrase` ([phrase.md §3.7](phrase.md#37-loading-and-binding)):
 - **A read-only proxy for `SEALS`:** `SyncProtocol` reads it with `rawget`, which a proxy
   would defeat; `canSeal` uses a private copy instead (3.7).
 
+### 3.11 Completeness marks (amended 2026-10-07, #110)
+
+**The problem.** `zone`, `zones n`, `continent` and `all` count only the inns the data
+knows. Until #12's walk has visited every inn, a zone holding one known inn is "done"
+after one signature, and since earned cosmetics are never taken away (§3.6), a release
+with a partial atlas would hand out "every inn" rewards for good. The beta showed it: the
+first signature at Calmbreeze earned seal 101, quill 1003 and seal 2 at once.
+
+**The marks.** The data says which places it knows in full:
+- a zone record may carry **`complete = true`**: every inn in that zone is in `Data/Inns`;
+- a continent record may carry **`complete = true`**: every zone of that continent that has
+  an inn is in `Data/Zones`;
+- **`ns.Data.AtlasComplete = true`** (in `Data/Inns.lua`): every continent with an inn is
+  in `Data/Continents`. `Collection.bind(inns, zones, continents, atlasComplete)` takes it
+  as a fourth argument; anything but exactly `true` counts as not complete.
+
+The data author sets them from the walk (§8), never by guessing. An absent mark means
+"not known to be complete", which is the safe default.
+
+**Record rules.** `complete` is an optional field of zone and continent records (rules 1
+and 2 gain it as optional). If present it must be exactly `true`; any other value
+(`false`, `1`, `"yes"`) **excludes the record** like any bad field (fail closed; the
+real-data test keeps `invalid` empty, so a typo fails CI rather than shipping).
+
+**Effective completeness** (computed once in `bind`):
+- a zone is complete if its record says so;
+- a continent is complete if its record says so **and** every kept zone whose
+  `continent` is it is complete (a marked continent over an unmarked zone is a data
+  mistake; it counts as not complete);
+- the atlas is complete if `atlasComplete == true` **and** every kept continent is
+  complete.
+
+**Progress** (§3.3 amended): `done` is set only for complete places. `byZone[z].done`
+needs zone `z` complete; `byContinent[c].done` needs continent `c` complete; `p.done`
+needs the atlas complete. `signed`, `total` and everything else are unchanged. Each
+`byZone` and `byContinent` item and the result itself gain **`complete = true | false`**,
+so the book can say "more to find" without its own logic. The export copies only its
+named fields, so its format doesn't change: `done` is just absent more often, which v1
+already allows.
+
+**Cosmetics** read `done` (§3.6), so they need no guard of their own: `zone z`, `zones n`,
+`continent` and `all` derive no time for an incomplete place. `inns n` counts signed inns
+only, so a partial atlas can only undercount it; it stays unguarded. The `kept` floor is
+unchanged: an `earned` time at an own entry's time is still honored, so an unlock
+recorded under older data is kept (beta saves don't reach live realms).
+
+**API** (§3.8 amended): `atlas.zone(key)` and `atlas.continent(key)` add `complete`
+(the effective value); new `atlas.complete()` returns the atlas's. `Collection.bind`'s
+fourth argument is new; `Collection.atlas` binds with `ns.Data.AtlasComplete` (read only
+if `ns.Data` is a table). `Cosmetics.bind` reads zones as before (an extra field in
+`atlas.zone` changes nothing there).
+
+**The book** ([book.md](book.md) §3.5, §3.6, amended with this): wherever it prints
+`signed .. TEXT.of .. total` for a place that isn't complete (the summary's inns line,
+a continent bar, the Inns tab's continent and zone rows, the `continent`, `all` and
+`zone z` rule progress), `total` is followed
+by `TEXT.more` (DRAFT `"+"`, so "1 of 1+ inns signed"). The nearest-done continent for
+the `continent` rule is chosen among complete continents only; none → `0 .. TEXT.of ..
+1`, as today.
+
+**Tests** (§6 amended): fixture F marks every zone and continent `complete = true` and
+binds with `atlasComplete = true`, so every existing expectation holds. A new fixture
+**F0** is F with no marks. On F0 with entries E: no `done` anywhere, every `complete` is
+`false`, and `unlocked` holds only the `inns n` items (1 and 1001 at their F times; no 2,
+1002, 1003 or zone seal). Then one mark at a time: Vale (10) marked → `byZone[10].done`
+and seal 101 return; East (1) marked with Marsh (11) unmarked → East not complete, no
+1003; both marked → 1003 at F's time; `atlasComplete` without every continent → no `all`.
+`bind` with `complete` of `false`, `1`, `"true"`, a table, a stand-in on a zone and on a
+continent → that record excluded and named (a continent's exclusion cascades);
+`atlasComplete` of `1`, `"true"`, `{}` → not complete. The real-data test (§6.6) also
+checks every `complete` in `Data/Inns.lua` is exactly `true`, and that `AtlasComplete` is
+absent or a boolean; its "every rule is reachable" atlas is marked complete. The book
+specs gain the `"+"` cases. A whole-AddOn test: one signature at Calmbreeze with the
+shipped (unmarked) data records no place-based unlock.
+
+**Rejected:** *only the maintainer visiting every inn before release* (the beta ends
+2026-10-21; a missed inn would still leak); *a release-time switch that turns place
+rules off* (zone seals known to be safe would wait too); *percent thresholds or rules
+over known inns only* (they move as data grows, §3.10); *taking back unlocks when data
+grows* (§3.6: earned things are never taken away); *marks on inns* (an inn can't know
+it's the last one in its zone).
+
 ## 4. Data model changes
 
 - **`Data/Inns.lua`:** shape of 3.1 (still empty until #12). Header comment updated
@@ -692,6 +777,11 @@ ns.Data.Cosmetics).SEALS` on a fresh ledger: the `101` entry is stored too
       its own, and checked the catalog against *earned by play*.
 - [ ] Docs of §4 updated (export-format.md Data section, architecture.md, platform-forever
       checklist, status.md open questions, the two decisions entries).
+- [ ] (#110) §3.11: the marks, their record rules, effective completeness, `done` and
+      `complete` in progress, the API additions, the book's `TEXT.more`, and its tests;
+      `Data/Inns.lua`'s header documents the marks and ships none; a decision-log entry
+      (2026-10-07, *Partial atlas: place rules count only places marked complete*);
+      status.md's release-gate question answered.
 
 ## 8. Contract for later slices
 
@@ -707,6 +797,10 @@ ns.Data.Cosmetics).SEALS` on a fresh ledger: the `101` entry is stored too
   chain. A chain with no *Zone* map, or
   with no Continent or World map above the zone, isn't entered: it goes on #12 as a
   question, and the rule is extended here first.
+  **Completeness (#110, §3.11):** the walk also notes, per zone, whether every inn in it
+  was visited (the maintainer's call, from the in-game map and their travels), and per
+  continent whether every zone with an inn was. Only then does the data get
+  `complete = true`; `ns.Data.AtlasComplete` waits until every continent is marked.
 - **`Sign`:** gets the faction as the first return of `UnitFactionGroup("player")`
   (checked with `issecretvalue` and `type == "string"`, else `nil`; added to
   `.luacheckrc`'s glue list). Before `addOwn`, `unlocked = ns.Cosmetics.unlocked(own,

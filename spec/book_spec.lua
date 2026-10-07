@@ -165,6 +165,16 @@ local function sign(ns, t, phrase)
     phrase = phrase or { 101 } }))
 end
 
+-- Records the unlocks one signature at Calmbreeze earned before #110 (seal 101, the
+-- Cartographer's quill 1003, seal 2). The shipped data marks no place complete, so they
+-- now come only from a recorded `earned` floor at that signature's time, as for a character
+-- that recorded them under older data (collection-cosmetics.md 3.11).
+local function recordPlaceUnlocks(ns, t)
+  for _, id in ipairs({ 101, 1003, 2 }) do
+    assert.is_true(ns.ledger:markEarned(id, t or NOW - 3600))
+  end
+end
+
 local function traveler(n)
   return string.format("Player-1-%08X", 4096 + n) -- never the player's own GUID
 end
@@ -338,9 +348,10 @@ describe("Book: the Inns tab", function()
     assert.is_false(shown(ui.title.panel))
     local rows = ui.list.rows
     assert.equal("Azeroth", rows[1].text:GetText())
-    assert.equal("0 of 1", rows[1].sub:GetText())
+    -- The shipped data marks no place complete yet: each total says there may be more.
+    assert.equal("0 of 1+", rows[1].sub:GetText())
     assert.equal("Zephras Isle", rows[2].text:GetText())
-    assert.equal("signed 0 of 1", rows[2].sub:GetText())
+    assert.equal("signed 0 of 1+", rows[2].sub:GetText())
     assert.equal("Calmbreeze Inn", rows[3].text:GetText())
     assert.same({ 0.20, 0.13, 0.08, 0.45 }, rows[3].text.textColor)
     assert.is_false(shown(rows[3].mark))
@@ -359,7 +370,7 @@ describe("Book: the Inns tab", function()
     local ui = ns.Book.ui
     assert.is_true(shown(ui.list.panel))
     local rows = ui.list.rows
-    assert.equal("signed 1 of 1", rows[2].sub:GetText())
+    assert.equal("signed 1 of 1+", rows[2].sub:GetText())
     assert.is_true(shown(rows[3].mark))
     assert.same({ 0.20, 0.13, 0.08, 1 }, rows[3].text.textColor)
     assert.is_false(shown(ui.inn.panel))
@@ -776,9 +787,15 @@ describe("Book: quills", function()
 
   it("uses an unlocked quill and draws its flourish under own signatures", function()
     local ns = login()
-    sign(ns) -- Calmbreeze is all of Azeroth: the Cartographer's quill (1003) unlocks
+    sign(ns)
+    -- Nothing place-based unlocks from the shipped (unmarked) data: no quill but the plain.
     wow.slash("/ledger")
     ns.Book.ui.tabs.cosmetics:Click()
+    assert.same({ "Sign every inn on one continent \194\183 0 of 1", false },
+      quillRows(ns)["Cartographer's quill"])
+    -- With the Cartographer's quill (1003) recorded, as under older data, it can be used.
+    recordPlaceUnlocks(ns)
+    ns.Book:Changed()
     local rows = quillRows(ns)
     assert.same({ "In use", false }, rows["Plain quill"])
     assert.equal(true, rows["Cartographer's quill"][2])
@@ -843,6 +860,7 @@ describe("Book: quills", function()
       local before = deepcopy(global)
       local ns = login({ db = { global = global } })
       sign(ns)
+      recordPlaceUnlocks(ns)
       wow.slash("/ledger")
       ns.Book.ui.tabs.cosmetics:Click()
       for _, row in ipairs(ns.Book.ui.quills.rows) do
@@ -862,6 +880,7 @@ describe("Book: quills", function()
   it("works with no saved global table", function()
     local ns = login()
     sign(ns)
+    recordPlaceUnlocks(ns)
     ns.Core.db.global = 5
     wow.slash("/ledger")
     ns.Book.ui.tabs.cosmetics:Click()
@@ -882,6 +901,7 @@ describe("Book: quills", function()
     local ns = login({ db = { global = { book = { [OTHER] = deepcopy(other),
       ["Player-1-0000F00D"] = "damaged" } } } })
     sign(ns)
+    recordPlaceUnlocks(ns)
     wow.slash("/ledger share")
     assert.is_table(record().shared)
     ns.Book:SetQuill(1003)
@@ -895,6 +915,7 @@ describe("Book: quills", function()
   it("replaces a broken v1 record whole on the next write", function()
     local ns = login({ db = { global = { book = { [GUID] = { quill = "x", other = 1 } } } } })
     sign(ns)
+    recordPlaceUnlocks(ns)
     wow.slash("/ledger")
     ns.Book:SetQuill(1003)
     assert.same({ v = 1, quill = 1003 }, record())
@@ -914,8 +935,10 @@ describe("Book: the Collection tab", function()
     wow.slash("/ledger")
     ns.Book.ui.tabs.collection:Click()
     local ui = ns.Book.ui
-    assert.equal("1 of 1 inns signed", ui.summary.signed:GetText())
-    assert.equal("Zones completed: 1 of 1", ui.summary.zones:GetText())
+    -- The shipped data marks no place complete: a + after each total, no zone completed.
+    assert.equal("1 of 1+ inns signed", ui.summary.signed:GetText())
+    assert.equal("Zones completed: 0 of 1", ui.summary.zones:GetText())
+    assert.equal("1 of 1+", ui.summary.bars[1].text:GetText())
     assert.equal("Signatures: 1", ui.summary.signatures:GetText())
     assert.equal("Travelers met: 1", ui.summary.travelers:GetText())
     assert.equal("Azeroth", ui.summary.bars[1].name:GetText())
@@ -981,10 +1004,10 @@ describe("Book: fallbacks", function()
     _G.issecretvalue = function(v) return rawequal(v, hiddenFaction) end
     sign(ns)
     wow.slash("/ledger")
-    assert.equal("signed 1 of 1", ns.Book.ui.list.rows[2].sub:GetText())
+    assert.equal("signed 1 of 1+", ns.Book.ui.list.rows[2].sub:GetText())
     _G.UnitFactionGroup = function() error("raised on purpose") end
     ns.Book:Changed()
-    assert.equal("signed 1 of 1", ns.Book.ui.list.rows[2].sub:GetText())
+    assert.equal("signed 1 of 1+", ns.Book.ui.list.rows[2].sub:GetText())
   end)
 
   it("titles the book without a name it can read", function()
@@ -1004,7 +1027,7 @@ describe("Book: fallbacks", function()
     assert.same({ 0.87, 0.80, 0.64, 1 }, ui.notice.textColor)
     assert.is_true(shown(ui.title.panel))
     ui.left.next:Click()
-    assert.equal("signed 0 of 1", ui.list.rows[2].sub:GetText())
+    assert.equal("signed 0 of 1+", ui.list.rows[2].sub:GetText())
     ui.tabs.cosmetics:Click()
     for _, row in ipairs(ui.quills.rows) do
       if shown(row.use) then

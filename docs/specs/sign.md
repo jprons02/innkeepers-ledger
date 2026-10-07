@@ -611,7 +611,8 @@ Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
   home.`; pick a template and a word by clicking their list rows and toggle the second
   line (the line tabs switch to "Second line", the conjunction strip shows) → the preview
   follows; Sign → one own entry in `db.global.ledgers[guid].own` with the
-  composed IDs and no seal; `earned` holds 1003, 2 and 101 at the entry's time;
+  composed IDs and no seal; `earned` stays empty (the shipped data marks no place
+  complete, #110; a login test over marked data checks recording writes 1003, 2 and 101);
   `ns.Sync.WindowChanged` called once (spy); one `added` chat line naming *Calmbreeze
   Inn*; composer hidden.
 - **Next week with a seal:** advance `wow.now` past the reset; click → the seal row shows;
@@ -689,15 +690,16 @@ from disk after a `/reload`:
    lines and show the conjunction strip on line 2; nothing overlaps in the ~600-pixel
    frame. **A screenshot of each line for the maintainer.**
 3. Sign → the `added` line; after `/reload`, `InnkeepersLedger.lua` holds one own entry
-   at `254089` and `earned` holds 1003, 2, 101 (and 1101 in a
-   save from before 2026-10-06: an ink, since dropped, and ignored).
+   at `254089`. A character's first signature since #110 records nothing in `earned`
+   (no place is marked complete); the beta character's save keeps the 1003, 2 and 101 it
+   recorded on 2026-10-05 (and 1101, an ink since dropped and ignored).
 4. A second click the same week → the `too_soon` line, and the reset it names matches the
    beta's Tuesday 16:00 UTC.
 5. Closing the gossip mid-compose hides the composer; talking to another NPC with it open
    closes it. Choosing *I would like to buy from you.* closes it too (`GOSSIP_CLOSED`).
 6. After the next weekly reset (the beta has Tuesdays 2026-10-13 and 10-20 left): the seal
-   row offers Zephras Isle's seal and the Innkeeper's seal; a sealed signature is stored
-   with `seal = 101`.
+   row offers Zephras Isle's seal and the Innkeeper's seal (on the beta character, through
+   its recorded `earned`); a sealed signature is stored with `seal = 101`.
 7. With a second character in a party: the signature reaches them (part of the existing
    round-trip item).
 8. Any innkeeper met whose rest area doesn't cover where you talk to them: the

@@ -31,18 +31,19 @@ local function atlasF()
   return Collection.bind(fx.places())
 end
 
--- The spec 6.2 results for E.
+-- The spec 6.2 results for E (F is marked complete everywhere, spec 3.11).
 local function allianceE()
   return {
     faction = "Alliance", signed = 4, total = 4, done = T + 400, unknown = 1, truncated = false,
+    complete = true,
     byContinent = {
-      [1] = { signed = 3, total = 3, done = T + 400 },
-      [2] = { signed = 1, total = 1, done = T + 100 },
+      [1] = { signed = 3, total = 3, done = T + 400, complete = true },
+      [2] = { signed = 1, total = 1, done = T + 100, complete = true },
     },
     byZone = {
-      [10] = { signed = 2, total = 2, continent = 1, done = T + 300 },
-      [11] = { signed = 1, total = 1, continent = 1, done = T + 400 },
-      [20] = { signed = 1, total = 1, continent = 2, done = T + 100 },
+      [10] = { signed = 2, total = 2, continent = 1, done = T + 300, complete = true },
+      [11] = { signed = 1, total = 1, continent = 1, done = T + 400, complete = true },
+      [20] = { signed = 1, total = 1, continent = 2, done = T + 100, complete = true },
     },
     inns = {
       [5001] = { zone = 10, open = true, count = 3, first = T, last = T + 604800 },
@@ -57,15 +58,15 @@ end
 
 local function hordeE()
   return {
-    faction = "Horde", signed = 2, total = 4, unknown = 1, truncated = false,
+    faction = "Horde", signed = 2, total = 4, unknown = 1, truncated = false, complete = true,
     byContinent = {
-      [1] = { signed = 1, total = 1, done = T },
-      [2] = { signed = 1, total = 3 },
+      [1] = { signed = 1, total = 1, done = T, complete = true },
+      [2] = { signed = 1, total = 3, complete = true },
     },
     byZone = {
-      [10] = { signed = 1, total = 1, continent = 1, done = T },
-      [20] = { signed = 1, total = 2, continent = 2 },
-      [21] = { signed = 0, total = 1, continent = 2 },
+      [10] = { signed = 1, total = 1, continent = 1, done = T, complete = true },
+      [20] = { signed = 1, total = 2, continent = 2, complete = true },
+      [21] = { signed = 0, total = 1, continent = 2, complete = true },
     },
     inns = {
       [5001] = { zone = 10, open = true, count = 3, first = T, last = T + 604800 },
@@ -80,16 +81,16 @@ end
 
 local function anyE()
   return {
-    signed = 4, total = 6, unknown = 1, truncated = false,
+    signed = 4, total = 6, unknown = 1, truncated = false, complete = true,
     byContinent = {
-      [1] = { signed = 3, total = 3, done = T + 400 },
-      [2] = { signed = 1, total = 3 },
+      [1] = { signed = 3, total = 3, done = T + 400, complete = true },
+      [2] = { signed = 1, total = 3, complete = true },
     },
     byZone = {
-      [10] = { signed = 2, total = 2, continent = 1, done = T + 300 },
-      [11] = { signed = 1, total = 1, continent = 1, done = T + 400 },
-      [20] = { signed = 1, total = 2, continent = 2 },
-      [21] = { signed = 0, total = 1, continent = 2 },
+      [10] = { signed = 2, total = 2, continent = 1, done = T + 300, complete = true },
+      [11] = { signed = 1, total = 1, continent = 1, done = T + 400, complete = true },
+      [20] = { signed = 1, total = 2, continent = 2, complete = true },
+      [21] = { signed = 0, total = 1, continent = 2, complete = true },
     },
     inns = {
       [5001] = { zone = 10, open = true, count = 3, first = T, last = T + 604800 },
@@ -106,11 +107,11 @@ end
 local function allianceEmpty()
   local r = allianceE()
   r.signed, r.done, r.unknown = 0, nil, 0
-  r.byContinent[1] = { signed = 0, total = 3 }
-  r.byContinent[2] = { signed = 0, total = 1 }
-  r.byZone[10] = { signed = 0, total = 2, continent = 1 }
-  r.byZone[11] = { signed = 0, total = 1, continent = 1 }
-  r.byZone[20] = { signed = 0, total = 1, continent = 2 }
+  r.byContinent[1] = { signed = 0, total = 3, complete = true }
+  r.byContinent[2] = { signed = 0, total = 1, complete = true }
+  r.byZone[10] = { signed = 0, total = 2, continent = 1, complete = true }
+  r.byZone[11] = { signed = 0, total = 1, continent = 1, complete = true }
+  r.byZone[20] = { signed = 0, total = 1, continent = 2, complete = true }
   for _, s in pairs(r.inns) do
     s.count, s.first, s.last = 0, nil, nil
   end
@@ -155,7 +156,8 @@ describe("Collection module", function()
 
   it("exposes the default atlas's functions and invalid", function()
     assert.is_table(Collection.atlas)
-    for _, name in ipairs({ "progress", "innOf", "inn", "zone", "continent", "zoneKeys" }) do
+    for _, name in ipairs({ "progress", "innOf", "inn", "zone", "continent", "zoneKeys",
+      "complete" }) do
       assert.is_function(Collection[name], name)
       assert.equal(Collection.atlas[name], Collection[name])
     end
@@ -175,6 +177,18 @@ describe("Collection module", function()
     local p = ns.Collection.progress(fx.entries(), "Alliance")
     assert.equal(0, p.total)
     assert.equal(7, p.unknown)
+  end)
+
+  it("binds the default atlas with ns.Data.AtlasComplete (spec 3.11)", function()
+    for _, case in ipairs({ { true, true }, { false, false }, { nil, false }, { 1, false } }) do
+      local ns = {}
+      load.file("Ledger.lua", ns, load.pure_env())
+      local inns, zones, conts = fx.places()
+      ns.Data = { Inns = inns, Zones = zones, Continents = conts, AtlasComplete = case[1] }
+      load.file("Collection.lua", ns, load.pure_env())
+      assert.equal(case[2], ns.Collection.complete())
+      assert.equal(case[2], ns.Collection.progress(fx.entries(), "Alliance").done == T + 400)
+    end
   end)
 
   it("loads with a non-table ns.Data and binds an empty atlas", function()
@@ -207,10 +221,11 @@ describe("Collection.bind", function()
     assert.is_nil(atlas.inn(5003)) -- an alias
     assert.same({ name = "Hill Inn", zone = 10, faction = "Alliance" }, atlas.inn(5002))
     assert.same({ name = "Vale Inn", zone = 10 }, atlas.inn(5001))
-    assert.same({ name = "Vale", continent = 1, seal = 101 }, atlas.zone(10))
-    assert.same({ name = "Ridge", continent = 2, seal = 104 }, atlas.zone(21))
-    assert.same({ name = "West" }, atlas.continent(2))
+    assert.same({ name = "Vale", continent = 1, seal = 101, complete = true }, atlas.zone(10))
+    assert.same({ name = "Ridge", continent = 2, seal = 104, complete = true }, atlas.zone(21))
+    assert.same({ name = "West", complete = true }, atlas.continent(2))
     assert.same({ 10, 11, 20, 21 }, atlas.zoneKeys())
+    assert.is_true(atlas.complete())
     assert.is_nil(atlas.zone(12))
     assert.is_nil(atlas.continent(3))
   end)
@@ -319,7 +334,7 @@ describe("Collection.bind", function()
     it("excludes " .. name, function()
       local inns, zones, conts = fx.places()
       change(inns, zones, conts)
-      local atlas = Collection.bind(inns, zones, conts)
+      local atlas = Collection.bind(inns, zones, conts, true)
       assert.same({ label }, atlas.invalid)
       -- The rest of F still binds.
       assert.same(allianceE(), atlas.progress(fx.entries(), "Alliance"))
@@ -355,7 +370,7 @@ describe("Collection.bind", function()
         else
           inns[5401] = inn(case[2], 10)
         end
-        local atlas = Collection.bind(inns, zones, conts)
+        local atlas = Collection.bind(inns, zones, conts, true)
         local key = ({ continent = 3, zone = 30, inn = 5401 })[kind]
         assert.same({ kind .. " " .. key }, atlas.invalid)
       end
@@ -369,10 +384,10 @@ describe("Collection.bind", function()
     zones[30] = zone("A", 3, 105)
     inns[5401] = inn("Az09 ',.-azAZ Inn", 30, "Horde")
     inns[5402] = { alias = 5401 }
-    local atlas = Collection.bind(inns, zones, conts)
+    local atlas = Collection.bind(inns, zones, conts, true)
     assert.same({}, atlas.invalid)
-    assert.same({ name = n48 }, atlas.continent(3))
-    assert.same({ name = "A", continent = 3, seal = 105 }, atlas.zone(30))
+    assert.same({ name = n48, complete = false }, atlas.continent(3)) -- unmarked
+    assert.same({ name = "A", continent = 3, seal = 105, complete = false }, atlas.zone(30))
     assert.same({ name = "Az09 ',.-azAZ Inn", zone = 30, faction = "Horde" }, atlas.inn(5401))
     assert.equal(5401, atlas.innOf(5402))
   end)
@@ -381,7 +396,7 @@ describe("Collection.bind", function()
     local inns, zones, conts = fx.places()
     zones[12] = zone("Glen", 1, 101)
     inns[5401] = inn("Glen Inn", 12)
-    local atlas = Collection.bind(inns, zones, conts)
+    local atlas = Collection.bind(inns, zones, conts, true)
     assert.same({ "inn 5001", "inn 5002", "inn 5003", "inn 5401", "zone 10", "zone 12" },
       atlas.invalid)
     assert.same({ 11, 20, 21 }, atlas.zoneKeys())
@@ -391,14 +406,14 @@ describe("Collection.bind", function()
   it("a seal clash with an excluded zone record still excludes both (fail closed)", function()
     local inns, zones, conts = fx.places()
     zones[12] = zone("glen", 1, 104) -- a bad name, but its seal is 104 (Ridge's)
-    local atlas = Collection.bind(inns, zones, conts)
+    local atlas = Collection.bind(inns, zones, conts, true)
     assert.same({ "inn 5301", "zone 12", "zone 21" }, atlas.invalid)
   end)
 
   it("an excluded continent cascades to its zones, their inns and aliases", function()
     local inns, zones, conts = fx.places()
     conts[1] = { name = "East", extra = true }
-    local atlas = Collection.bind(inns, zones, conts)
+    local atlas = Collection.bind(inns, zones, conts, true)
     assert.same({ "continent 1", "inn 5001", "inn 5002", "inn 5003", "inn 5101", "zone 10",
       "zone 11" }, atlas.invalid)
     assert.same({ 20, 21 }, atlas.zoneKeys())
@@ -408,17 +423,18 @@ describe("Collection.bind", function()
   -- Continent map between, so its group is the World map.
   local function withWorld()
     local inns, zones, conts = fx.places()
-    conts[947] = cont("Azeroth")
-    zones[2521] = zone("Zephras Isle", 947, 105)
+    conts[947] = { name = "Azeroth", complete = true }
+    zones[2521] = { name = "Zephras Isle", continent = 947, seal = 105, complete = true }
     inns[251001] = inn("Zephras Inn", 2521)
-    return inns, zones, conts
+    return inns, zones, conts, true
   end
 
   it("accepts a zone under a World map and counts its inns there (#76)", function()
     local atlas = Collection.bind(withWorld())
     assert.same({}, atlas.invalid)
-    assert.same({ name = "Azeroth" }, atlas.continent(947))
-    assert.same({ name = "Zephras Isle", continent = 947, seal = 105 }, atlas.zone(2521))
+    assert.same({ name = "Azeroth", complete = true }, atlas.continent(947))
+    assert.same({ name = "Zephras Isle", continent = 947, seal = 105, complete = true },
+      atlas.zone(2521))
     assert.equal(251001, atlas.innOf(251001))
     assert.same({ 10, 11, 20, 21, 2521 }, atlas.zoneKeys())
 
@@ -427,15 +443,15 @@ describe("Collection.bind", function()
     local p = atlas.progress(own, "Alliance")
     local want = allianceE()
     want.signed, want.total, want.done = 5, 5, T + 600
-    want.byContinent[947] = { signed = 1, total = 1, done = T + 600 }
-    want.byZone[2521] = { signed = 1, total = 1, continent = 947, done = T + 600 }
+    want.byContinent[947] = { signed = 1, total = 1, done = T + 600, complete = true }
+    want.byZone[2521] = { signed = 1, total = 1, continent = 947, done = T + 600, complete = true }
     want.inns[251001] = { zone = 2521, open = true, count = 1, first = T + 600, last = T + 600 }
     assert.same(want, p)
 
     -- Unsigned, it is one more open inn on its own group.
     p = atlas.progress(fx.entries(), "Horde")
-    assert.same({ signed = 0, total = 1 }, p.byContinent[947])
-    assert.same({ signed = 0, total = 1, continent = 947 }, p.byZone[2521])
+    assert.same({ signed = 0, total = 1, complete = true }, p.byContinent[947])
+    assert.same({ signed = 0, total = 1, continent = 947, complete = true }, p.byZone[2521])
     assert.equal(5, p.total)
   end)
 
@@ -443,7 +459,7 @@ describe("Collection.bind", function()
     function()
       local inns, zones, conts = withWorld()
       zones[947] = zone("Azeroth", 1, 106)
-      local atlas = Collection.bind(inns, zones, conts)
+      local atlas = Collection.bind(inns, zones, conts, true)
       assert.same({ "continent 947", "inn 251001", "zone 2521", "zone 947" }, atlas.invalid)
       assert.is_nil(atlas.continent(947))
       assert.is_nil(atlas.zone(947))
@@ -455,12 +471,12 @@ describe("Collection.bind", function()
     function()
       local inns, zones, conts = fx.places()
       conts[10] = "junk" -- zone 10's key; zone 10 itself is good
-      local atlas = Collection.bind(inns, zones, conts)
+      local atlas = Collection.bind(inns, zones, conts, true)
       assert.same({ "continent 10", "inn 5001", "inn 5002", "inn 5003", "zone 10" },
         atlas.invalid)
       inns, zones, conts = fx.places()
       zones[1] = 7 -- continent 1's key
-      atlas = Collection.bind(inns, zones, conts)
+      atlas = Collection.bind(inns, zones, conts, true)
       assert.same({ "continent 1", "inn 5001", "inn 5002", "inn 5003", "inn 5101", "zone 1",
         "zone 10", "zone 11" }, atlas.invalid)
     end)
@@ -470,18 +486,18 @@ describe("Collection.bind", function()
     local inns, zones, conts = fx.places()
     zones[30] = zone("Glen", 30, 105)
     inns[5401] = inn("Glen Inn", 30)
-    local atlas = Collection.bind(inns, zones, conts)
+    local atlas = Collection.bind(inns, zones, conts, true)
     assert.same({ "inn 5401", "zone 30" }, atlas.invalid)
     -- Its own continent, with a continent record of that key: the key is in both tables.
     conts[30] = cont("Glen Lands")
-    atlas = Collection.bind(inns, zones, conts)
+    atlas = Collection.bind(inns, zones, conts, true)
     assert.same({ "continent 30", "inn 5401", "zone 30" }, atlas.invalid)
     -- Two zones that are each other's continent.
     inns, zones, conts = fx.places()
     zones[30], zones[31] = zone("Glen", 31, 105), zone("Fen", 30, 106)
     conts[30], conts[31] = cont("Glen Lands"), cont("Fen Lands")
     inns[5401] = inn("Glen Inn", 30)
-    atlas = Collection.bind(inns, zones, conts)
+    atlas = Collection.bind(inns, zones, conts, true)
     assert.same({ "continent 30", "continent 31", "inn 5401", "zone 30", "zone 31" },
       atlas.invalid)
     assert.same(allianceE(), atlas.progress(fx.entries(), "Alliance"))
@@ -491,14 +507,14 @@ describe("Collection.bind", function()
     local inns, zones, conts = fx.places()
     inns[5401] = inn("Glen Inn", 99)
     inns[5402] = { alias = 5401 }
-    local atlas = Collection.bind(inns, zones, conts)
+    local atlas = Collection.bind(inns, zones, conts, true)
     assert.same({ "inn 5401", "inn 5402" }, atlas.invalid)
   end)
 
   it("an entry at an excluded inn counts as unknown", function()
     local inns, zones, conts = fx.places()
     inns[5101].faction = "Neutral"
-    local atlas = Collection.bind(inns, zones, conts)
+    local atlas = Collection.bind(inns, zones, conts, true)
     assert.same({ "inn 5101" }, atlas.invalid)
     local p = atlas.progress(fx.entries(), "Alliance")
     assert.is_nil(p.byZone[11]) -- the zone is kept but has no inn left
@@ -524,7 +540,9 @@ describe("Collection.bind", function()
       assert.is_nil(atlas.zone(10))
       assert.is_nil(atlas.continent(1))
       assert.same({ faction = "Alliance", signed = 0, total = 0, byContinent = {}, byZone = {},
-        inns = {}, unknown = 7, truncated = false }, atlas.progress(fx.entries(), "Alliance"))
+        inns = {}, unknown = 7, truncated = false, complete = false },
+        atlas.progress(fx.entries(), "Alliance"))
+      assert.is_false(atlas.complete())
     end)
   end
 
@@ -539,7 +557,7 @@ describe("Collection.bind", function()
     setmetatable(zones, { __index = spy })
     setmetatable(conts, { __index = spy })
     setmetatable(inns[5001], { __index = function() calls = calls + 1 return "Horde" end })
-    local atlas = Collection.bind(inns, zones, conts)
+    local atlas = Collection.bind(inns, zones, conts, true)
     assert.same({}, atlas.invalid)
     assert.is_nil(atlas.inn(5999))
     assert.same({ name = "Vale Inn", zone = 10 }, atlas.inn(5001))
@@ -548,20 +566,23 @@ describe("Collection.bind", function()
 
   it("copies: changing F after bind changes no later result", function()
     local inns, zones, conts = fx.places()
-    local atlas = Collection.bind(inns, zones, conts)
+    local atlas = Collection.bind(inns, zones, conts, true)
     inns[5001].name = "Changed"
     inns[5001].faction = "Horde"
     inns[5003].alias = 5002
     inns[5999] = inn("New Inn", 10)
     zones[10].seal = 199
     zones[30] = zone("Glen", 1, 105)
+    zones[11].complete = nil
     conts[1].name = "Changed"
+    conts[2].complete = false
     inns[5101] = nil
     assert.same({ name = "Vale Inn", zone = 10 }, atlas.inn(5001))
     assert.equal(5001, atlas.innOf(5003))
     assert.is_nil(atlas.innOf(5999))
-    assert.same({ name = "Vale", continent = 1, seal = 101 }, atlas.zone(10))
-    assert.same({ name = "East" }, atlas.continent(1))
+    assert.same({ name = "Vale", continent = 1, seal = 101, complete = true }, atlas.zone(10))
+    assert.same({ name = "East", complete = true }, atlas.continent(1))
+    assert.is_true(atlas.complete())
     assert.same({ 10, 11, 20, 21 }, atlas.zoneKeys())
     assert.same(allianceE(), atlas.progress(fx.entries(), "Alliance"))
   end)
@@ -570,14 +591,15 @@ describe("Collection.bind", function()
     local atlas = atlasF()
     local i, z, c, keys = atlas.inn(5002), atlas.zone(10), atlas.continent(1), atlas.zoneKeys()
     i.faction, i.zone = "Horde", 11
-    z.seal, z.continent = 1, 2
-    c.name = "X"
+    z.seal, z.continent, z.complete = 1, 2, false
+    c.name, c.complete = "X", false
     keys[1], keys[5] = 99, 100
     local p = atlas.progress(fx.entries(), "Alliance")
     p.signed, p.inns[5001].count, p.byZone[10].total, p.byContinent[1] = 0, 0, 9, nil
+    p.byZone[11].complete, p.complete = false, false
     assert.same({ name = "Hill Inn", zone = 10, faction = "Alliance" }, atlas.inn(5002))
-    assert.same({ name = "Vale", continent = 1, seal = 101 }, atlas.zone(10))
-    assert.same({ name = "East" }, atlas.continent(1))
+    assert.same({ name = "Vale", continent = 1, seal = 101, complete = true }, atlas.zone(10))
+    assert.same({ name = "East", complete = true }, atlas.continent(1))
     assert.same({ 10, 11, 20, 21 }, atlas.zoneKeys())
     assert.same(allianceE(), atlas.progress(fx.entries(), "Alliance"))
   end)
@@ -619,28 +641,32 @@ describe("Collection progress", function()
       local p = atlas.progress(fx.entries(), case[2]())
       assert.same(anyE(), p)
       assert.is_nil(p.faction)
-      assert.same({ signed = 1, total = 2, continent = 2 }, p.byZone[20])
+      assert.same({ signed = 1, total = 2, continent = 2, complete = true }, p.byZone[20])
     end)
   end
 
   it("empty data: nothing to count, every entry unknown", function()
     local p = Collection.bind({}, {}, {}).progress(fx.entries(), "Alliance")
     assert.same({ faction = "Alliance", signed = 0, total = 0, byContinent = {}, byZone = {},
-      inns = {}, unknown = 7, truncated = false }, p)
+      inns = {}, unknown = 7, truncated = false, complete = false }, p)
+    assert.is_nil(p.done)
+    -- Marked complete, an empty atlas still has no done: nothing to sign (total 0).
+    p = Collection.bind({}, {}, {}, true).progress(fx.entries(), "Alliance")
+    assert.is_true(p.complete)
     assert.is_nil(p.done)
   end)
 
   it("an inn removed from the data after you signed it counts as unknown", function()
     local inns, zones, conts = fx.places()
     inns[5101] = nil
-    local p = Collection.bind(inns, zones, conts).progress(fx.entries(), "Alliance")
+    local p = Collection.bind(inns, zones, conts, true).progress(fx.entries(), "Alliance")
     assert.equal(3, p.total)
     assert.equal(3, p.signed)
     assert.equal(2, p.unknown)
     assert.is_nil(p.byZone[11])
     assert.is_nil(p.inns[5101])
     assert.equal(T + 300, p.done)
-    assert.same({ signed = 2, total = 2, done = T + 300 }, p.byContinent[1])
+    assert.same({ signed = 2, total = 2, done = T + 300, complete = true }, p.byContinent[1])
   end)
 
   it("repeat signatures of one inn count once in signed, three times in count", function()
@@ -804,6 +830,185 @@ describe("Collection progress", function()
 end)
 
 -- ---------------------------------------------------------------------------
+-- 3.11 Completeness marks: `done` only for places the data marks complete.
+
+describe("Collection completeness marks", function()
+  -- allianceE() as F0 gives it: every count the same, no done, every complete false.
+  local function allianceF0()
+    local r = allianceE()
+    r.done, r.complete = nil, false
+    for _, map in ipairs({ r.byZone, r.byContinent }) do
+      for _, item in pairs(map) do
+        item.done, item.complete = nil, false
+      end
+    end
+    return r
+  end
+
+  it("F0 (no marks): no done anywhere, every complete false", function()
+    local atlas = Collection.bind(fx.placesF0())
+    assert.same({}, atlas.invalid)
+    assert.same(allianceF0(), atlas.progress(fx.entries(), "Alliance"))
+    for _, faction in ipairs({ "Horde", false }) do
+      local p = atlas.progress(fx.entries(), faction or nil)
+      assert.is_nil(p.done)
+      assert.is_false(p.complete)
+      for _, map in ipairs({ p.byZone, p.byContinent }) do
+        for _, item in pairs(map) do
+          assert.is_nil(item.done)
+          assert.is_false(item.complete)
+        end
+      end
+    end
+    assert.same({ name = "Vale", continent = 1, seal = 101, complete = false }, atlas.zone(10))
+    assert.same({ name = "East", complete = false }, atlas.continent(1))
+    assert.is_false(atlas.complete())
+  end)
+
+  it("F0 with atlasComplete true but no continent marked: not complete", function()
+    local inns, zones, conts = fx.placesF0()
+    local atlas = Collection.bind(inns, zones, conts, true)
+    assert.is_false(atlas.complete())
+    assert.same(allianceF0(), atlas.progress(fx.entries(), "Alliance"))
+  end)
+
+  it("one zone marked (Vale): its done returns, nothing else", function()
+    local inns, zones, conts = fx.placesF0()
+    zones[10].complete = true
+    local atlas = Collection.bind(inns, zones, conts)
+    local want = allianceF0()
+    want.byZone[10].done, want.byZone[10].complete = T + 300, true
+    assert.same(want, atlas.progress(fx.entries(), "Alliance"))
+    assert.is_true(atlas.zone(10).complete)
+    assert.is_false(atlas.continent(1).complete)
+  end)
+
+  it("a marked continent over an unmarked zone is not complete", function()
+    local inns, zones, conts = fx.placesF0()
+    conts[1].complete = true
+    zones[10].complete = true -- Marsh (11) stays unmarked
+    local atlas = Collection.bind(inns, zones, conts)
+    assert.same({}, atlas.invalid)
+    assert.same({ name = "East", complete = false }, atlas.continent(1))
+    local p = atlas.progress(fx.entries(), "Alliance")
+    assert.same({ signed = 3, total = 3, complete = false }, p.byContinent[1])
+    assert.is_nil(p.byZone[11].done)
+  end)
+
+  it("a continent and all its zones marked: complete, with its done", function()
+    local inns, zones, conts = fx.placesF0()
+    conts[1].complete, zones[10].complete, zones[11].complete = true, true, true
+    local atlas = Collection.bind(inns, zones, conts)
+    assert.is_true(atlas.continent(1).complete)
+    local p = atlas.progress(fx.entries(), "Alliance")
+    assert.same({ signed = 3, total = 3, done = T + 400, complete = true }, p.byContinent[1])
+    assert.same({ signed = 1, total = 1, complete = false }, p.byContinent[2])
+    assert.is_false(p.complete)
+    assert.is_nil(p.done)
+  end)
+
+  it("atlasComplete without every continent complete: no overall done", function()
+    local inns, zones, conts = fx.places()
+    zones[21].complete = nil -- West has an unmarked zone (Horde's)
+    local atlas = Collection.bind(inns, zones, conts, true)
+    assert.is_false(atlas.complete())
+    assert.is_false(atlas.continent(2).complete)
+    local p = atlas.progress(fx.entries(), "Alliance")
+    assert.is_false(p.complete)
+    assert.is_nil(p.done) -- Alliance signed every inn open to it
+    assert.equal(p.total, p.signed)
+    assert.is_nil(p.byContinent[2].done)
+    assert.equal(T + 100, p.byZone[20].done)
+  end)
+
+  it("every mark and atlasComplete true: the F result", function()
+    assert.is_true(atlasF().complete())
+    assert.same(allianceE(), atlasF().progress(fx.entries(), "Alliance"))
+    -- Without the fourth argument, every place is complete but the atlas isn't.
+    local inns, zones, conts = fx.places()
+    local p = Collection.bind(inns, zones, conts).progress(fx.entries(), "Alliance")
+    local want = allianceE()
+    want.done, want.complete = nil, false
+    assert.same(want, p)
+  end)
+
+  -- Any complete value but true excludes the record (fail closed).
+  local BAD_MARKS = {
+    { "false", function() return false end },
+    { "1", function() return 1 end },
+    { "\"true\"", function() return "true" end },
+    { "\"yes\"", function() return "yes" end },
+    { "a table", function() return {} end },
+    { "a table whose __eq says true", function()
+      return setmetatable({}, { __eq = function() return true end })
+    end },
+    { "the hostile table stand-in", fx.hostileTable },
+    { "the newproxy stand-in", fx.hostileProxy },
+  }
+
+  for _, case in ipairs(BAD_MARKS) do
+    it("a zone with complete = " .. case[1] .. " is excluded and named", function()
+      local inns, zones, conts = fx.places()
+      zones[11].complete = case[2]()
+      local atlas
+      assert.has_no.errors(function()
+        atlas = Collection.bind(inns, zones, conts, true)
+      end)
+      assert.same({ "inn 5101", "zone 11" }, atlas.invalid)
+      assert.is_nil(atlas.zone(11))
+      -- The rest is still complete: zone 11 is no longer East's.
+      assert.is_true(atlas.continent(1).complete)
+    end)
+
+    it("a continent with complete = " .. case[1] .. " is excluded, and it cascades",
+      function()
+        local inns, zones, conts = fx.places()
+        conts[2].complete = case[2]()
+        local atlas = Collection.bind(inns, zones, conts, true)
+        assert.same({ "continent 2", "inn 5201", "inn 5202", "inn 5301", "zone 20", "zone 21" },
+          atlas.invalid)
+        assert.is_nil(atlas.continent(2))
+        assert.same({ 10, 11 }, atlas.zoneKeys())
+        assert.is_true(atlas.complete())
+      end)
+  end
+
+  for _, case in ipairs({
+    { "nil", function() return nil end },
+    { "false", function() return false end },
+    { "1", function() return 1 end },
+    { "\"true\"", function() return "true" end },
+    { "{}", function() return {} end },
+    { "a table whose __eq says true", function()
+      return setmetatable({}, { __eq = function() return true end })
+    end },
+    { "the hostile table stand-in", fx.hostileTable },
+    { "the newproxy stand-in", fx.hostileProxy },
+  }) do
+    it("atlasComplete " .. case[1] .. " counts as not complete", function()
+      local inns, zones, conts = fx.places()
+      local atlas
+      assert.has_no.errors(function()
+        atlas = Collection.bind(inns, zones, conts, case[2]())
+      end)
+      assert.same({}, atlas.invalid)
+      assert.is_false(atlas.complete())
+      local p = atlas.progress(fx.entries(), "Alliance")
+      assert.is_false(p.complete)
+      assert.is_nil(p.done)
+      assert.equal(T + 400, p.byContinent[1].done) -- places keep their own marks
+    end)
+  end
+
+  it("complete() always answers exactly true or false", function()
+    for _, atlas in ipairs({ atlasF(), Collection.bind(fx.placesF0()), Collection.bind() }) do
+      local c = atlas.complete()
+      assert.is_true(rawequal(c, true) or rawequal(c, false))
+    end
+  end)
+end)
+
+-- ---------------------------------------------------------------------------
 -- 6.6 The real data (Data/Inns.lua fills in during #12's walk).
 
 describe("Data/Inns (the shipped places)", function()
@@ -874,6 +1079,33 @@ describe("Data/Inns (the shipped places)", function()
     local guid = "Creature-0-4615-2991-62-254089-0000407142"
     assert.equal(254089, NS.Ledger.innFromNpcGUID(guid, DATA.Inns))
     assert.equal(254089, Collection.innOf(254089))
+  end)
+
+  it("every completeness mark is exactly true; AtlasComplete is absent or a boolean",
+    function()
+      for _, kind in ipairs({ "Zones", "Continents" }) do
+        for key, rec in pairs(DATA[kind]) do
+          assert.is_true(rec.complete == nil or rawequal(rec.complete, true), kind .. " " .. key)
+        end
+      end
+      local ac = DATA.AtlasComplete
+      assert.is_true(ac == nil or type(ac) == "boolean")
+      if ac ~= true then
+        assert.is_false(Collection.complete())
+      end
+    end)
+
+  it("ships no marks yet: a signature at Calmbreeze completes nothing (#110)", function()
+    -- Until the walk knows Zephras Isle and Azeroth in full, they stay unmarked.
+    assert.is_false(Collection.complete())
+    assert.is_false(Collection.zone(2521).complete)
+    assert.is_false(Collection.continent(947).complete)
+    local p = Collection.progress({ { inn = 254089, t = T, phrase = { 1 } } }, "Alliance")
+    assert.equal(1, p.signed)
+    assert.equal(1, p.total)
+    assert.is_nil(p.done)
+    assert.is_nil(p.byZone[2521].done)
+    assert.is_nil(p.byContinent[947].done)
   end)
 
   it("zone seals are unique and in 101..999", function()

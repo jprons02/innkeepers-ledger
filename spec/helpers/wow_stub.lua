@@ -121,6 +121,7 @@ local function new_frame(name, kind, parent, template)
   function frame:SetScript(kind_, fn) self.scripts[kind_] = fn end
   function frame:GetScript(kind_) return self.scripts[kind_] end
   function frame:EnableMouse(on) self.mouse = on end
+  function frame:EnableMouseWheel(on) self.mouseWheel = on end
   function frame:Enable() self.enabled = true end
   function frame:Disable() self.enabled = false end
   function frame:IsEnabled() return self.enabled end

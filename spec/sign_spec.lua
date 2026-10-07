@@ -371,28 +371,45 @@ describe("Sign: signing", function()
     assert.equal("Sign the guestbook", ui.title:GetText())
     assert.equal("Calmbreeze Inn", ui.inn:GetText())
     assert.equal("Rested here, dreaming of home.", ui.preview:GetText())
-    assert.equal("Rested here, dreaming of ___.", ui.rows.t1.label:GetText())
-    assert.equal("Voice: Hearthside", ui.rows.v1.label:GetText())
-    assert.is_true(ui.rows.v1.next:IsShown())
-    assert.is_false(ui.rows.v2.label:IsShown())
-    assert.is_true(ui.rows.w1.label:IsShown())
-    assert.is_false(ui.rows.c.label:IsShown())
+    local lists = ui.lists
+    assert.equal("Rested here, dreaming of ___.", lists.template.rows[1].text:GetText())
+    assert.is_true(lists.template.rows[1].mark:IsShown())
+    assert.equal("Hearthside", lists.voice.rows[1].button:GetText())
+    assert.is_false(lists.voice.rows[1].button:IsEnabled())
+    assert.is_true(lists.voice.frame:IsShown())
+    assert.is_true(lists.word.frame:IsShown())
+    assert.is_true(lists.cat.frame:IsShown())
+    assert.is_false(lists.conj.frame:IsShown())
+    assert.is_false(ui.line2:IsShown())
     assert.is_false(ui.rows.seal.prev:IsShown())
     assert.equal("Add a second line", ui.toggle:GetText())
 
-    ui.rows.t1.next:Click()
-    ui.rows.w1.next:Click()
+    lists.template.rows[2].button:Click()
+    lists.word.rows[2].button:Click()
     assert.equal("Lingered a day longer for the hearth.", ui.preview:GetText())
     ui.toggle:Click()
     assert.equal("Remove the second line", ui.toggle:GetText())
-    assert.is_true(ui.rows.c.label:IsShown())
-    assert.is_true(ui.rows.v2.label:IsShown())
-    assert.equal("Voice: Hearthside", ui.rows.v2.label:GetText())
-    assert.is_true(ui.rows.w2.next:IsShown())
+    assert.is_true(ui.line2:IsShown())
+    assert.equal("Second line", ui.line2:GetText())
+    assert.is_false(ui.line2:IsEnabled()) -- editing line 2 now
+    assert.is_true(ui.line1:IsEnabled())
+    assert.is_true(lists.conj.frame:IsShown())
+    assert.equal("And then...", lists.conj.rows[1].button:GetText())
+    assert.is_false(lists.conj.rows[1].button:IsEnabled())
+    assert.equal("Hearthside", lists.voice.rows[1].button:GetText())
+    assert.is_false(lists.voice.rows[1].button:IsEnabled()) -- line 2's voice follows
+    assert.is_true(lists.template.rows[1].mark:IsShown()) -- line 2's own template
+    assert.is_false(lists.template.rows[2].mark:IsShown())
+    assert.is_true(lists.word.frame:IsShown())
     assert.equal("Lingered a day longer for the hearth. And then... Rested here, dreaming of "
       .. "home.", ui.preview:GetText())
-    ui.rows.t2.prev:Click() -- the last template has no slot
-    assert.is_false(ui.rows.w2.label:IsShown())
+    for _ = 1, 5 do
+      lists.template.next:Click()
+    end
+    assert.is_false(lists.template.next:IsEnabled())
+    lists.template.rows[8].button:Click() -- the last template has no slot
+    assert.is_false(lists.word.frame:IsShown())
+    assert.is_false(lists.cat.frame:IsShown())
     assert.equal("Lingered a day longer for the hearth. And then... Thank you for everything.",
       ui.preview:GetText())
 
@@ -412,15 +429,22 @@ describe("Sign: signing", function()
     local ns = login()
     click(ns)
     local ui = ns.Sign.ui
-    ui.rows.v1.next:Click()
-    assert.equal("Voice: Bardic", ui.rows.v1.label:GetText())
+    local voices = ui.lists.voice.rows
+    voices[2].button:Click()
+    assert.equal("Bardic", voices[2].button:GetText())
+    assert.is_false(voices[2].button:IsEnabled())
+    assert.is_true(voices[1].button:IsEnabled())
     assert.equal("Let the ballads tell of home!", ui.preview:GetText())
     ui.toggle:Click()
-    assert.equal("Voice: Bardic", ui.rows.v2.label:GetText()) -- follows line 1
-    ui.rows.v2.next:Click()
-    assert.equal("Voice: Grumbler", ui.rows.v2.label:GetText())
+    assert.is_false(voices[2].button:IsEnabled()) -- line 2 follows line 1
+    voices[3].button:Click()
+    assert.equal("Grumbler", voices[3].button:GetText())
+    assert.is_false(voices[3].button:IsEnabled())
     assert.equal("Let the ballads tell of home! Mind you... Can't fault home.",
       ui.preview:GetText())
+    ui.line1:Click()
+    assert.is_false(voices[2].button:IsEnabled()) -- line 1 is still Bardic
+    assert.is_true(voices[3].button:IsEnabled())
     ui.sign:Click()
     assert.same({ { inn = CALM, t = NOW, phrase = { 201, 1001, 521, 231, 1001 } } }, saved().own)
   end)
@@ -450,7 +474,7 @@ describe("Sign: signing", function()
     local window = spyWindow(ns)
     click(ns)
     local composer, session = ns.Sign.ui.composer, ns.Sign.session
-    ns.Sign.ui.rows.t1.next:Click()
+    ns.Sign.ui.lists.template.rows[2].button:Click()
     click(ns)
     assert.equal(composer, ns.Sign.ui.composer)
     assert.equal(session, ns.Sign.session)
@@ -512,7 +536,7 @@ describe("Sign: signing", function()
     state.npc = CALM_GUID
     click(ns)
     local session = ns.Sign.session
-    ns.Sign.ui.rows.t1.next:Click()
+    ns.Sign.ui.lists.template.rows[2].button:Click()
     wow.fire("GOSSIP_SHOW")
     assert.equal(session, ns.Sign.session)
     assert.is_true(composerShown(ns))
@@ -546,6 +570,227 @@ describe("Sign: signing", function()
     click(ns)
     ns.Sign.ui.sign:Click()
     assert.equal(2, #saved().own)
+  end)
+end)
+
+describe("Sign: the composer's lists (#102)", function()
+  after_each(function()
+    assert.same({}, wow.errors)
+    wow.uninstall()
+  end)
+
+  -- A template's label as the composer shows it: the slot as ___.
+  local function label(ns, id)
+    local text = ns.Phrase.text(id)
+    local a = text:find("{w}", 1, true)
+    if a then
+      return text:sub(1, a - 1) .. "___" .. text:sub(a + 3)
+    end
+    return text
+  end
+
+  -- The texts of a list's shown rows.
+  local function texts(list)
+    local out = {}
+    for _, row in ipairs(list.rows) do
+      if row.button:IsShown() then
+        out[#out + 1] = row.text and row.text:GetText() or row.button:GetText()
+      end
+    end
+    return out
+  end
+
+  local function marks(list)
+    local n = 0
+    for _, row in ipairs(list.rows) do
+      if row.button:IsShown() and row.mark:IsShown() then
+        n = n + 1
+      end
+    end
+    return n
+  end
+
+  local function wheel(list, delta)
+    list.frame.scripts.OnMouseWheel(list.frame, delta)
+  end
+
+  it("builds plain lists: text rows with a gold mark, a wheel, page buttons", function()
+    local ns = login()
+    click(ns)
+    local lists = ns.Sign.ui.lists
+    for _, key in ipairs({ "voice", "conj", "template", "cat", "word" }) do
+      local list = lists[key]
+      assert.equal(ns.Sign.ui.composer, list.frame.parent, key)
+      assert.is_true(list.frame.mouseWheel, key)
+      assert.is_function(list.frame.scripts.OnMouseWheel, key)
+      assert.equal("UIPanelButtonTemplate", list.prev.template, key)
+      assert.equal("UIPanelButtonTemplate", list.next.template, key)
+    end
+    for _, key in ipairs({ "template", "cat", "word" }) do
+      for _, row in ipairs(lists[key].rows) do
+        assert.equal("Button", row.button.kind)
+        assert.is_nil(row.button.template)
+        assert.equal("GameFontHighlightSmall", row.text.template)
+        assert.same({ 1, 0.82, 0, 0.25 }, row.mark.color)
+      end
+    end
+    assert.equal(8, #lists.template.rows)
+    assert.equal(9, #lists.cat.rows)
+    assert.equal(9, #lists.word.rows)
+    for _, key in ipairs({ "voice", "conj" }) do
+      assert.equal(8, #lists[key].rows)
+      for _, row in ipairs(lists[key].rows) do
+        assert.equal("UIPanelButtonTemplate", row.button.template)
+      end
+    end
+  end)
+
+  it("shows the voices as a strip, the chosen one disabled", function()
+    local ns = login()
+    click(ns)
+    local ui = ns.Sign.ui
+    local voice = ui.lists.voice
+    assert.same({ "Hearthside", "Bardic", "Grumbler", "Scholar", "Rowdy", "Mystic", "Sailor",
+      "Noble" }, texts(voice))
+    for i, row in ipairs(voice.rows) do
+      assert.equal(i ~= 1, row.button:IsEnabled())
+    end
+    assert.is_false(voice.prev:IsShown()) -- eight voices fit
+    assert.is_false(voice.next:IsShown())
+    assert.is_false(ui.line1:IsEnabled()) -- editing line 1
+    assert.equal("First line", ui.line1:GetText())
+
+    voice.rows[2].button:Click() -- Bardic
+    local P = ns.Phrase
+    assert.equal(label(ns, P.templates(2)[1]), ui.lists.template.rows[1].text:GetText())
+    assert.equal(#P.templates(2) > 8, ui.lists.template.next:IsShown())
+    ui.toggle:Click() -- line 2 follows: Bardic there too
+    assert.is_false(voice.rows[2].button:IsEnabled())
+    assert.equal(#P.conjunctions(2), #texts(ui.lists.conj))
+    assert.equal(P.text(P.conjunctions(2)[1]), ui.lists.conj.rows[1].button:GetText())
+    ui.lists.conj.rows[2].button:Click()
+    assert.is_false(ui.lists.conj.rows[2].button:IsEnabled())
+    assert.is_true(ui.lists.conj.rows[1].button:IsEnabled())
+    ui.line1:Click()
+    assert.is_false(ui.lists.conj.frame:IsShown()) -- line 1 has no conjunction
+    assert.is_false(ui.line1:IsEnabled())
+    assert.is_true(ui.line2:IsEnabled())
+  end)
+
+  it("pages and wheels the template list, stopping at both ends", function()
+    local ns = login()
+    click(ns)
+    local P = ns.Phrase
+    local ids = P.templates(1)
+    assert.equal(36, #ids)
+    local list = ns.Sign.ui.lists.template
+    local function firstShown()
+      return list.rows[1].text:GetText()
+    end
+    assert.equal(8, #texts(list))
+    assert.is_true(list.prev:IsShown())
+    assert.is_true(list.next:IsShown())
+    assert.is_false(list.prev:IsEnabled())
+    assert.is_true(list.next:IsEnabled())
+    assert.equal(label(ns, ids[1]), firstShown())
+
+    list.next:Click()
+    local want = {}
+    for i = 9, 16 do
+      want[#want + 1] = label(ns, ids[i])
+    end
+    assert.same(want, texts(list))
+    assert.is_true(list.prev:IsEnabled())
+    wheel(list, -1) -- down one row
+    assert.equal(label(ns, ids[10]), firstShown())
+    wheel(list, 1)
+    assert.equal(label(ns, ids[9]), firstShown())
+    wheel(list, "junk")
+    assert.equal(label(ns, ids[9]), firstShown())
+
+    for _ = 1, 3 do
+      list.prev:Click()
+      ns.Sign:Scroll("template", -8) -- past the top, even with the button disabled
+    end
+    assert.equal(label(ns, ids[1]), firstShown())
+    wheel(list, 1)
+    assert.equal(label(ns, ids[1]), firstShown())
+    assert.is_false(list.prev:IsEnabled())
+
+    for _ = 1, 10 do
+      ns.Sign:Scroll("template", 8)
+    end
+    assert.equal(label(ns, ids[29]), firstShown())
+    assert.equal(label(ns, ids[36]), list.rows[8].text:GetText())
+    assert.is_false(list.next:IsEnabled())
+    wheel(list, -1)
+    assert.equal(label(ns, ids[29]), firstShown())
+
+    -- The chosen template (the first) is out of view: no row is marked.
+    assert.equal(0, marks(list))
+    list.rows[3].button:Click()
+    assert.equal(1, marks(list))
+    assert.is_true(list.rows[3].mark:IsShown())
+    assert.equal(P.render({ ids[31], P.hasSlot(ids[31]) and 1001 or nil }),
+      ns.Sign.ui.preview:GetText())
+  end)
+
+  it("hides page buttons when all fits, and the word lists for a slotless template", function()
+    local ns = login()
+    click(ns)
+    local lists = ns.Sign.ui.lists
+    assert.equal(9, #texts(lists.cat))
+    assert.is_false(lists.cat.prev:IsShown())
+    assert.is_false(lists.cat.next:IsShown())
+    assert.is_true(lists.word.next:IsShown()) -- 20 words, 9 rows
+    ns.Sign:Scroll("template", 100)
+    lists.template.rows[8].button:Click() -- 111, no slot
+    assert.is_false(lists.cat.frame:IsShown())
+    assert.is_false(lists.word.frame:IsShown())
+    assert.is_false(lists.word.next:IsShown())
+    assert.is_false(lists.word.rows[1].button:IsShown())
+    assert.equal("Thank you for everything.", ns.Sign.ui.preview:GetText())
+  end)
+
+  it("follows the category clicked, with one mark per list", function()
+    local ns = login()
+    click(ns)
+    local P = ns.Phrase
+    local lists = ns.Sign.ui.lists
+    assert.equal(1, marks(lists.cat))
+    assert.is_true(lists.cat.rows[1].mark:IsShown())
+    assert.equal(1, marks(lists.word))
+    lists.word.next:Click()
+    lists.cat.rows[3].button:Click()
+    assert.equal(1, marks(lists.cat))
+    assert.is_true(lists.cat.rows[3].mark:IsShown())
+    local want = {}
+    for i = 1, 9 do
+      want[i] = P.text(P.words(3)[i])
+    end
+    assert.same(want, texts(lists.word)) -- the new category's words, from the top
+    assert.equal(1, marks(lists.word))
+    assert.is_true(lists.word.rows[1].mark:IsShown())
+    lists.word.rows[4].button:Click()
+    assert.equal(1, marks(lists.word))
+    assert.is_true(lists.word.rows[4].mark:IsShown())
+    assert.equal(P.render({ 1, P.words(3)[4] }), ns.Sign.ui.preview:GetText())
+  end)
+
+  it("ignores a click on an empty row or an unknown list", function()
+    local ns = login()
+    click(ns)
+    local before = ns.Sign.ui.preview:GetText()
+    ns.Sign:Pick("template", nil)
+    ns.Sign:Pick("nope", 2)
+    ns.Sign:Scroll("nope", 8)
+    ns.Sign:Pick({}, 2)
+    assert.equal(before, ns.Sign.ui.preview:GetText())
+    ns.Sign:Cancel()
+    ns.Sign:Pick("template", 2) -- no session
+    ns.Sign:Scroll("template", 8)
+    ns.Sign:SetLine(2)
+    assert.is_nil(ns.Sign.session)
   end)
 end)
 
@@ -620,7 +865,7 @@ describe("Sign: errors stay inside", function()
     click(ns)
     ns.Sign.session.draft = {} -- every draft method is gone now
     local n = #wow.chat
-    ns.Sign.ui.rows.t1.next:Click()
+    ns.Sign.ui.lists.template.rows[2].button:Click()
     ns.Sign.ui.toggle:Click()
     ns.Sign.ui.sign:Click()
     ns.Sign.flow.innAt = function() error("raised on purpose") end
@@ -630,8 +875,28 @@ describe("Sign: errors stay inside", function()
     _G.GossipFrame = nil
     ns.Sign.ui.button = nil
     wow.fire("GOSSIP_CLOSED")
-    local want = { "sign: error in step", "sign: error in toggle", "sign: error in commit",
+    local want = { "sign: error in pick", "sign: error in toggle", "sign: error in commit",
       "sign: error in gossip show", "sign: error in login" }
+    local lines = chatSince(n)
+    assert.equal(#want, #lines)
+    for i, text in ipairs(want) do
+      assert.is_true(has(lines[i], text), lines[i])
+    end
+  end)
+
+  it("logs an error in the seal row, a page button, the wheel or a line tab", function()
+    local ns = login()
+    ns.Core:ToggleDebug()
+    click(ns)
+    local list = ns.Sign.ui.lists.template
+    ns.Sign.session.draft = {}
+    local n = #wow.chat
+    ns.Sign.ui.rows.seal.next:Click()
+    list.next:Click()
+    list.frame.scripts.OnMouseWheel(list.frame, -1)
+    ns.Sign:SetLine(1)
+    local want = { "sign: error in step", "sign: error in scroll", "sign: error in wheel",
+      "sign: error in line" }
     local lines = chatSince(n)
     assert.equal(#want, #lines)
     for i, text in ipairs(want) do

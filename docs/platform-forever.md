@@ -198,9 +198,14 @@ in the sections above. **Partly** means the rest of the item is still open.
         partial-data effect in [status.md](status.md) → Follow-ups (release gate)
   - [x] a second click the same week → "You've signed this guestbook this week. Sign
         again after the weekly reset (in 19 hours)." ✅, i.e. Tuesday 16:00 UTC
-  - [ ] the voice rows (#100): "Voice: Hearthside" above line 1, stepping it changes
-        the line's templates, line 2's voice follows until stepped, and the taller
-        (530-pixel) composer has no overlapping rows. A screenshot for the maintainer
+  - [ ] the list composer (#102, replacing the voice rows of #100): the voice strip, the
+        template list and the category and word lists render, with the faint gold
+        selection mark (`SetColorTexture`) on the chosen row; clicking a row picks it and
+        the preview follows; `<` `>` page the template and word lists; **the mouse wheel
+        scrolls them** (`EnableMouseWheel` / `OnMouseWheel` are unverified on Forever);
+        the "First line" / "Second line" tabs switch lines and line 2 shows the
+        conjunction strip; long voice and conjunction names fit their buttons; nothing
+        overlaps in the ~600-pixel frame. A screenshot of each line for the maintainer
   - [ ] closing the gossip mid-compose hides the composer; talking to another NPC with it
         open closes it; *I would like to buy from you.* closes it too (`GOSSIP_CLOSED`)
   - [ ] after the next weekly reset (Tuesday 2026-10-06 16:00 UTC): the seal row offers Zephras

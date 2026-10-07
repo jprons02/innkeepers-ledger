@@ -57,9 +57,10 @@ arguments, so tests don't need a WoW stub. That includes libraries: `Export` can
    ([specs/book.md](specs/book.md) §3.12). Both show at every known innkeeper; a Sign
    click that can't sign says why in one chat line (no ledger, read-only, signed this
    week, not resting).
-3. The player composes a phrase in the composer (arrow cyclers over a voice per line,
-   templates, categories, words and conjunctions, an optional second line and an optional
-   seal) and confirms. No recent phrases in v1.
+3. The player composes a phrase in the composer, one line at a time (lists of voices,
+   templates, categories, words and conjunctions, an optional second line, and a cycler
+   for the optional seal; [specs/sign.md](specs/sign.md) §3.7) and confirms. No recent
+   phrases in v1.
 4. Conditions: `IsResting()` must be exactly `true`, and the ledger's weekly rule must
    allow the inn. There is no sitting requirement: the client has no query for it
    ([platform-forever.md](platform-forever.md) → *Sitting detection*).

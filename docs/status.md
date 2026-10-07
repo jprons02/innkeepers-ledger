@@ -86,5 +86,4 @@ rest of the signing checks; a second character in a party (round-trips,
   load-time asserts; `Ledger`'s quadratic load-time cap pass on a tampered file;
   `Sign.lua`'s `listField` builds a full `view()` per click. Publish `Data/*` for export
   consumers once inns exist.
-- Delete GitHub's default labels (maintainer call). Move September decisions to
-  `docs/archive/` (`decisions.md` ~1 580 lines). Archive [kickoff.md](kickoff.md) at v1.
+- Delete GitHub's default labels (maintainer call). Archive [kickoff.md](kickoff.md) at v1.

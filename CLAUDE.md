@@ -19,7 +19,7 @@ task needs, using the "Read when" column. Don't read everything.
 |---|---|---|
 | [docs/status.md](docs/status.md) | current state, next step, open questions, what's waiting on the maintainer | always |
 | [docs/decisions.md](docs/decisions.md) | the decision log: dated decisions, reasons, rejected options (newest first) | a question may already be settled; before proposing a change in direction |
-| [docs/archive/decisions-2026-09.md](docs/archive/decisions-2026-09.md) | the 2026-09-25 seed product decisions (target, inns only, phrases, sync scope, own signatures, cosmetics, export, license) | `decisions.md`'s index points there; a product question may already be settled |
+| [docs/archive/decisions-2026-09.md](docs/archive/decisions-2026-09.md) | every September 2026 decision: the 2026-09-25 seed product decisions (target, inns only, phrases, sync scope, own signatures, cosmetics, export, license) and the 09-26..30 build-out (sync, ledger, export, collection, cosmetics, phrases, CI, security, process) | `decisions.md`'s index points there; a product question may already be settled |
 | [docs/vision.md](docs/vision.md) | what we're building, the feel it must have, post-v1 directions | product or UX choices, wording, "should we build X" |
 | [docs/architecture.md](docs/architecture.md) | modules, data model, signing flow, sync protocol, **security model** | any code; sync, validation, storage caps, new modules |
 | [docs/testing.md](docs/testing.md) | testing posture: what gets tested hard, module pattern and strict env, the WoW stub, hostile-input tests, fuzzing, coverage floors | writing or reviewing tests; `spec/helpers/`, `.luacheckrc`, CI or a coverage floor; the in-client probe (`/ilp`, `spike/12-probe`) |

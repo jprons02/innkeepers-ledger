@@ -118,6 +118,18 @@ local function allianceEmpty()
   return r
 end
 
+-- A result as it is when nothing is complete (no marks, or the #118 guard): every count
+-- the same, no done anywhere, every complete false.
+local function uncompleted(r)
+  r.done, r.complete = nil, false
+  for _, map in ipairs({ r.byZone, r.byContinent }) do
+    for _, item in pairs(map) do
+      item.done, item.complete = nil, false
+    end
+  end
+  return r
+end
+
 -- ---------------------------------------------------------------------------
 
 describe("Collection module", function()
@@ -336,8 +348,9 @@ describe("Collection.bind", function()
       change(inns, zones, conts)
       local atlas = Collection.bind(inns, zones, conts, true)
       assert.same({ label }, atlas.invalid)
-      -- The rest of F still binds.
-      assert.same(allianceE(), atlas.progress(fx.entries(), "Alliance"))
+      -- The rest of F still binds, but nothing is complete (spec 3.11, #118).
+      assert.same(uncompleted(allianceE()), atlas.progress(fx.entries(), "Alliance"))
+      assert.is_false(atlas.complete())
       assert.same({ 10, 11, 20, 21 }, atlas.zoneKeys())
       assert.is_nil(atlas.inn(5401))
       assert.is_nil(atlas.innOf(5401))
@@ -464,7 +477,7 @@ describe("Collection.bind", function()
       assert.is_nil(atlas.continent(947))
       assert.is_nil(atlas.zone(947))
       assert.same({ 10, 11, 20, 21 }, atlas.zoneKeys())
-      assert.same(allianceE(), atlas.progress(fx.entries(), "Alliance"))
+      assert.same(uncompleted(allianceE()), atlas.progress(fx.entries(), "Alliance"))
     end)
 
   it("a key in both tables excludes both even when one record is junk (fail closed)",
@@ -500,7 +513,7 @@ describe("Collection.bind", function()
     atlas = Collection.bind(inns, zones, conts, true)
     assert.same({ "continent 30", "continent 31", "inn 5401", "zone 30", "zone 31" },
       atlas.invalid)
-    assert.same(allianceE(), atlas.progress(fx.entries(), "Alliance"))
+    assert.same(uncompleted(allianceE()), atlas.progress(fx.entries(), "Alliance"))
   end)
 
   it("an alias to an excluded inn is excluded too", function()
@@ -835,14 +848,7 @@ end)
 describe("Collection completeness marks", function()
   -- allianceE() as F0 gives it: every count the same, no done, every complete false.
   local function allianceF0()
-    local r = allianceE()
-    r.done, r.complete = nil, false
-    for _, map in ipairs({ r.byZone, r.byContinent }) do
-      for _, item in pairs(map) do
-        item.done, item.complete = nil, false
-      end
-    end
-    return r
+    return uncompleted(allianceE())
   end
 
   it("F0 (no marks): no done anywhere, every complete false", function()
@@ -956,8 +962,10 @@ describe("Collection completeness marks", function()
       end)
       assert.same({ "inn 5101", "zone 11" }, atlas.invalid)
       assert.is_nil(atlas.zone(11))
-      -- The rest is still complete: zone 11 is no longer East's.
-      assert.is_true(atlas.continent(1).complete)
+      -- An exclusion makes nothing complete (#118), though East's other zone is marked.
+      assert.is_false(atlas.zone(10).complete)
+      assert.is_false(atlas.continent(1).complete)
+      assert.is_false(atlas.complete())
     end)
 
     it("a continent with complete = " .. case[1] .. " is excluded, and it cascades",
@@ -969,9 +977,68 @@ describe("Collection completeness marks", function()
           atlas.invalid)
         assert.is_nil(atlas.continent(2))
         assert.same({ 10, 11 }, atlas.zoneKeys())
-        assert.is_true(atlas.complete())
+        -- An exclusion makes nothing complete (#118), though East is marked in full.
+        assert.is_false(atlas.continent(1).complete)
+        assert.is_false(atlas.complete())
       end)
   end
+
+  -- #118: on F (all marked), one excluded record of any kind makes nothing complete.
+  for _, case in ipairs(fx.excludedCases()) do
+    it("fails closed on " .. case[1] .. ": nothing complete, no done (#118)", function()
+      local inns, zones, conts = fx.places()
+      case[2](inns, zones, conts)
+      local atlas
+      assert.has_no.errors(function()
+        atlas = Collection.bind(inns, zones, conts, true)
+      end)
+      assert.same(case[3], atlas.invalid)
+      assert.is_false(atlas.complete())
+      local zoneKeys = atlas.zoneKeys()
+      assert.is_true(#zoneKeys >= 3)
+      for _, k in ipairs(zoneKeys) do
+        local z = atlas.zone(k)
+        assert.is_false(z.complete, "zone " .. k)
+        assert.is_false(atlas.continent(z.continent).complete, "continent " .. z.continent)
+      end
+      for _, faction in ipairs({ "Alliance", "Horde", false }) do
+        local p = atlas.progress(fx.entries(), faction or nil)
+        assert.is_true(p.total >= 1)
+        assert.is_false(p.complete)
+        assert.is_nil(p.done)
+        for _, map in ipairs({ p.byZone, p.byContinent }) do
+          assert.is_not_nil(next(map))
+          for key, item in pairs(map) do
+            assert.is_false(item.complete, tostring(key))
+            assert.is_nil(item.done, tostring(key))
+          end
+        end
+      end
+    end)
+  end
+
+  it("the #118 guard changes only complete and done: signed, total and keys as before",
+    function()
+      -- An extra inn at an unknown zone (5401) leaves every count of F as it was.
+      local inns, zones, conts = fx.places()
+      inns[5401] = { name = "Glen Inn", zone = 99 }
+      local atlas = Collection.bind(inns, zones, conts, true)
+      assert.same({ "inn 5401" }, atlas.invalid)
+      assert.same(uncompleted(allianceE()), atlas.progress(fx.entries(), "Alliance"))
+      assert.same(uncompleted(hordeE()), atlas.progress(fx.entries(), "Horde"))
+      assert.same(uncompleted(anyE()), atlas.progress(fx.entries(), nil))
+      assert.same({ 10, 11, 20, 21 }, atlas.zoneKeys())
+      assert.same({ name = "Vale", continent = 1, seal = 101, complete = false }, atlas.zone(10))
+      assert.same({ name = "East", complete = false }, atlas.continent(1))
+      -- Hill Inn excluded from Vale (marked): Vale's counts drop, and it isn't done.
+      inns, zones, conts = fx.places()
+      inns[5002].faction = "Neutral"
+      local p = Collection.bind(inns, zones, conts, true).progress(fx.entries(), "Alliance")
+      assert.same({ signed = 1, total = 1, continent = 1, complete = false }, p.byZone[10])
+      assert.equal(3, p.signed)
+      assert.equal(3, p.total)
+      assert.equal(2, p.unknown) -- e4 (Hill Inn) and e6
+    end)
 
   for _, case in ipairs({
     { "nil", function() return nil end },

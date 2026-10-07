@@ -40,6 +40,31 @@ function M.places()
   return inns, zones, conts, true
 end
 
+-- The fail-closed cases of spec 3.11 (#118): F (all marked, atlasComplete true) with one
+-- record excluded. Each is { label, change(inns, zones, conts), invalid, alliance }, where
+-- `alliance` is Alliance's unlocked list for E over catalog C as { id, t } pairs: only the
+-- `inns n` items, at the times of the inns still known.
+function M.excludedCases()
+  local T = M.T
+  return {
+    { "an inn of a marked zone with a bad field (Hill Inn, faction \"Neutral\")",
+      function(i) i[5002].faction = "Neutral" end, { "inn 5002" },
+      { { 1, T + 100 }, { 1001, T + 400 } } },
+    { "an inn whose zone isn't a kept zone", function(i)
+      i[5401] = { name = "Glen Inn", zone = 99 }
+    end, { "inn 5401" }, { { 1, T + 100 }, { 1001, T + 300 } } },
+    { "an alias to a missing primary", function(i) i[5401] = { alias = 5999 } end,
+      { "inn 5401" }, { { 1, T + 100 }, { 1001, T + 300 } } },
+    { "a non-table inn record", function(i) i[5401] = "Glen Inn" end, { "inn 5401" },
+      { { 1, T + 100 }, { 1001, T + 300 } } },
+    { "a zone record on another continent with a bad field (Dunes, a lowercase name)",
+      function(_, z) z[20].name = "dunes" end, { "inn 5201", "inn 5202", "zone 20" },
+      { { 1, T + 300 }, { 1001, T + 400 } } },
+    { "a bad continent key (\"3\")", function(_, _, c) c["3"] = { name = "North" } end,
+      { "continent <string>" }, { { 1, T + 100 }, { 1001, T + 300 } } },
+  }
+end
+
 -- Own entries E: e1..e7.
 function M.entries()
   local T = M.T

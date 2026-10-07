@@ -542,7 +542,8 @@ never errors on any string.
    in any position, or a sequence cut short by the end of `s` ‚Üí `false`. Overlongs,
    surrogates and anything above U+10FFFF can't decode, so they need no table rows.
 3. Look each code point up in `HIDDEN` (below) by binary search over its rows; inside a
-   row ‚Üí `false`.
+   row ‚Üí `false`. Printable ASCII (U+0020..U+007E) may skip the lookup: no row touches
+   it, and the row-edge tests pin that.
 4. Otherwise `true`.
 
 Cost: O(n log 48) for an n-byte string. `validName` caps its input at 96 bytes before
@@ -646,7 +647,9 @@ dropped at load with its entries, like any invalid record (`travelersDropped`), 
   or a future path.
 
 **Out of scope** (possible follow-ups): a limit on stacked combining marks ("zalgo"
-names); look-alike letters across scripts (identity is the GUID); format characters a
+names); strong right-to-left letters (Hebrew, Arabic; the client's font strings aren't
+known to apply bidi); symbols that render blank in some fonts (U+1D159); look-alike
+letters across scripts (identity is the GUID); format characters a
 later Unicode version adds (a new table row then).
 
 ### 5.3 Rate limits
@@ -734,7 +737,10 @@ clock.
     `"\226\130A"`, `"\240\159\152A"`; a bad later byte in each position `"\195\195"`,
     `"\225\65\128"`, `"\225\128\65"`, `"\241\65\128\128"`, `"\241\128\65\128"`,
     `"\241\128\128\65"`. (The overlong, surrogate and above-U+10FFFF cases put the second
-    byte of `E0`, `ED`, `F0` and `F4` just outside its range.)
+    byte of `E0`, `ED`, `F0` and `F4` just outside its range.) Overlongs of allowed code
+    points too, since an overlong that decodes to a banned code point proves nothing about
+    the decoder: `"¡Å"` and `"‡ÅÅ"` (`A`), `"ÄÅÅ"` (`A`),
+    `"ÇÇ¨"` (U+20AC).
   - *Valid at every length and lead class* ‚Üí `true`: `"\195\157"` (√ù), `"\224\160\128"`
     (U+0800), `"\225\128\128"` (U+1000), `"\237\158\163"` (U+D7A3, Ìû£), `"\239\164\128"`
     (U+F900), `"\240\144\128\128"` (U+10000), `"\241\128\128\128"` (U+40000),

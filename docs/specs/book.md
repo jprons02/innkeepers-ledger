@@ -1042,7 +1042,7 @@ book ignores any kind but quill and seal.
   (`"\237\160\128"`); a code point above U+10FFFF (`"\244\144\128\128"`); a 70-byte
   ASCII name with an RLO at bytes 66–68 → fallback, **not** a clean 64-byte prefix (the
   check runs before the cut). Still unchanged: `"Ýrsa"`, `"Weiß"`, `"Алдрик"`,
-  `"알드릭"`, `"艾德리克"`. Cuts still land on a boundary: 23 Hangul syllables (69 bytes)
+  `"알드릭"`, `"艾德里克"`. Cuts still land on a boundary: 23 Hangul syllables (69 bytes)
   at 64 → the first 63 bytes + `"..."`; 62 ASCII bytes, then U+10000 (`F0 90 80 80`),
   then 4 ASCII bytes at 64 → the first 62 bytes + `"..."`. **Agreement:** over the
   seeded fuzz strings of [sync-ledger.md §6](sync-ledger.md#specledger_speclua)

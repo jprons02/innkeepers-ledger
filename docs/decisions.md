@@ -10,6 +10,19 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-07 — Completeness fails closed on any excluded record
+
+If `Collection.bind` excludes any record of the atlas, no zone, continent or the atlas
+counts as complete, whatever the marks say (#118, [specs/collection-cosmetics.md
+§3.11](specs/collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)).
+Until now a zone marked `complete` that lost one of its inns to validation still counted
+as complete, so a data mistake that slipped past CI could hand out its seal for good
+(earned things are never taken away). The shipped data never trips the guard: the
+real-data test keeps `invalid` empty. **Rejected:** *withholding completeness only from
+the place that lost a record* (an excluded record can't always be traced to a place: a bad
+`zone` field, a non-table record, a bad key; and precision buys nothing while `invalid`
+stays empty).
+
 ### 2026-10-07 — A month's decisions move to the archive once the month is over
 
 `decisions.md` had grown to ~1 590 lines, most of it September's build-out, and every

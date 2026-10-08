@@ -78,7 +78,8 @@ space, which #119 requires, #128); a guild round-trip and one dungeon run.
 - **Before the first tag:** `CHANGELOG.md` notes; answer #62 and #63 (IDs freeze);
   Interface `16001` → Forever on CurseForge and Wago is unverified until the first upload.
 - **DRAFT wording:** the `continent` rule's "0 of 1" fallback has no "+". **Book redraws
-  aren't coalesced** (2–6 ms per ENTRIES on a capped ledger); watch in #12.
+  aren't coalesced** (2–6 ms per ENTRIES on a capped ledger); watch in #12. A timer is
+  ruled out (decisions.md, the book entry); any fix waits for a client measurement.
 - **CI runners:** pinned to `ubuntu-24.04` (#117); move on purpose before GitHub retires
   it. If GitHub's GraphQL API fails (it did on 2026-10-07), `gh api` (REST) still opens
   and merges PRs ([CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-pull-requests)).
@@ -91,8 +92,7 @@ space, which #119 requires, #128); a guild round-trip and one dungeon run.
 - **Name hardening, if wanted (low, #119 review):** stacked combining marks, strong RTL
   letters and blank-rendering symbols (U+1D159) still pass (sync-ledger.md §5.2a, Out of
   scope).
-- **Code tidy (low):** `isInt` / name allow-lists copied across modules; `Phrase`'s
-  load-time asserts; `Ledger`'s quadratic load-time cap pass on a tampered file;
-  `Sign.lua`'s `listField` builds a full `view()` per click. Publish `Data/*` for export
+- **Code tidy (low):** `Phrase`'s load-time asserts; `Ledger`'s quadratic load-time cap
+  pass on a tampered file; `Sign.lua`'s `listField` builds a full `view()` per click. Publish `Data/*` for export
   consumers once inns exist.
 - Delete GitHub's default labels (maintainer call). Archive [kickoff.md](kickoff.md) at v1.

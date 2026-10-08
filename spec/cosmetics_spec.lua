@@ -107,6 +107,15 @@ describe("Cosmetics module", function()
       load.file("Ledger.lua", ns, load.pure_env())
       load.file("Cosmetics.lua", ns, load.pure_env())
     end)
+    local ok, err = pcall(function() -- a Collection without the shared name rule
+      local ns = {}
+      load.file("Ledger.lua", ns, load.pure_env())
+      load.file("Collection.lua", ns, load.pure_env())
+      ns.Collection.validName = nil
+      load.file("Cosmetics.lua", ns, load.pure_env())
+    end)
+    assert.is_false(ok)
+    assert.truthy(tostring(err):find("Cosmetics needs Collection.validName", 1, true))
   end)
 
   it("raises at load if a range is over Ledger.LIMITS (sealMax, cosmeticIdMax)", function()
@@ -355,6 +364,25 @@ describe("Cosmetics.bind", function()
       assert.same({ 1, 2 }, keys(set.SEALS))
       assert.same({}, set.unlocked(fx.entries(), "Alliance"))
     end
+  end)
+
+  it("zone-seal names follow rule 5 at 48 bytes, not the catalog's 32 (#132)", function()
+    local good = atlasF()
+    local function named(name)
+      return { progress = good.progress, zoneKeys = good.zoneKeys, zone = function(k)
+        local z = good.zone(k)
+        z.name = name
+        return z
+      end }
+    end
+    local n48 = "G" .. ("l"):rep(47)
+    local set = Cosmetics.bind(named(n48), fx.catalog())
+    for _, k in ipairs(good.zoneKeys()) do
+      local seal = good.zone(k).seal
+      assert.equal(n48, set.info(seal).name)
+    end
+    set = Cosmetics.bind(named(n48 .. "l"), fx.catalog()) -- 49 bytes empties the atlas
+    assert.same({ 1, 2 }, keys(set.SEALS))
   end)
 
   it("an atlas whose progress raises unlocks nothing, never throwing", function()

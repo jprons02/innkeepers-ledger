@@ -10,6 +10,18 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-08 — CI jobs have timeouts, and apt retries a stalled mirror
+
+On 2026-10-07 `apt-get update` stalled mid-fetch on three CI runs and sat until GitHub's
+6-hour default cancelled them (#126). Every job in `ci`, `policy-guard` and `release` now
+sets `timeout-minutes` well above its usual run time (coverage 30, luacheck and busted 15,
+`package` 10, `publish` 20, script-only jobs 5), and the toolchain jobs install through
+`scripts/ci-apt-install.sh`: apt's network timeouts and retries, `timeout` on each
+command, three attempts. The toolchain sources and versions are unchanged. **Rejected:**
+*caching the toolchain* (`actions/cache` is one more action and a cache to trust, for
+about a minute saved per job); *a Lua setup action from the marketplace* (a new
+third-party action, which checklist item 12 rules out).
+
 ### 2026-10-07 — Names with hidden characters or malformed UTF-8 are rejected
 
 The maintainer chose to tighten (#119, [specs/sync-ledger.md

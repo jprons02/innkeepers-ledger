@@ -70,7 +70,8 @@ None block work; DRAFTs ship until answered.
 **In the client** (#12, the unticked items of the platform-forever checklist): the book's
 11 checks; the composer lists; more innkeepers and which zones are fully walked; the
 rest of the signing checks; a second character in a party (round-trips,
-`UnitFullName("partyN")`, cross-realm); a guild round-trip and one dungeon run.
+`UnitFullName("partyN")`, cross-realm; it also confirms other players' names use a plain
+space, which #119 requires, #128); a guild round-trip and one dungeon run.
 
 ## Follow-ups
 

@@ -5,7 +5,9 @@ name: ci
 # a job means updating branch protection too. Actions are pinned by commit SHA.
 # Runners use a named image (ubuntu-24.04), not -latest, so an image move can't change
 # the toolchain under us. Toolchain comes from apt and luarocks.org only, at the versions
-# in CONTRIBUTING.md.
+# in CONTRIBUTING.md; apt goes through scripts/ci-apt-install.sh, which retries a stalled
+# mirror. Every job has a timeout-minutes sized well above its usual run time (#126), so
+# a hang fails in minutes rather than GitHub's 6-hour default.
 
 permissions:
   contents: read
@@ -17,14 +19,14 @@ on:
 jobs:
   luacheck:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Install Lua 5.1 and luacheck
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q lua5.1 liblua5.1-0-dev luarocks
+          sh scripts/ci-apt-install.sh lua5.1 liblua5.1-0-dev luarocks
           sudo luarocks --lua-version=5.1 install luacheck 1.2.0-1
       - name: luacheck
         run: |
@@ -33,14 +35,14 @@ jobs:
 
   busted:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Install Lua 5.1 and busted
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q lua5.1 liblua5.1-0-dev luarocks
+          sh scripts/ci-apt-install.sh lua5.1 liblua5.1-0-dev luarocks
           sudo luarocks --lua-version=5.1 install busted 2.3.0-1
       - name: busted
         run: |
@@ -53,14 +55,14 @@ jobs:
 
   coverage:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Install Lua 5.1, busted and luacov
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q lua5.1 liblua5.1-0-dev luarocks
+          sh scripts/ci-apt-install.sh lua5.1 liblua5.1-0-dev luarocks
           sudo luarocks --lua-version=5.1 install busted 2.3.0-1
           sudo luarocks --lua-version=5.1 install luacov 0.17.0-1
       - name: Coverage floors for pure modules
@@ -73,6 +75,7 @@ jobs:
 
   docs-links:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -82,6 +85,7 @@ jobs:
 
   libs-manifest:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -91,6 +95,7 @@ jobs:
 
   forbidden-apis:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

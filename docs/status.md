@@ -83,9 +83,9 @@ rest of the signing checks; a second character in a party (round-trips,
 - **CI runners:** pinned to `ubuntu-24.04` (#117); move on purpose before GitHub retires
   it. If GitHub's GraphQL API fails (it did on 2026-10-07), `gh api` (REST) still opens
   and merges PRs ([CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-pull-requests)).
-  **Jobs have no `timeout-minutes`** (GitHub's default is 6 h): on 2026-10-07 the
-  `apt`-installing jobs (luacheck, busted, coverage) hung for 30+ min on three CI runs of
-  #125 while the same checks passed elsewhere. Add job timeouts and an `apt` retry.
+  **Every job has a `timeout-minutes`, and apt retries a stalled mirror** (#126,
+  `scripts/ci-apt-install.sh`): on 2026-10-07 `apt-get update` hung until GitHub's
+  6-hour default on three runs of #125. If coverage ever nears its 30 min, raise it.
 - **Revisit once in groups (#12):** server-clock jumps; other AddOns' traffic; group-map
   rescan budget; a dropped `C_Timer.After`; export build time. Weekly reset rows for live
   regions after launch.

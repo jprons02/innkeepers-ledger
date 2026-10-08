@@ -58,9 +58,16 @@ for _, b in ipairs({ 32, 39, 44, 46, 45 }) do
   ALLOWED[b] = true
 end
 
--- Rule 5: 1..NAME_BYTES allowed bytes, first A-Z, no trailing or double space.
-local function validName(s)
-  if type(s) ~= "string" or #s < 1 or #s > NAME_BYTES then
+-- Rule 5: 1..maxBytes allowed bytes, first A-Z, no trailing or double space. maxBytes is
+-- NAME_BYTES when nil, and otherwise must be an integer in 1..NAME_BYTES (else false).
+-- Exported for Cosmetics' catalog names (spec 3.5); never throws.
+local function validName(s, maxBytes)
+  if maxBytes == nil then
+    maxBytes = NAME_BYTES
+  elseif not isInt(maxBytes, 1, NAME_BYTES) then
+    return false
+  end
+  if type(s) ~= "string" or #s < 1 or #s > maxBytes then
     return false
   end
   local first = byte(s, 1)
@@ -74,6 +81,8 @@ local function validName(s)
   end
   return true
 end
+
+Collection.validName = validName
 
 -- The keys of v (raw) are exactly the keys of `fields`, where `fields[k] == true` means
 -- required and `false` optional.

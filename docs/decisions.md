@@ -10,6 +10,18 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-08 — One copy of the place-name rule; `isInt` stays per module
+
+`Cosmetics` had its own copy of `Collection`'s rule 5 (the byte allow-list, a capital
+first letter, no trailing or double space). `Collection.validName(s, maxBytes)` is now
+exported, and `Cosmetics` uses it for catalog names (32 bytes) and zone-seal names (48)
+(#132; [specs/collection-cosmetics.md §3.8](specs/collection-cosmetics.md#38-api)).
+Behavior is unchanged. A bad limit gives `false`, never an error. **`isInt` stays a local
+in each module:** it's one line, and sharing it would make every module (`Ledger`
+included) load after a helper. That adds a load-order dependency to validation code and
+changes nothing it does. **Rejected:** *a shared `Util.lua`* (the load-order cost); *merging `Phrase`'s
+allow-list* (a different rule: it allows `!` and `?`).
+
 ### 2026-10-08 — CI jobs have timeouts, and apt retries a stalled mirror
 
 On 2026-10-07 `apt-get update` stalled mid-fetch on three CI runs and sat until GitHub's

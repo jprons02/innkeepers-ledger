@@ -222,6 +222,242 @@ describe("Ledger.validGUID and Ledger.validName", function()
   end)
 end)
 
+-- ---------------------------------------------------------------------------
+-- Hidden characters (spec 5.2a, #119).
+
+-- UTF-8 for code point `cp`, built byte by byte. It doesn't refuse surrogates, so the
+-- surrogate cases can use it too.
+local function enc(cp)
+  local floor, char = math.floor, string.char
+  if cp < 0x80 then
+    return char(cp)
+  elseif cp < 0x800 then
+    return char(0xC0 + floor(cp / 0x40), 0x80 + cp % 0x40)
+  elseif cp < 0x10000 then
+    return char(0xE0 + floor(cp / 0x1000), 0x80 + floor(cp / 0x40) % 0x40, 0x80 + cp % 0x40)
+  end
+  return char(0xF0 + floor(cp / 0x40000), 0x80 + floor(cp / 0x1000) % 0x40,
+    0x80 + floor(cp / 0x40) % 0x40, 0x80 + cp % 0x40)
+end
+
+-- The spec's 5.2a table, transcribed a second time (not read from Ledger.lua), so a typo
+-- in either copy fails the run.
+local BANNED = {
+  { 0x0000, 0x001F }, { 0x007F, 0x009F }, { 0x00A0, 0x00A0 }, { 0x00AD, 0x00AD },
+  { 0x034F, 0x034F }, { 0x0600, 0x0605 }, { 0x061C, 0x061C }, { 0x06DD, 0x06DD },
+  { 0x070F, 0x070F }, { 0x0890, 0x0891 }, { 0x08E2, 0x08E2 }, { 0x115F, 0x1160 },
+  { 0x1680, 0x1680 }, { 0x17B4, 0x17B5 }, { 0x180B, 0x180F }, { 0x2000, 0x200F },
+  { 0x2028, 0x202F }, { 0x205F, 0x206F }, { 0x2800, 0x2800 }, { 0x3000, 0x3000 },
+  { 0x3164, 0x3164 }, { 0xE000, 0xF8FF }, { 0xFDD0, 0xFDEF }, { 0xFE00, 0xFE0F },
+  { 0xFEFF, 0xFEFF }, { 0xFFA0, 0xFFA0 }, { 0xFFF0, 0xFFFF }, { 0x110BD, 0x110BD },
+  { 0x110CD, 0x110CD }, { 0x13430, 0x1343F }, { 0x1BCA0, 0x1BCA3 }, { 0x1D173, 0x1D17A },
+  { 0x1FFFE, 0x1FFFF }, { 0x2FFFE, 0x2FFFF }, { 0x3FFFE, 0x3FFFF }, { 0x4FFFE, 0x4FFFF },
+  { 0x5FFFE, 0x5FFFF }, { 0x6FFFE, 0x6FFFF }, { 0x7FFFE, 0x7FFFF }, { 0x8FFFE, 0x8FFFF },
+  { 0x9FFFE, 0x9FFFF }, { 0xAFFFE, 0xAFFFF }, { 0xBFFFE, 0xBFFFF }, { 0xCFFFE, 0xCFFFF },
+  { 0xDFFFE, 0xDFFFF }, { 0xE0000, 0xE0FFF }, { 0xEFFFE, 0xEFFFF }, { 0xF0000, 0x10FFFF },
+}
+
+local function inTable(cp)
+  for _, row in ipairs(BANNED) do
+    if cp >= row[1] and cp <= row[2] then
+      return true
+    end
+  end
+  return false
+end
+
+local function surrogate(cp)
+  return cp >= 0xD800 and cp <= 0xDFFF
+end
+
+-- RLO, ZWJ, NBSP, ideographic space, Hangul filler.
+local HIDDEN_SAMPLES = {
+  "\226\128\174", "\226\128\141", "\194\160", "\227\128\128", "\227\133\164",
+}
+
+local MALFORMED = {
+  "\192\128", "\193\191",                                       -- overlong 2-byte
+  "\224\128\128", "\224\159\191",                               -- overlong 3-byte
+  "\240\128\128\128", "\240\143\191\191",                       -- overlong 4-byte
+  "\237\160\128", "\237\191\191", "\237\160\189\237\184\128",   -- surrogates, CESU-8
+  "\244\144\128\128", "\245\128\128\128", "\248\128\128\128\128", "\255", -- > U+10FFFF
+  "\128", "\191",                                               -- lone continuation
+  "Zo\195", "\226\130", "\226", "\240\159\152", "\240\159", "\240", -- truncated at the end
+  "\195A", "\226\130A", "\240\159\152A",                        -- truncated mid-string
+  "\195\195", "\225\65\128", "\225\128\65",                     -- a bad later byte
+  "\241\65\128\128", "\241\128\65\128", "\241\128\128\65",
+  -- Beyond the spec's list: overlongs of "A" and of U+20AC. Most overlongs above would
+  -- decode to a banned code point (U+0000, U+007F, U+FFFF), so the table would hide a
+  -- decoder that let them through; these decode to allowed ones.
+  "\193\129", "\224\129\129", "\240\128\129\129", "\240\130\130\172",
+}
+
+describe("Ledger.cleanText", function()
+  local cleanText = Ledger.cleanText
+
+  it("the spec's table: every row's edges are banned, the neighbours outside are not", function()
+    for i, row in ipairs(BANNED) do
+      local from, to = row[1], row[2]
+      assert.is_false(cleanText(enc(from)), "row " .. i .. " from")
+      assert.is_false(cleanText(enc(to)), "row " .. i .. " to")
+      for _, cp in ipairs({ from - 1, to + 1 }) do
+        if cp >= 0 and cp <= 0x10FFFF and not surrogate(cp) then
+          assert.equal(not inTable(cp), cleanText(enc(cp)), ("row %d, U+%04X"):format(i, cp))
+        end
+      end
+    end
+    -- The transcription itself is sorted and non-overlapping.
+    for i = 2, #BANNED do
+      assert.is_true(BANNED[i - 1][2] < BANNED[i][1], "row " .. i)
+    end
+    assert.equal(48, #BANNED)
+  end)
+
+  -- #sim: half a second here, but over 20 s under luacov, for no line the other cases
+  -- don't reach (docs/testing.md).
+  it("decodes every code point of planes 0 and 1, and samples of planes 2-16 #sim", function()
+    local wrong = {}
+    local function check(cp)
+      if cleanText(enc(cp)) ~= not inTable(cp) and #wrong < 10 then
+        wrong[#wrong + 1] = ("U+%04X"):format(cp)
+      end
+    end
+    -- Planes 0 and 1 in order, walking the table alongside (an inTable call per code point
+    -- would be 48 times slower).
+    local r = 1
+    for cp = 0, 0x1FFFF do
+      while BANNED[r] and cp > BANNED[r][2] do
+        r = r + 1
+      end
+      if not surrogate(cp) then
+        local banned = BANNED[r] ~= nil and cp >= BANNED[r][1]
+        if cleanText(enc(cp)) == banned and #wrong < 10 then
+          wrong[#wrong + 1] = ("U+%04X"):format(cp)
+        end
+      end
+    end
+    for plane = 2, 16 do
+      local base = plane * 0x10000
+      for k = 0, 255 do
+        check(base + k)
+        check(base + 0xFF00 + k)
+      end
+      for k = 0, 0xFFFF, 251 do
+        check(base + k)
+      end
+    end
+    assert.same({}, wrong)
+    -- Every surrogate, as three bytes ED A0 80 .. ED BF BF.
+    for cp = 0xD800, 0xDFFF do
+      if cleanText(enc(cp)) ~= false and #wrong < 10 then
+        wrong[#wrong + 1] = ("U+%04X"):format(cp)
+      end
+    end
+    assert.same({}, wrong)
+  end)
+
+  it("refuses malformed UTF-8, alone and inside a string", function()
+    for _, s in ipairs(MALFORMED) do
+      assert.is_false(cleanText(s), s)
+      assert.is_false(cleanText("Ab" .. s .. "cd"), "Ab" .. s .. "cd")
+    end
+  end)
+
+  it("accepts a valid character of every length and lead class", function()
+    for _, s in ipairs({
+      "\195\157",          -- U+00DD
+      "\224\160\128",      -- U+0800
+      "\225\128\128",      -- U+1000
+      "\237\158\163",      -- U+D7A3, the last Hangul syllable
+      "\239\164\128",      -- U+F900
+      "\240\144\128\128",  -- U+10000
+      "\241\128\128\128",  -- U+40000
+      "\243\175\191\189",  -- U+EFFFD
+    }) do
+      assert.is_true(cleanText(s), s)
+      assert.is_true(cleanText("Ab" .. s .. "cd"), s)
+    end
+    -- U+100000 decodes, and is banned anyway (private use).
+    assert.is_false(cleanText("\244\128\128\128"))
+  end)
+
+  it("accepts the letters beside a row, alone and inside a name", function()
+    for _, cp in ipairs({ 0x115E, 0x1161, 0x17B3, 0x3163, 0x3165, 0xFF9F, 0xFFA1, 0xF900,
+      0xD7A3 }) do
+      local label = ("U+%04X"):format(cp)
+      assert.is_true(cleanText(enc(cp)), label)
+      assert.is_true(Ledger.validName("Ab" .. enc(cp)), label)
+    end
+  end)
+
+  it("is false for non-strings and true for the empty string, never throwing", function()
+    for _, v in ipairs({ 7, true, {}, function() end, hostileTable(), hostileProxy() }) do
+      assert.is_false(cleanText(v))
+    end
+    assert.is_false(cleanText(nil))
+    assert.is_true(cleanText(""))
+    assert.is_true(cleanText("Aldric Stonebrook-Kel'Thuzad ~!@#$%^&*()"))
+  end)
+
+  it("fuzz: 10 000 seeded strings of edge bytes always give a boolean", function()
+    local EDGE = { 0x00, 0x1F, 0x20, 0x7E, 0x7F, 0x80, 0x8F, 0x90, 0x9F, 0xA0, 0xBF, 0xC0,
+      0xC1, 0xC2, 0xDF, 0xE0, 0xE1, 0xEC, 0xED, 0xEE, 0xEF, 0xF0, 0xF1, 0xF3, 0xF4, 0xF5, 0xFF }
+    local seed = 20261007
+    local function rand(n)
+      seed = seed * 16807 % 2147483647
+      return seed % n
+    end
+    local seen = { [true] = 0, [false] = 0 }
+    local bad = {} -- inputs that threw or gave a non-boolean (one assert at the end)
+    local bytes = {}
+    for _ = 1, 10000 do
+      local len = rand(17)
+      for k = 1, len do
+        bytes[k] = rand(4) == 0 and rand(256) or EDGE[rand(#EDGE) + 1]
+      end
+      local s = string.char(unpack(bytes, 1, len))
+      local ok, res = pcall(cleanText, s)
+      if ok and type(res) == "boolean" then
+        seen[res] = seen[res] + 1
+      elseif #bad < 10 then
+        bad[#bad + 1] = { s, tostring(res) }
+      end
+    end
+    assert.same({}, bad)
+    -- The fuzz reaches both answers.
+    assert.is_true(seen[true] > 0 and seen[false] > 0)
+  end)
+end)
+
+describe("Ledger.validName, hidden characters", function()
+  it("rejects a hidden character anywhere in the name, surname or realm", function()
+    for _, x in ipairs(HIDDEN_SAMPLES) do
+      for _, name in ipairs({
+        x .. "Aldric", "Aldric" .. x, "Ald" .. x .. "ric", "Aldric Stone" .. x .. "brook",
+        "Aldric-Azjol" .. x .. "Nerub",
+      }) do
+        assert.is_false(Ledger.validName(name), name)
+      end
+    end
+    assert.is_false(Ledger.validName("\227\133\164\227\133\164")) -- two Hangul fillers
+    assert.is_false(Ledger.validName("Ald\194\133ric"))           -- C1 control U+0085
+    assert.is_false(Ledger.validName("Ald\224\128\128ric"))       -- overlong
+    assert.is_false(Ledger.validName("Ald\226\130ric"))           -- truncated
+  end)
+
+  it("still accepts real names in every script the client uses", function()
+    for _, name in ipairs({
+      "Aldric", "\195\157rsa", "\195\134rendil", "Wei\195\159",
+      "\208\144\208\187\208\180\209\128\208\184\208\186",          -- Cyrillic
+      "\236\149\140\235\147\156\235\166\173",                      -- Hangul
+      "\232\137\190\229\190\183\233\135\140\229\133\139",          -- Chinese
+      "Aldric Stonebrook", "Aldric-Kel'Thuzad", "Zo\195\171-Azjol-Nerub",
+    }) do
+      assert.is_true(Ledger.validName(name), name)
+    end
+  end)
+end)
+
 describe("Ledger weeks", function()
   local ledger
   before_each(function()
@@ -414,6 +650,7 @@ describe("Ledger:addForeign", function()
       { nil, NAME, good, NOW },
       { hostileTable(), NAME, good, NOW },
       { MIRA, "Mira|r", good, NOW },
+      { MIRA, "Mira\226\128\174 Ashvale", good, NOW }, -- an RLO (spec 5.2a)
       { MIRA, nil, good, NOW },
       { MIRA, hostileProxy(), good, NOW },
       { MIRA, NAME, entry(1234, T0, { 1 }, 0), NOW },
@@ -718,6 +955,8 @@ describe("Ledger cosmetics", function()
     assert.equal("Aldric Newname", data.me.name)
     assert.is_false(l:setOwnerName("Bad|Name"))
     assert.equal("Aldric Newname", data.me.name)
+    assert.is_false(l:setOwnerName("Aldric\194\160Other")) -- an NBSP (spec 5.2a)
+    assert.equal("Aldric Newname", data.me.name)
   end)
 end)
 
@@ -961,6 +1200,25 @@ describe("Ledger normalize", function()
     data.me.name = 5
     Ledger.new(data, { guid = OWNER, name = "Bad|Name" }, ANCHOR)
     assert.is_nil(data.me.name)
+  end)
+
+  it("hidden characters (spec 5.2a): drops such a traveler, resets such a me.name", function()
+    local data = base()
+    data.me.name = "Ald\226\128\141ric" -- a ZWJ
+    data.travelers[MIRA] = { name = "Mira\226\128\174Ashvale", met = NOW, -- an RLO
+      entries = { entry(1, T0), entry(2, T0 + 1) } }
+    data.travelers[guid(1)] = { name = NAME, met = NOW, entries = { entry(1, T0 + 2) } }
+    data.travelers[guid(2)] = { name = "Bran", met = NOW, entries = { entry(3, T0 + 3) } }
+    local ledger = newLedger(data)
+    assert.is_false(ledger.readOnly)
+    assert.is_nil(data.travelers[MIRA])
+    assert.same({}, ledger:signerEntries(MIRA))
+    assert.equal(2, ledger:counts().travelers)
+    assert.equal(2, ledger:counts().foreign)
+    assert.equal(1, ledger.loadReport.travelersDropped)
+    assert.equal("Aldric Stonebrook", data.me.name)
+    assert.equal(1, ledger.loadReport.nameReset)
+    assertConsistent(ledger)
   end)
 
   it("removes duplicates (first kept) and sorts", function()

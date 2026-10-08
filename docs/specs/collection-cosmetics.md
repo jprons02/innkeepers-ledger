@@ -468,6 +468,15 @@ real-data test keeps `invalid` empty, so a typo fails CI rather than shipping).
 - the atlas is complete if `atlasComplete == true` **and** every kept continent is
   complete.
 
+**Fail closed on any exclusion (amended 2026-10-07, #118).** If `bind` excludes any
+record (`invalid` is not empty, after the alias step), **no zone, no continent and not the
+atlas is complete**, whatever the marks say. A marked zone that lost one of its inns to
+validation would otherwise still count as complete and hand out its seal for good (§3.6).
+An excluded record can't always be traced to a place (an inn whose bad field is `zone`,
+a non-table record, a bad key), so the guard is global rather than per place. The shipped
+data never trips it: the real-data test keeps `invalid` empty. Everything else about the
+excluded record's neighbours is unchanged (`signed`, `total`, keys, `SEALS`).
+
 **Progress** (§3.3 amended): `done` is set only for complete places. `byZone[z].done`
 needs zone `z` complete; `byContinent[c].done` needs continent `c` complete; `p.done`
 needs the atlas complete. `signed`, `total` and everything else are unchanged. Each
@@ -510,13 +519,23 @@ checks every `complete` in `Data/Inns.lua` is exactly `true`, and that `AtlasCom
 absent or a boolean; its "every rule is reachable" atlas is marked complete. The book
 specs gain the `"+"` cases. A whole-AddOn test: one signature at Calmbreeze with the
 shipped (unmarked) data records no place-based unlock.
+**(#118)** On F (all marked) with one record excluded, each case binds with `invalid`
+non-empty and every `complete` false (`atlas.zone`, `atlas.continent`,
+`atlas.complete()`, each progress item and the result), no `done` anywhere, and only the
+`inns n` items unlocked: an inn of a marked zone with a bad field; an inn whose `zone`
+isn't a kept zone; an alias to a missing primary; a non-table inn record; a zone record
+on another continent with a bad field (its own zone's seal gone, the other zones'
+seals withheld too); a bad continent key. Existing tests that break a rule on F and then
+read `done` or `complete` expect the guard's result.
 
 **Rejected:** *only the maintainer visiting every inn before release* (the beta ends
 2026-10-21; a missed inn would still leak); *a release-time switch that turns place
 rules off* (zone seals known to be safe would wait too); *percent thresholds or rules
 over known inns only* (they move as data grows, §3.10); *taking back unlocks when data
 grows* (§3.6: earned things are never taken away); *marks on inns* (an inn can't know
-it's the last one in its zone).
+it's the last one in its zone); *(#118) withholding completeness only from the place that
+lost a record* (an excluded record can't always be traced to a place, and the shipped data
+keeps `invalid` empty anyway, so precision buys nothing).
 
 ## 4. Data model changes
 
@@ -782,6 +801,11 @@ ns.Data.Cosmetics).SEALS` on a fresh ledger: the `101` entry is stored too
       `Data/Inns.lua`'s header documents the marks and ships none; a decision-log entry
       (2026-10-07, *Partial atlas: place rules count only places marked complete*);
       status.md's release-gate question answered.
+- [ ] (#118) §3.11: any excluded record (`invalid` not empty, after the alias step) makes
+      no zone, no continent and not the atlas complete; `signed`, `total`, keys and `SEALS`
+      unchanged; the six fail-closed cases, plus a marked continent with no kept zone and
+      an atlas with every zone excluded, each pin the guard; a decision-log entry
+      (2026-10-07).
 
 ## 8. Contract for later slices
 

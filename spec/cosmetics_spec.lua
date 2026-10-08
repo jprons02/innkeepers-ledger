@@ -548,6 +548,26 @@ describe("Cosmetics unlocked", function()
       assert.same(U({ { 101, T }, { 1, T + 100 }, { 1003, T + 100 }, { 1001, T + 300 },
         { 2, T + 400 } }), setMarked({}, {}).unlocked(fx.entries(), "Alliance", kept))
     end)
+
+    -- #118: on F (all marked), one excluded record withholds every place-based unlock.
+    -- SEALS is left alone: only an excluded zone's own seal goes.
+    for _, case in ipairs(fx.excludedCases()) do
+      it("fails closed on " .. case.label .. ": only the inns n items (#118)", function()
+        local inns, zones, conts = fx.places()
+        case.change(inns, zones, conts)
+        local atlas = Collection.bind(inns, zones, conts, true)
+        assert.same(case.invalid, atlas.invalid)
+        local s = Cosmetics.bind(atlas, fx.catalog())
+        assert.same({}, s.invalid)
+        assert.same(case.seals, keys(s.SEALS))
+        assert.same(U(case.alliance), s.unlocked(fx.entries(), "Alliance"))
+        for _, faction in ipairs({ "Horde", false }) do
+          for _, u in ipairs(s.unlocked(fx.entries(), faction or nil)) do
+            assert.is_true(u.id == 1 or u.id == 1001, u.id .. " for " .. tostring(faction))
+          end
+        end
+      end)
+    end
   end)
 
   describe("the kept floor", function()

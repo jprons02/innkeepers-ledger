@@ -2,8 +2,8 @@
 -- continents; a zone's "continent" is a World map when no Continent map is above it) once,
 -- then counts the player's own signatures: signed / total overall, by
 -- continent, by zone, and per inn. A zone, a continent or the whole atlas is "done" only if
--- the data marks it complete (every inn there is known), so a partial atlas can't hand out
--- "every inn" rewards.
+-- the data marks it complete (every inn there is known) and no record was excluded, so a
+-- partial atlas can't hand out "every inn" rewards.
 -- No WoW API here. Client values come in as arguments (docs/architecture.md -> Modules).
 -- Spec: docs/specs/collection-cosmetics.md (sections 3.1-3.4, 3.8, 3.9, 3.11). Own entries come
 -- from SavedVariables, which a player can edit: every argument is read with rawget only,
@@ -170,23 +170,6 @@ function Collection.bind(inns, zones, continents, atlasComplete)
   end
   tsort(zoneKeys)
 
-  -- Effective completeness (spec 3.11): a zone as marked; a continent if marked and every
-  -- kept zone on it is complete; the atlas if marked and every kept continent is complete.
-  for _, rec in next, conts do
-    rec.complete = rec.marked
-  end
-  for _, rec in next, zoneRecs do
-    if not rec.complete then
-      conts[rec.continent].complete = false
-    end
-  end
-  local atlasDone = rawequal(atlasComplete, true)
-  for _, rec in next, conts do
-    if not rec.complete then
-      atlasDone = false
-    end
-  end
-
   -- 3. Primary inns; aliases wait for step 4.
   local primaries, primaryKeys, innOf = {}, {}, {} -- key -> record; sorted keys; NPC -> key
   local aliases = {}
@@ -225,6 +208,30 @@ function Collection.bind(inns, zones, continents, atlasComplete)
     end
   end
   tsort(invalid)
+
+  -- Effective completeness (spec 3.11): a zone as marked; a continent if marked and every
+  -- kept zone on it is complete; the atlas if marked and every kept continent is complete.
+  -- Fail closed (#118): once any record of any kind is excluded, nothing is complete. An
+  -- excluded record can't always be traced to a place, and a marked zone that lost an inn
+  -- would otherwise still hand out its seal for good (spec 3.6).
+  local clean = #invalid == 0
+  for _, rec in next, zoneRecs do
+    rec.complete = clean and rec.complete
+  end
+  for _, rec in next, conts do
+    rec.complete = clean and rec.marked
+  end
+  for _, rec in next, zoneRecs do
+    if not rec.complete then
+      conts[rec.continent].complete = false
+    end
+  end
+  local atlasDone = clean and rawequal(atlasComplete, true)
+  for _, rec in next, conts do
+    if not rec.complete then
+      atlasDone = false
+    end
+  end
 
   local atlas = { invalid = invalid }
 

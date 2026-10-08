@@ -25,6 +25,8 @@ local T_MIN, T_MAX = Ledger.LIMITS.tMin, Ledger.LIMITS.tMax
 local INN_MAX = Ledger.LIMITS.innMax
 local ID_MAX = Ledger.LIMITS.cosmeticIdMax
 local validEntry = Ledger.validEntry
+local cleanText = Ledger.cleanText
+assert(type(cleanText) == "function", "BookView needs Ledger.cleanText")
 local Collection = ns.Collection
 local OWN_MAX = type(Collection) == "table" and type(Collection.LIMITS) == "table"
   and Collection.LIMITS.ownMax or 0
@@ -177,42 +179,37 @@ end
 -- ---------------------------------------------------------------------------
 -- Text safety and dates (spec 3.8).
 
-local B_PIPE, B_DEL = 124, 127
+local B_PIPE = 124
 
 local function plain(s, maxBytes, fallback)
   if type(s) ~= "string" or #s == 0 then
     return fallback
   end
+  -- The whole input, before any cut: control bytes, malformed UTF-8 and hidden characters
+  -- (Ledger spec 5.2a, #119). A name is replaced, never repaired.
+  if not cleanText(s) then
+    return fallback
+  end
   if not isInt(maxBytes, 1, PAGE_MAX) then
     maxBytes = LIMITS.nameBytes
   end
+  -- cleanText proved the structure: each lead byte gives its character's length.
   local n, i, cut = #s, 1, 0
   while i <= n do
     local b = byte(s, i)
     local len
-    if b < 32 or b == B_DEL or b == B_PIPE then
+    if b == B_PIPE then
       return fallback
-    elseif b < 128 then
+    elseif b < 0x80 then
       len = 1
-    elseif b >= 194 and b <= 223 then
+    elseif b < 0xE0 then
       len = 2
-    elseif b >= 224 and b <= 239 then
+    elseif b < 0xF0 then
       len = 3
-    elseif b >= 240 and b <= 244 then
-      len = 4
     else
-      return fallback -- a lone continuation byte, C0, C1 or F5..FF
+      len = 4
     end
     local last = i + len - 1
-    if last > n then
-      return fallback -- a truncated sequence
-    end
-    for j = i + 1, last do
-      local c = byte(s, j)
-      if c < 128 or c > 191 then
-        return fallback
-      end
-    end
     if last <= maxBytes then
       cut = last
     end

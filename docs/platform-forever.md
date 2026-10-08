@@ -35,7 +35,8 @@ unverified · ❓ unknown
 - ✅ **Names are two-part** (first name and surname; beta, 2026-09-30). The surname
   takes the realm's place in the unit APIs: `UnitName("player")` and
   `UnitFullName("player")` both return `"First", "Surname"`, never a realm. The
-  `CHAT_MSG_ADDON` sender (and `target`) is `"First Surname"`: one space, **no realm
+  `CHAT_MSG_ADDON` sender (and `target`) is `"First Surname"`: one ASCII space (U+0020,
+  byte-checked in the probe log on 2026-10-08, own character), **no realm
   suffix, no dash**. A whisper addressed `"First-Surname"` still arrived. ⚠️ Region-wide
   uniqueness is still only reported. ❓ What `UnitFullName("partyN")` and
   `GetGuildRosterInfo` return for *other* characters (needs a second character or a
@@ -138,7 +139,8 @@ in the sections above. **Partly** means the rest of the item is still open.
       members (see the #54 item); guild roster exposes member GUIDs. Two-part names are
       handled since #75 (bare `"First Surname"` keys; [decisions.md](decisions.md),
       2026-09-30); confirm with a second character that a party member's messages
-      resolve (`/ledger debug` shows `got hello PARTY`, not `drop unresolved`). First,
+      resolve (`/ledger debug` shows `got hello PARTY`, not `drop unresolved`). If it drops
+      (`unresolved` or `sender`), check the separator byte first: #119 accepts only U+0020. First,
       logged in solo, `/ledger debug`'s report must end `names two-part` (#80: the form
       is decided at login and kept for the session). **Partly** ✅: solo, it ends
       `names two-part` (2026-10-05); the party half is still open

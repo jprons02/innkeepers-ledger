@@ -40,6 +40,40 @@ function M.places()
   return inns, zones, conts, true
 end
 
+-- The fail-closed cases of spec 3.11 (#118): F (all marked, atlasComplete true) with one
+-- record excluded. Each is { label, change(inns, zones, conts), invalid, alliance, seals },
+-- by those field names:
+-- `alliance` is Alliance's unlocked list for E over catalog C as { id, t } pairs (only the
+-- `inns n` items, at the times of the inns still known); `seals` is the sorted SEALS keys
+-- over C (the guard leaves SEALS alone: only an excluded zone's own seal goes).
+function M.excludedCases()
+  local T = M.T
+  local ALL_SEALS = { 1, 2, 101, 102, 103, 104 }
+  return {
+    { label = "an inn of a marked zone with a bad field (Hill Inn, faction \"Neutral\")",
+      change = function(i) i[5002].faction = "Neutral" end, invalid = { "inn 5002" },
+      alliance = { { 1, T + 100 }, { 1001, T + 400 } }, seals = ALL_SEALS },
+    { label = "an inn whose zone isn't a kept zone",
+      change = function(i) i[5401] = { name = "Glen Inn", zone = 99 } end,
+      invalid = { "inn 5401" }, alliance = { { 1, T + 100 }, { 1001, T + 300 } },
+      seals = ALL_SEALS },
+    { label = "an alias to a missing primary", change = function(i) i[5401] = { alias = 5999 } end,
+      invalid = { "inn 5401" }, alliance = { { 1, T + 100 }, { 1001, T + 300 } },
+      seals = ALL_SEALS },
+    { label = "a non-table inn record", change = function(i) i[5401] = "Glen Inn" end,
+      invalid = { "inn 5401" }, alliance = { { 1, T + 100 }, { 1001, T + 300 } },
+      seals = ALL_SEALS },
+    { label = "a zone record on another continent with a bad field (Dunes, a lowercase name)",
+      change = function(_, z) z[20].name = "dunes" end,
+      invalid = { "inn 5201", "inn 5202", "zone 20" },
+      alliance = { { 1, T + 300 }, { 1001, T + 400 } }, seals = { 1, 2, 101, 102, 104 } },
+    { label = "a bad continent key (\"3\")",
+      change = function(_, _, c) c["3"] = { name = "North" } end,
+      invalid = { "continent <string>" }, alliance = { { 1, T + 100 }, { 1001, T + 300 } },
+      seals = ALL_SEALS },
+  }
+end
+
 -- Own entries E: e1..e7.
 function M.entries()
   local T = M.T

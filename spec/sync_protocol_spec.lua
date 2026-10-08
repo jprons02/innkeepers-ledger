@@ -484,6 +484,27 @@ describe("SyncProtocol.receive rules 3-5 (channel, sender, echo)", function()
     assert.equal(0, stored(ctx))
   end)
 
+  it("drops a sender name with a hidden character or malformed UTF-8", function()
+    local ctx = newCtx()
+    for _, n in ipairs({
+      "Mira\226\128\174Ashvale",  -- RLO
+      "Mi\226\128\141ra",         -- ZWJ
+      "Mira\194\160Ashvale",      -- NBSP
+      "Mi\192\175ra",             -- an overlong "/"
+    }) do
+      for _ = 1, 50 do
+        assert.same({ nil, "sender" }, { recv(ctx, VALID, { guid = MIRA, name = n }) })
+      end
+    end
+    assert.equal(0, stored(ctx))
+    assert.same({}, ctx.ledger:travelers())
+    -- Dropped before the rate rule: the limiter still admits Mira's full window.
+    for _ = 1, 40 do
+      assert.equal("hello", recv(ctx, "H1:0:0").kind)
+    end
+    assert.same({ nil, "rate" }, { recv(ctx, "H1:0:0") })
+  end)
+
   it("drops our own messages echoed back by the channel", function()
     local ctx = newCtx()
     assert.same({ nil, "self" }, { recv(ctx, VALID, { guid = OWNER, name = "Aldric" }) })

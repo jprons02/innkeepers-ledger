@@ -5,9 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-08 (after the release (#129): hidden characters in names (#119),
-completeness fails closed (#118), CI timeouts and an apt retry (#126), the sender's space
-byte-checked (#128))
+**Updated:** 2026-10-09 (after #132: one copy of the place-name rule; the redraw
+follow-up parked until a client measurement)
 
 ## Current state
 
@@ -33,14 +32,18 @@ byte-checked (#128))
   `Ledger.cleanText` rejects malformed UTF-8 and hidden characters (bidi controls,
   zero-width, non-ASCII spaces, fillers, private use); `validName` and the book's `plain`
   both use it.
-- **Releasing:** released to `main` on 2026-10-08 (#129; security review passed, nothing
-  to fix); `main` and `dev` hold the same content. No tags yet (maintainer gate). **CI:** eight required checks on `ubuntu-24.04`, green.
+- **Releasing:** last released to `main` on 2026-10-08 (#129). Since then, `dev` holds
+  #133 (a refactor with no change in behavior; `Collection.validName` is now shared with
+  `Cosmetics`). It goes out with the next release PR. No tags yet (maintainer gate).
+  **CI:** eight required checks on `ubuntu-24.04`, green.
 
 ## Next step
 
-- **Agents:** no `ready` ticket (#126 closed 2026-10-08). #12's in-client results drive
+- **Agents:** no `ready` ticket (#132 closed 2026-10-08). #12's in-client results drive
   what's next: retune the DRAFT look from screenshots, add inns and mark zones complete
-  from the walk. Small follow-ups below can fill gaps.
+  from the walk. The low follow-ups below can fill gaps. Check each one against
+  decisions.md before offering it: the redraw item looked open but a timer was already
+  ruled out.
 - **In the client (maintainer), before the beta ends 2026-10-21:** restart fully (new
   file `BookView.lua`; `/reload` isn't enough), then run the book's and the composer's checks on the
   [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).

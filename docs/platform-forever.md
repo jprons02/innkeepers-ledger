@@ -224,10 +224,21 @@ in the sections above. **Partly** means the rest of the item is still open.
   - [ ] the look: the dark frame, two parchment pages and the spine render; for each
         texture candidate (`UI-DialogBox-Background-Dark`, `Spellbook-Page-1` / `-2`,
         `QuestBG`, `StationeryTest1`), whether it loads (not blank, not green) and looks
-        right; the chosen files' coordinates. A screenshot of each tab
+        right; the chosen files' coordinates. A screenshot of each tab.
+        **2026-10-09, first look (4 tabs; the installed copy predated #102/#110, but
+        `UI/Book.lua` was current):** `UI-DialogBox-Background-Dark` ✅.
+        `Spellbook-Page-1` loads as a full page, but its outer ~12% is a blue cover and
+        a teal ribbon that hid the first letters of every line. `Spellbook-Page-2` loads
+        as different, smaller art, stretched into a blur. **Fix (#135):** both pages
+        use `Spellbook-Page-1` (the right one mirrored, `SetTexCoord(1, 0, 0, 1)`), and
+        each texture reaches 56 past the writing area on its outer side; the book is
+        972 wide. Re-check: no text on a cover, the mirrored page looks right
   - [ ] fonts and glyphs: titles in the Morpheus face (`QuestTitleFont` exists), body
         text in the game font, the ink readable on the parchment; `‹` `›` and `·` render
-        (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `)
+        (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `).
+        **2026-10-09:** Morpheus titles ✅, game-font body ✅, `·` ✅ ("Sign 10 inns ·
+        1 of 10"), ink readable on `Spellbook-Page-1` ✅. `‹` `›` still to read: too
+        small to make out on the 26 × 22 page buttons in the screenshots
   - [ ] Escape closes the book; with the Share box focused, the first Escape clears focus
         and the second closes; Escape in combat closes it too, with no "blocked" or
         taint message

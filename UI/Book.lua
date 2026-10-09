@@ -36,7 +36,9 @@ local LOOK = {
     color = { 0.10, 0.07, 0.05, 0.95 } },
   left = { file = "Interface\\Spellbook\\Spellbook-Page-1",
     color = { PARCHMENT[1], PARCHMENT[2], PARCHMENT[3], 1 } },
-  right = { file = "Interface\\Spellbook\\Spellbook-Page-2",
+  -- Spellbook-Page-2 stretched into a blur on Forever (#12, 2026-10-09): the right page
+  -- is the left page's file, mirrored, so its cover edge sits on the outside too.
+  right = { file = "Interface\\Spellbook\\Spellbook-Page-1", mirror = true,
     color = { PARCHMENT[1], PARCHMENT[2], PARCHMENT[3], 1 } },
   spine = { color = { 0, 0, 0, 0.25 } },
   barBack = { color = { INK[1], INK[2], INK[3], 0.15 } },
@@ -49,8 +51,12 @@ local LOOK = {
   checkBack = { color = { 0.10, 0.07, 0.05, 0.9 } },
 }
 
-local BOOK_W, BOOK_H = 860, 560
 local PAGE_W, PAGE_H = 404, 500
+-- The page file's outer edge is a cover and a ribbon (about 12% of its width on Forever,
+-- #12): each page texture reaches COVER past the writing area on the outer side, so no
+-- text sits on the cover.
+local MARGIN, COVER, GUTTER = 16, 56, 20
+local BOOK_W, BOOK_H = 2 * (MARGIN + COVER + PAGE_W) + GUTTER, 560
 local PAGE_TOP = -44
 local PAD = 24
 local CONTENT_W = PAGE_W - 2 * PAD
@@ -612,7 +618,11 @@ local function buildPage(book, side, look, x)
   local f = CreateFrame("Frame", nil, book)
   f:SetSize(PAGE_W, PAGE_H)
   f:SetPoint("TOPLEFT", book, "TOPLEFT", x, PAGE_TOP)
-  newTexture(f, "BACKGROUND", look)
+  local tex = newTexture(f, "BACKGROUND", look, PAGE_W + COVER, PAGE_H,
+    side == "left" and -COVER or 0, 0)
+  if look.mirror then
+    tex:SetTexCoord(1, 0, 0, 1)
+  end
   local ui = { frame = f }
   ui.prev = newButton(f, TEXT.prev, 26, 22)
   ui.prev:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 10)
@@ -638,9 +648,9 @@ local function build()
   newTexture(book, "BACKGROUND", LOOK.frame)
 
   local ui = { frame = book, tabs = {} }
-  ui.left = buildPage(book, "left", LOOK.left, 16)
-  ui.right = buildPage(book, "right", LOOK.right, BOOK_W - 16 - PAGE_W)
-  newTexture(book, "ARTWORK", LOOK.spine, BOOK_W - 32 - 2 * PAGE_W, PAGE_H, 16 + PAGE_W, PAGE_TOP)
+  ui.left = buildPage(book, "left", LOOK.left, MARGIN + COVER)
+  ui.right = buildPage(book, "right", LOOK.right, BOOK_W - MARGIN - COVER - PAGE_W)
+  newTexture(book, "ARTWORK", LOOK.spine, GUTTER, PAGE_H, MARGIN + COVER + PAGE_W, PAGE_TOP)
 
   ui.notice = newText(book, "small", 620, (BOOK_W - 620) / 2, -16, "CENTER")
   color(ui.notice, PARCHMENT, false) -- it sits on the dark frame, not on parchment

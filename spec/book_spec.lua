@@ -225,7 +225,7 @@ describe("Book: opening and closing", function()
     assert.equal("InnkeepersLedgerBook", frame.name)
     assert.is_true(rawequal(_G.UIParent, frame.parent))
     assert.is_true(frame:IsShown())
-    assert.same({ 860, 560 }, { frame.width, frame.height })
+    assert.same({ 972, 560 }, { frame.width, frame.height })
     assert.same({ "CENTER", _G.UIParent, "CENTER", 0, 0 }, frame.points[1])
     assert.equal("HIGH", frame.strata)
     assert.is_true(frame.clamped)
@@ -288,8 +288,19 @@ describe("Book: opening and closing", function()
     local ui = ns.Book.ui
     assert.same({ 0.10, 0.07, 0.05, 0.95 }, ui.frame.textures[1].color)
     assert.equal("Interface\\DialogFrame\\UI-DialogBox-Background-Dark", ui.frame.textures[1].file)
-    assert.equal("Interface\\Spellbook\\Spellbook-Page-1", ui.left.frame.textures[1].file)
-    assert.equal("Interface\\Spellbook\\Spellbook-Page-2", ui.right.frame.textures[1].file)
+    -- One page file for both; the right one mirrored. Each texture reaches 56 past the
+    -- writing area on the outer side, where the file's cover is (#12).
+    local lt, rt = ui.left.frame.textures[1], ui.right.frame.textures[1]
+    assert.equal("Interface\\Spellbook\\Spellbook-Page-1", lt.file)
+    assert.equal("Interface\\Spellbook\\Spellbook-Page-1", rt.file)
+    assert.is_nil(lt.texCoord)
+    assert.same({ 1, 0, 0, 1 }, rt.texCoord)
+    assert.same({ 460, 500 }, { lt.width, lt.height })
+    assert.same({ 460, 500 }, { rt.width, rt.height })
+    assert.same({ "TOPLEFT", ui.left.frame, "TOPLEFT", -56, 0 }, lt.points[1])
+    assert.same({ "TOPLEFT", ui.right.frame, "TOPLEFT", 0, 0 }, rt.points[1])
+    assert.same({ "TOPLEFT", ui.frame, "TOPLEFT", 72, -44 }, ui.left.frame.points[1])
+    assert.same({ "TOPLEFT", ui.frame, "TOPLEFT", 496, -44 }, ui.right.frame.points[1])
     local names = {}
     for name, b in pairs(ui.tabs) do
       assert.equal("UIPanelButtonTemplate", b.template)

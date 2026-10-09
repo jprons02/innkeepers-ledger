@@ -615,12 +615,15 @@ backdrop template, no tab or check box templates, no dropdowns, menus, scroll fr
 `ScrollBox`. Everything is built once, on the first open, and hidden or filled after
 that.
 
-- **The book:** `CreateFrame("Frame", "InnkeepersLedgerBook", UIParent)`, about 860 × 560,
+- **The book:** `CreateFrame("Frame", "InnkeepersLedgerBook", UIParent)`, 972 × 560,
   `CENTER` of `UIParent`, strata `HIGH`, mouse enabled, clamped to the screen, not
   movable. **Its global name is the AddOn's only global** (UISpecialFrames needs a name,
   §3.11.4). Hidden by default.
-- **Layers:** the dark frame (a texture over the whole book); two pages inset 16 px,
-  each about 404 × 500, with a parchment texture; a narrow spine shadow between them;
+- **Layers:** the dark frame (a texture over the whole book); two pages, each a
+  404 × 500 writing area, with a parchment texture 460 × 500 that reaches 56 past the
+  writing area on the page's outer side (the page file's cover and ribbon sit there, not
+  under text; amended 2026-10-09, #135); 16 of dark frame outside each texture; a
+  20-wide spine shadow between the pages;
   four border lines of `STAMP`-tinted color texture around each page are optional
   (DRAFT).
 - **Tabs:** four `UIPanelButtonTemplate` buttons, about 120 × 24, in a row under the
@@ -658,12 +661,12 @@ in-client check and its `file` set to `nil` (a one-line change).
 |---|---|---|
 | dark frame | `Interface\DialogFrame\UI-DialogBox-Background-Dark`; `Interface\Tooltips\UI-Tooltip-Background` tinted dark | `0.10, 0.07, 0.05, 0.95` (dark leather) |
 | left page | `Interface\Spellbook\Spellbook-Page-1` (the old spellbook's left page); `Interface\QuestFrame\QuestBG` (quest-log parchment); `Interface\Stationery\StationeryTest1` (mail stationery) | `0.87, 0.80, 0.64, 1` (parchment) |
-| right page | `Interface\Spellbook\Spellbook-Page-2`; the left page's choice | `0.87, 0.80, 0.64, 1` |
+| right page | the left page's choice, mirrored (`SetTexCoord(1, 0, 0, 1)`). `Spellbook-Page-2` was tried first; on Forever it's smaller art that stretched into a blur (2026-10-09, #135) | `0.87, 0.80, 0.64, 1` |
 | spine shadow | none | `0, 0, 0, 0.25` |
 | bars, marks, stamp lines, seal dots | none (color only) | `INK`, `STAMP` |
 
-Texture coordinates for the page files (`SetTexCoord`) are tuned in the client; until
-then the files are stretched.
+`Spellbook-Page-1` is shown whole (no cropping); its outer ~12% is the cover, which the
+56 of reach covers. Other coordinates are tuned in the client if needed.
 
 #### 3.11.2 Client reads
 

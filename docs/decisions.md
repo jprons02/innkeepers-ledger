@@ -10,6 +10,19 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-09 — Both book pages use `Spellbook-Page-1`, clear of its cover
+
+The first in-client screenshots (#12) showed two things. `Spellbook-Page-2` is smaller
+art on Forever and stretched into a blur. `Spellbook-Page-1`'s outer ~12% is a cover and
+ribbon that hid the start of every line. Now the right page is the left page's file,
+mirrored, and each page texture reaches 56 past the unchanged 404 × 500 writing area on
+its outer side; the book is 972 × 560 (#135, [specs/book.md
+§3.11.1](specs/book.md#3111-frames-and-the-look-draft)). The look stays DRAFT. **Rejected:**
+*cropping the cover off with `SetTexCoord`* (it would lose the book's edge, and the
+spread reads as a book because of it); *more padding inside the 404 writing area* (it
+would narrow every panel and break the 3-column stamp grid); *`QuestBG` or
+`StationeryTest1`* (untried; Page-1 already looks right).
+
 ### 2026-10-08 — One copy of the place-name rule; `isInt` stays per module
 
 `Cosmetics` had its own copy of `Collection`'s rule 5 (the byte allow-list, a capital

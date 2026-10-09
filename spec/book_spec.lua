@@ -301,6 +301,9 @@ describe("Book: opening and closing", function()
     assert.same({ "TOPLEFT", ui.right.frame, "TOPLEFT", 0, 0 }, rt.points[1])
     assert.same({ "TOPLEFT", ui.frame, "TOPLEFT", 72, -44 }, ui.left.frame.points[1])
     assert.same({ "TOPLEFT", ui.frame, "TOPLEFT", 496, -44 }, ui.right.frame.points[1])
+    local spine = ui.frame.textures[2] -- fills the gap between the two textures
+    assert.same({ 20, 500 }, { spine.width, spine.height })
+    assert.same({ "TOPLEFT", ui.frame, "TOPLEFT", 476, -44 }, spine.points[1])
     local names = {}
     for name, b in pairs(ui.tabs) do
       assert.equal("UIPanelButtonTemplate", b.template)
@@ -325,6 +328,9 @@ describe("Book: opening and closing", function()
     wow.textureResult = false
     wow.slash("/ledger")
     assert.same({ 0.87, 0.80, 0.64, 1 }, ns.Book.ui.left.frame.textures[1].color)
+    local rt = ns.Book.ui.right.frame.textures[1] -- the mirror doesn't touch the color
+    assert.same({ 0.87, 0.80, 0.64, 1 }, rt.color)
+    assert.same({ 1, 0, 0, 1 }, rt.texCoord)
   end)
 end)
 

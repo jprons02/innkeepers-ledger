@@ -651,7 +651,8 @@ that.
 
 **Textures, every one unverified on Forever** (each has a solid-color fallback; the
 in-client check decides which stay, [§8](#8-in-client-checks-for-12) item 2). A table
-`LOOK` in `Book.lua` holds, per surface, `{ file = <path or nil>, color = { r, g, b, a } }`.
+`LOOK` in `Book.lua` holds, per surface, `{ file = <path or nil>, color = { r, g, b, a } }`
+and, for the right page, `mirror = true` (`SetTexCoord(1, 0, 0, 1)` after painting).
 The glue always calls `SetColorTexture(color)` first; if `file` is set it then calls
 `SetTexture(file)`, and if that returns exactly `false` it re-applies the color. A file
 that loads as a blank or green square without returning `false` is caught by the

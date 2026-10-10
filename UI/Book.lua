@@ -311,7 +311,8 @@ local function newStamp(parent, w, h, x, y)
   f:SetSize(w, h)
   f:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
   st.frame = f
-  local sides = { { 0, 0, w, 2 }, { 0, -(h - 2), w, 2 }, { 0, 0, 2, h }, { w - 2, 0, 2, h } }
+  -- { x, down, width, height }: `down` is the distance below the stamp's top.
+  local sides = { { 0, 0, w, 2 }, { 0, h - 2, w, 2 }, { 0, 0, 2, h }, { w - 2, 0, 2, h } }
   for i, side in ipairs(sides) do
     st.solid[i] = newTexture(f, "ARTWORK", LOOK.stamp, side[3], side[4], side[1], -side[2])
   end

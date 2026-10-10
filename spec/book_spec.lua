@@ -402,6 +402,20 @@ describe("Book: the Inns tab", function()
     assert.equal(date(ns, NOW - 3600), ui.inn.stamp.date:GetText())
     assert.is_true(shown(ui.inn.stamp.solid[1]))
     assert.is_false(shown(ui.inn.stamp.dashes[1]))
+    -- Every side and dash lies inside the stamp (#12: the bottom side once sat h - 2
+    -- above the top, a stray line over the book).
+    local st = ui.inn.stamp
+    local w, h = st.frame.width, st.frame.height
+    local all = {}
+    for _, t in ipairs(st.solid) do all[#all + 1] = t end
+    for _, t in ipairs(st.dashes) do all[#all + 1] = t end
+    for _, t in ipairs(all) do
+      local p = t.points[1]
+      assert.equal(st.frame, p[2])
+      assert.is_true(p[4] >= 0 and p[4] + t.width <= w, "x")
+      assert.is_true(p[5] <= 0 and -p[5] + t.height <= h, "y")
+    end
+    assert.same({ "TOPLEFT", st.frame, "TOPLEFT", 0, -(h - 2) }, st.solid[2].points[1])
     assert.same({
       "Your signatures",
       date(ns, NOW - 3600) .. " / " .. ns.Phrase.render({ 101 }),

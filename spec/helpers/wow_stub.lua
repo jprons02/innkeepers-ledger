@@ -13,15 +13,30 @@ local lua_xpcall = xpcall
 local saved      -- globals as they were before install (name -> value)
 local frames     -- every frame CreateFrame has made since install
 
+M.SCREEN_W, M.SCREEN_H = 1024, 768
+
 -- What frames, font strings and textures share: a shown flag, points, a size and text.
+-- SetPoint replaces a point already set with the same name, as the client does;
+-- SetAllPoints(rel) sets TOPLEFT and BOTTOMRIGHT to `rel` (nil: the parent).
 local function region(kind)
   local r = { kind = kind, shown = true, points = {}, text = nil }
   function r:Show() self.shown = true end
   function r:Hide() self.shown = false end
   function r:IsShown() return self.shown end
-  function r:SetPoint(...) self.points[#self.points + 1] = { ... } end
+  function r:SetPoint(point, ...)
+    for i, p in ipairs(self.points) do
+      if p[1] == point then
+        self.points[i] = { point, ... }
+        return
+      end
+    end
+    self.points[#self.points + 1] = { point, ... }
+  end
   function r:ClearAllPoints() self.points = {} end
-  function r:SetAllPoints(...) self.allPoints = { ... } end
+  function r:SetAllPoints(rel)
+    self.points = { { "TOPLEFT", rel, "TOPLEFT", 0, 0 },
+      { "BOTTOMRIGHT", rel, "BOTTOMRIGHT", 0, 0 } }
+  end
   function r:SetSize(w, h) self.width, self.height = w, h end
   function r:SetWidth(w) self.width = w end
   function r:SetHeight(h) self.height = h end
@@ -131,13 +146,16 @@ local function new_frame(name, kind, parent, template)
       handler(self, ...)
     end
   end
+  -- A font string's or texture's parent is the frame that made it.
   function frame:CreateFontString(_, layer, fsTemplate)
     local fs = new_font_string(layer, fsTemplate)
+    fs.parent = self
     self.fontStrings[#self.fontStrings + 1] = fs
     return fs
   end
   function frame:CreateTexture(_, layer)
     local tex = new_texture(layer)
+    tex.parent = self
     self.textures[#self.textures + 1] = tex
     return tex
   end
@@ -258,7 +276,12 @@ local function defaults()
   api.GossipFrame = new_frame("GossipFrame")
   -- The book's parent, the Escape list and the client's font objects (book.md 6.1). Set
   -- any to nil per case to test the fallbacks.
+  -- UIParent is the screen for wow.rect: 1024 x 768, the size of UIParent on a 4:3
+  -- screen at UI scale 1. It isn't the smallest: a 5:4 screen gives 960 x 768.
   api.UIParent = new_frame("UIParent")
+  api.UIParent.screen = true
+  api.UIParent:SetSize(M.SCREEN_W, M.SCREEN_H)
+  M.screen = api.UIParent
   api.UISpecialFrames = {}
   api.GameFontNormal = { name = "GameFontNormal" }
   api.GameFontNormalSmall = { name = "GameFontNormalSmall" }
@@ -430,6 +453,205 @@ function M.slash(line)
     end
   end
   error("no slash command " .. tostring(command))
+end
+
+-- ---------------------------------------------------------------------------
+-- Layout (#140): anchors to rectangles, and a text size estimate, so specs can check
+-- geometry without a client. Pure: reads what the regions recorded, changes nothing.
+
+-- The font size of each font object (and font string template) the AddOn uses, from the
+-- client's FrameXML. Text width is estimated as characters x size x TEXT_EM. 0.6 em is a
+-- guess, not a measurement: it's meant to be wider than most text, but capitals, wide
+-- letters and Morpheus (QuestTitleFont) may run wider. Calibrate it from the string widths
+-- the #139 dev harness dumps (`sw`). A line is `size` high, also a guess.
+M.FONT_SIZES = {
+  GameFontNormal = 12,
+  GameFontNormalSmall = 10,
+  GameFontNormalLarge = 16,
+  GameFontHighlight = 12,
+  GameFontHighlightSmall = 10,
+  QuestTitleFont = 18,
+  UIPanelButtonTemplate = 12, -- a button's label is GameFontNormal
+}
+M.TEXT_EM = 0.6
+
+-- Each anchor point as { horizontal, vertical } fractions of a rectangle from its bottom left.
+local POINTS = {
+  TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 },
+  LEFT = { 0, 0.5 }, CENTER = { 0.5, 0.5 }, RIGHT = { 1, 0.5 },
+  BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 },
+}
+
+-- The font size a region's text is drawn in: its font object, else its template (a font
+-- string's, or a button's), else GameFontNormal.
+function M.fontSize(r)
+  local obj = r.fontObject
+  local size = type(obj) == "table" and M.FONT_SIZES[obj.name]
+    or M.FONT_SIZES[r.template]
+  return size or M.FONT_SIZES.GameFontNormal
+end
+
+-- Characters (not bytes) in a UTF-8 string.
+local function chars(s)
+  return #s:gsub("[\128-\191]", "")
+end
+
+-- The estimated width of `text` (one line) in `region`'s font.
+function M.textWidth(r, text)
+  return chars(text) * M.fontSize(r) * M.TEXT_EM
+end
+
+-- How `region`'s text lays out in `width` (nil: no width, so no wrapping): the number of
+-- lines, the widest line and the widest word, all estimated. Word wrap is on unless the
+-- region turned it off, as in the client. Empty text is 0 lines.
+function M.textLines(r, width)
+  local text = type(r.text) == "string" and r.text or ""
+  if text == "" then
+    return 0, 0, 0
+  end
+  local em = M.fontSize(r) * M.TEXT_EM
+  local wrap = r.wordWrap ~= false and type(width) == "number"
+  local lines, widest, widestWord = 0, 0, 0
+  for para in (text .. "\n"):gmatch("([^\n]*)\n") do
+    local n = 0 -- characters on the current line
+    lines = lines + 1
+    for word in para:gmatch("%S+") do
+      local w = chars(word)
+      widestWord = math.max(widestWord, w * em)
+      if wrap and n > 0 and (n + 1 + w) * em > width then
+        widest = math.max(widest, n * em)
+        lines, n = lines + 1, w
+      else
+        n = n + (n > 0 and 1 or 0) + w
+      end
+    end
+    if not wrap then
+      n = chars(para)
+    end
+    widest = math.max(widest, n * em)
+  end
+  return lines, widest, widestWord
+end
+
+-- A point as SetPoint recorded it: point [, relativeTo [, relativePoint]] [, x, y].
+-- relativeTo may be a region, a global frame name or nil (the parent, or the screen for a
+-- region without one).
+local function anchorOf(p, r)
+  local point = p[1]
+  local rel, relPoint, x, y
+  if type(p[2]) == "number" then
+    x, y = p[2], p[3]
+  else
+    rel = p[2]
+    if type(p[3]) == "string" then
+      relPoint, x, y = p[3], p[4], p[5]
+    elseif type(p[3]) == "number" then
+      x, y = p[3], p[4]
+    else
+      x, y = p[4], p[5]
+    end
+  end
+  if type(rel) == "string" then
+    rel = rawget(_G, rel)
+  end
+  if rel == nil then
+    rel = r.parent or M.screen
+  end
+  return point, rel, relPoint or point, x or 0, y or 0
+end
+
+-- One axis from its constraints (fraction -> coordinate): two different fractions give
+-- the start and the length (a stretch); one needs `size`.
+local function span(cons, size)
+  local lo, hi
+  for f in pairs(cons) do
+    if lo == nil or f < lo then lo = f end
+    if hi == nil or f > hi then hi = f end
+  end
+  if lo == nil then
+    return nil
+  end
+  if lo ~= hi then
+    local len = (cons[hi] - cons[lo]) / (hi - lo)
+    return cons[lo] - lo * len, len
+  end
+  if type(size) ~= "number" then
+    return nil
+  end
+  return cons[lo] - lo * size, size
+end
+
+local function set(n)
+  return type(n) == "number" and n > 0 and n or nil
+end
+
+local resolve
+
+-- Where each of `region`'s points lands, as horizontal and vertical constraints; nil if
+-- a point is malformed or its relative region doesn't resolve.
+local function constraints(r, visiting)
+  local xs, ys = {}, {}
+  for _, p in ipairs(r.points) do
+    local point, rel, relPoint, x, y = anchorOf(p, r)
+    local a, b = POINTS[point], POINTS[relPoint]
+    if not a or not b or type(x) ~= "number" or type(y) ~= "number" then
+      return nil
+    end
+    local l, bottom, w, h = resolve(rel, visiting)
+    if l == nil then
+      return nil
+    end
+    xs[a[1]] = l + b[1] * w + x
+    ys[a[2]] = bottom + b[2] * h + y
+  end
+  return xs, ys
+end
+
+resolve = function(r, visiting)
+  if type(r) ~= "table" then
+    return nil
+  end
+  if r.screen then
+    return 0, 0, r.width, r.height
+  end
+  if visiting[r] or type(r.points) ~= "table" or #r.points == 0 then
+    return nil -- an anchor cycle, or no anchors
+  end
+  visiting[r] = true
+  local xs, ys = constraints(r, visiting)
+  visiting[r] = nil
+  if xs == nil then
+    return nil
+  end
+  local text = r.kind == "FontString"
+  -- A font string without a set width is as wide as its text; without a set height, as
+  -- high as its lines.
+  local width = set(r.width)
+  if width == nil and text then
+    local _, widest = M.textLines(r, nil)
+    width = widest
+  end
+  local left, w = span(xs, width)
+  if left == nil then
+    return nil
+  end
+  local height = set(r.height)
+  if height == nil and text then
+    height = M.textLines(r, w) * M.fontSize(r)
+  end
+  local bottom, h = span(ys, height)
+  if bottom == nil or w < 0 or h < 0 then
+    return nil
+  end
+  return left, bottom, w, h
+end
+
+-- The rectangle a region resolves to in screen units, from its points, its size and its
+-- parents' rectangles, as the client lays it out: left, bottom, width, height; nil when it
+-- can't be resolved (no points, a missing size, a malformed point, an anchor cycle, or a
+-- relative region that doesn't resolve). UIParent is the screen, 1024 x 768.
+function M.rect(r)
+  return resolve(r, {})
 end
 
 return M

@@ -72,6 +72,35 @@ Proportional, not ceremonial:
   `SetTexture` (set `wow.textureResult = false` for a file the client can't find);
   `ClearAllPoints`; and the globals `UIParent`, `UISpecialFrames`, the `GameFont*` and
   `QuestTitleFont` objects, `date` and `time`, each settable to `nil` per case.
+- **Layout (#140):** `wow.rect(region)` resolves anchors the way the client does and
+  returns left, bottom, width, height, or `nil` when it can't (no points, no size, a bad
+  point, an anchor cycle). `UIParent` is the screen, 1024 × 768 (a 4:3 screen at UI
+  scale 1; a 5:4 one gives 960). It handles `SetPoint` with any of the nine points,
+  offsets, a region, a global name or the parent (the default), `SetAllPoints`,
+  `SetSize` / `SetWidth` / `SetHeight`, and two points on an axis (a stretch sets the
+  size). `SetPoint` replaces a point of the same name, as the client does. Font strings
+  and textures know their `parent`. A font string with no set width is as wide as its
+  text, and with no set height as high as its lines. Text size is an estimate:
+  characters × font size × 0.6 wide, the font size high (`wow.FONT_SIZES`,
+  `wow.TEXT_EM`). It isn't measured yet, and capitals, wide letters or Morpheus may run
+  wider. Calibrate it from the string widths (`sw`) the #139 dev harness dumps. Not
+  modeled: scale and clamping to the screen.
+  `spec/helpers/layout.lua` holds the checks, each returning a list of problems with the
+  numbers. Every shown region (shown with all its parents) resolves, stays inside its
+  parent, and overlaps nothing but its own parents and backdrops (a texture or plain
+  frame covering its parent; never a button). Its text fits. A region that hangs off a
+  frame by design (the tabs under the book, the Sign and Read buttons under the gossip
+  window, the composer beside it) is checked against the screen and must lie wholly on
+  its side of that frame (`layout.beside`). `spec/layout_spec.lua` runs the checks over
+  every page of every tab of the book and over the composer (every voice's templates,
+  every category's words, the seal row, the preview at its cap). The book runs three
+  times: an empty ledger, a full one (an atlas of 38 extra inns) and the longest inputs
+  (long inn and zone names, the longest phrase, the longest traveler names, a seal on
+  every traveler's signature). Each exception is listed in the spec with its reason, and
+  each check has a case showing it fails on a broken layout. Problems found in the
+  current UI (the look is a DRAFT) are matched by narrow `KNOWN` patterns, which the
+  other cases drop. Each has a live "known problem" case that asserts it's still there,
+  with its numbers. When one fails, the UI was fixed: delete the case and its pattern.
 - **The sync harness** (`spec/helpers/sync_harness.lua`): N `Sync` clients in one Lua
   state, each with its own `ns`, ledger, GUID and fake `api` (no stub, no `_G`), sharing
   a clock, a timer queue, an addon-message bus that echoes to the sender, and the group

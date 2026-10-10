@@ -72,6 +72,27 @@ Proportional, not ceremonial:
   `SetTexture` (set `wow.textureResult = false` for a file the client can't find);
   `ClearAllPoints`; and the globals `UIParent`, `UISpecialFrames`, the `GameFont*` and
   `QuestTitleFont` objects, `date` and `time`, each settable to `nil` per case.
+- **Layout (#140):** `wow.rect(region)` resolves anchors the way the client does and
+  returns left, bottom, width, height, or `nil` when it can't (no points, no size, a bad
+  point, an anchor cycle). `UIParent` is the screen, 1024 × 768. It handles `SetPoint`
+  with any of the nine points, offsets, a region, a global name or the parent (the
+  default), `SetAllPoints`, `SetSize` / `SetWidth` / `SetHeight`, and two points on an axis
+  (a stretch sets the size). `SetPoint` replaces a point of the same name, as the client
+  does. Font strings and textures know their `parent`. A font string with no set width
+  is as wide as its text, and with no set height as high as its lines. Text width is an
+  estimate: characters × font size × 0.6 (`wow.FONT_SIZES`, `wow.TEXT_EM`). The game fonts
+  average about 0.5 em, so the estimate is conservative: text that passes fits, and text
+  it flags may still just fit in the client. Not modeled: scale, clamping to the screen
+  and real font metrics. `spec/helpers/layout.lua` holds the checks, each returning a
+  list of problems with the numbers: every shown region (shown with all its parents)
+  resolves, stays inside its parent, overlaps nothing but its own parents and backdrops,
+  and its text fits. `spec/layout_spec.lua` runs them over
+  every page of every tab of the book (an empty ledger and a full one, with an atlas of
+  38 extra inns) and the composer (every voice's templates, every category's words, the
+  seal row, the preview at its cap). Each exception is listed in the spec with its
+  reason, and each check has a case showing it fails on a broken layout. Problems found
+  in the current UI are `pending` cases under "Layout: known problems" (the look is a
+  DRAFT); the other cases skip only those.
 - **The sync harness** (`spec/helpers/sync_harness.lua`): N `Sync` clients in one Lua
   state, each with its own `ns`, ledger, GUID and fake `api` (no stub, no `_G`), sharing
   a clock, a timer queue, an addon-message bus that echoes to the sender, and the group

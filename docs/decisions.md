@@ -10,6 +10,25 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-10 — Agents see the UI through a dev harness in the client
+
+Every look fix so far waited on the maintainer's screenshots, and one batch showed a
+3-day-stale copy. The maintainer chose (2026-10-09 discussion): **first** a dev-only
+AddOn, `ILDev` (#139, [testing.md](testing.md#testing-posture)), that tours the UI,
+calls `Screenshot()` and dumps the real layout, with scripts to deploy it and read the
+results; **then** layout checks in busted, which resolve anchors in the stub (#140) and
+keep working after the beta ends 2026-10-21. An offline renderer (the stub's frames drawn
+in a browser with the client's textures) waits until the gap between the beta and launch
+shows whether it's needed. ILDev lives in `scripts/devclient/`, on `dev`, not on the
+probe's spike branch: it's a lasting tool that has to follow the AddOn, and `scripts/` is
+already outside the package and `check-apis.sh`. The AddOn gets no dev hooks; the harness
+drives it like a player (slash command, named frame, button clicks). Watch mode (a timed
+reload) is switched on in game and runs only while resting and AFK. **Rejected:**
+*sending keystrokes to the game window* to press `/reload` (third-party input
+automation is against the ToS; not worth the beta account); *extending the probe*
+(never merged, so it drifts from `dev`, as it had by 2026-10-10); *dev hooks in the
+AddOn* (shipped code for a dev tool, and a wider surface for other AddOns).
+
 ### 2026-10-09 (later) — The pages' covers meet in the middle as the spine
 
 Supersedes the layout half of the entry below (the file choice stands). The maintainer

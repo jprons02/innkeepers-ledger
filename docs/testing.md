@@ -144,10 +144,44 @@ Proportional, not ceremonial:
   TOC loads, plus `Libs/`, against the client's copy (`cmp`). Re-copy after each merge.
   On 2026-10-09 the copy was 3 days old, so screenshots showed code from before #102 and
   #110.
+- **The dev harness (#139): the client screenshots and measures the UI itself.**
+  `scripts/devclient/` holds `ILDev`, a second AddOn that's never packaged (the packager
+  ignores `scripts/`), plus the scripts around it. The loop:
+  1. `sh scripts/devclient/deploy.sh -t book,composer` copies the working tree's AddOn
+     and ILDev into the client (`$ILDEV_CLIENT`, or the default beta folder), writes a
+     tour request (`tours/<name>.lua`, wrapped into `ILDev/Request.lua`) and checks the
+     copy byte for byte. It says when a restart is needed (a new AddOn folder or TOC
+     file); otherwise `/reload` loads it.
+  2. In game, `/reload`. A new request runs a few seconds after login: it opens the book
+     with `/ledger`, clicks tabs and page buttons by their text, and at each step takes a
+     `Screenshot()` and dumps the layout (every frame and region under the book: rect,
+     shown and visible, strata and level, draw layer, texture and texcoords, text,
+     string width, truncation). Then it reloads to save the results. The `composer`
+     tour needs the gossip window open, so it runs from `/ildev run composer` after
+     talking to an innkeeper.
+  3. `sh scripts/devclient/results.sh <out>` (Lua on PATH) prints the run (steps,
+     Lua errors, layout warnings: truncated text, text with no size, regions outside the
+     book or off screen), writes each dump as an indented tree to `<out>/<label>.txt`
+     and crops every screenshot to the frame it shows (`<out>/NN-<label>.png`, which an
+     agent views with its Read tool). Keep `<out>` outside the repo: the book's title
+     names the character.
+  **Watch mode** (`/ildev watch`, 3 hours): the harness reloads every 60 s
+  (`deploy.sh -w`) while the character is resting, away (AFK) and out of combat, so a
+  new deploy runs without anyone at the keyboard. It's switched on in game only.
+  **Rules:** the steps are a fixed vocabulary (`slash`, `click`, `wait`, `shot`, `dump`,
+  `pages`, `hide`). `Request.lua` is itself Lua, trusted like any file in `AddOns/`, but
+  no step is evaluated. A step runs only `/ledger`, and clicks or hides only under the
+  book or the gossip window, by a button's exact text; anything else is refused and
+  logged. It never clicks a button labelled "Sign" (the composer's commit; a spec ties
+  this to `SignFlow`'s label), and in the gossip window it clicks only the AddOn's own
+  buttons. A step that fails or raises is logged and the run goes on or ends cleanly
+  (the screenshot quality restored, the results saved). The AddOn itself has no dev hooks. Nothing sends keystrokes to the
+  game window (decisions.md, 2026-10-10). `spec/devclient_spec.lua` runs ILDev over a
+  fake frame tree and `read.lua` over a saved run.
 - **Refreshing the AddOn in the client after a merge:** the installed
   `Interface/AddOns/InnkeepersLedger` is a plain copy, not a link. Copy `Libs`, `Data`,
-  `UI`, every top-level `*.lua` and the TOC from `dev` over it (what `install.sh` does,
-  without touching the probe), then `diff -rq` it against the repo. Changed files load
+  `UI`, every top-level `*.lua` and the TOC from `dev` over it, then compare it with the
+  repo. `scripts/devclient/deploy.sh` does both (and leaves the probe alone). Changed files load
   on `/reload`; a new file in the TOC needs a full client restart. The game never reads
   GitHub, so `dev` code is testable in the beta without a release.
 - **CI:** every check runs on every push and PR, and each has a local command

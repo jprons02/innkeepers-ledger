@@ -68,3 +68,18 @@ for _, glue in ipairs({ "Core.lua", "Sign.lua", "Sync.lua", "UI/Book.lua" }) do
 end
 
 files["spec/"] = { std = "lua51+busted" }
+
+-- The dev harness (#139): a separate AddOn that's never packaged (scripts/ is ignored),
+-- plus the local scripts that read its results. It sets its own globals.
+local devWow = {
+  "C_Timer", "C_UI", "CreateFrame", "DEFAULT_CHAT_FRAME", "GetBuildInfo", "GetCVar",
+  "GetPhysicalScreenSize", "GetTime", "InCombatLockdown", "IsResting", "ReloadUI",
+  "Screenshot", "SetCVar", "UIParent", "UnitIsAFK", "date", "geterrorhandler",
+  "seterrorhandler", "time",
+}
+files["scripts/devclient/ILDev/"] = {
+  std = "lua51", read_globals = devWow,
+  globals = { "ILDevDB", "ILDevRequest", "SLASH_ILDEV1", "SlashCmdList" },
+}
+files["scripts/devclient/read.lua"] = { std = "lua51" }
+files["scripts/devclient/tours/"] = { std = "lua51" }

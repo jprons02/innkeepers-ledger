@@ -5,7 +5,10 @@
 -- the client's Screenshots folder, where an agent reads it (scripts/devclient/read.lua).
 --
 -- Rules it keeps:
---   * A fixed step vocabulary. The request is data; nothing is evaluated.
+--   * A fixed step vocabulary over allow-listed targets: the /ledger command, and clicks
+--     and hides under the book or the gossip window only. Request.lua is itself Lua (the
+--     client runs every file in AddOns/), but the steps it lists are data: none is
+--     evaluated, and a step outside the vocabulary or the allow-lists is refused.
 --   * It drives the AddOn only from outside: its slash command, its named book frame and
 --     plain button clicks. The AddOn has no dev hooks.
 --   * It never clicks the composer's commit button, and in the gossip window it clicks
@@ -18,6 +21,8 @@ local db -- ILDevDB once loaded
 local run -- the run in progress (db.run)
 local busy = false
 local shotWaiter -- function waiting for SCREENSHOT_SUCCEEDED / _FAILED
+local savedQuality -- the player's screenshotQuality while a tour runs
+local watchChain = 0 -- the live watch timer chain; older chains stop
 
 local LOGIN_DELAY = 4 -- seconds after login before a tour starts (the ledger opens at login)
 local SHOT_TIMEOUT = 6
@@ -26,6 +31,13 @@ local SETTLE = 0.3 -- after a click, before the next step
 local MAX_NODES = 1500 -- per dump
 local MAX_DEPTH = 12
 local WATCH_HOURS = 3
+local WATCH_MIN = 30 -- seconds; a shorter interval would leave no time to type at login
+
+-- The only slash command a tour runs, and the only frames it clicks in or hides.
+local SLASH_OK = { ["/ledger"] = true }
+local ROOT_OK = { InnkeepersLedgerBook = true, GossipFrame = true }
+-- AddOns whose blocked actions are recorded: the harness drives the AddOn's handlers.
+local WATCHED = { ILDev = true, InnkeepersLedger = true }
 
 -- Texts never clicked: the composer's commit button.
 local NEVER = { ["Sign"] = true }
@@ -52,12 +64,13 @@ local function say(text)
   DEFAULT_CHAT_FRAME:AddMessage("|cff88ccffILDev|r " .. text)
 end
 
+local abort -- defined with the runs, below
+
 local function after(sec, fn)
   C_Timer.After(sec, function()
     local ok, err = pcall(fn)
     if not ok then
-      note("error", false, tostring(err))
-      busy = false
+      abort(err)
     end
   end)
 end
@@ -85,7 +98,10 @@ local function rectOf(r)
   if not ok or type(l) ~= "number" then
     return nil
   end
-  local es = r.GetEffectiveScale and r:GetEffectiveScale() or 1
+  -- A region without its own scale draws at its parent's.
+  local scaled = r.GetEffectiveScale and r or r:GetParent()
+  local es = scaled and scaled.GetEffectiveScale and scaled:GetEffectiveScale()
+    or UIParent:GetEffectiveScale()
   local k = es / UIParent:GetEffectiveScale()
   return { round(l * k), round(b * k), round(w * k), round(h * k) }
 end
@@ -296,8 +312,11 @@ end
 local steps = {}
 
 function steps.slash(s, nextStep)
-  local fn = slashCommand(s[2] or "")
-  if not fn then
+  local cmd = type(s[2]) == "string" and s[2]:lower() or nil
+  local fn = cmd and SLASH_OK[cmd] and slashCommand(cmd) or nil
+  if not (cmd and SLASH_OK[cmd]) then
+    note("slash " .. tostring(s[2]), false, "refused: not an allowed command")
+  elseif not fn then
     note("slash " .. tostring(s[2]), false, "no such command")
   else
     local ok, err = pcall(fn, s[3] or "")
@@ -311,7 +330,7 @@ function steps.wait(s, nextStep)
 end
 
 function steps.hide(s, nextStep)
-  local f = root(s[2])
+  local f = ROOT_OK[s[2]] and root(s[2]) or nil
   if f then
     f:Hide()
   end
@@ -320,6 +339,12 @@ function steps.hide(s, nextStep)
 end
 
 local function click(rootName, text, n)
+  if not ROOT_OK[rootName] then
+    return false, "refused: not an allowed frame"
+  end
+  if type(text) ~= "string" or text == "" then
+    return false, "refused: no button text"
+  end
   local f = root(rootName)
   if not f then
     return false, "no frame " .. tostring(rootName)
@@ -434,24 +459,61 @@ end
 -- ---------------------------------------------------------------------------
 -- Runs.
 
+local function restoreQuality()
+  if savedQuality ~= nil then
+    SetCVar("screenshotQuality", savedQuality)
+    savedQuality = nil
+  end
+end
+
 local function finishRun()
+  if run.finished then
+    return
+  end
+  restoreQuality()
   run.finished = time()
   busy = false
   say(("tour done: %d steps, %d shots, %d errors."):format(#run.steps, #run.shots,
     #run.errors))
-  if db.flushAfterRun ~= false then
-    db.autoReload = { tried = time() }
-    say("saving: reloading the UI.")
-    after(1, function()
-      local reload = (C_UI and C_UI.Reload) or ReloadUI
-      reload()
-    end)
-    -- If the reload is blocked, say so; a typed /reload saves the results.
-    after(4, function()
-      db.autoReload = nil
-      say("the automatic reload didn't happen; type /reload to save the results.")
-    end)
+  db.autoReload = { tried = time() }
+  say("saving: reloading the UI.")
+  C_Timer.After(1, function()
+    local reload = (C_UI and C_UI.Reload) or ReloadUI
+    pcall(reload)
+  end)
+  -- If the reload is blocked, say so; a typed /reload saves the results.
+  C_Timer.After(4, function()
+    db.autoReload = nil
+    say("the automatic reload didn't happen; type /reload to save the results.")
+  end)
+end
+
+-- A step raised from a timer: the run ends there, with what it has.
+abort = function(err)
+  note("error", false, tostring(err))
+  if run and not run.finished then
+    finishRun()
   end
+  busy = false
+end
+
+-- The tours' steps in order, with a "mark" before each tour. Raises on a malformed tour.
+local function queueOf(req, only)
+  local queue = {}
+  for _, tour in ipairs(req.tours) do
+    if only == nil or tour.name == only then
+      local need = tour.need and root(tour.need)
+      if tour.need and not (need and need:IsVisible()) then
+        queue[#queue + 1] = { "skip", tour.name, tour.need }
+      else
+        queue[#queue + 1] = { "mark", tour.name }
+        for _, s in ipairs(tour.steps or {}) do
+          queue[#queue + 1] = s
+        end
+      end
+    end
+  end
+  return queue
 end
 
 local function runTours(only)
@@ -464,6 +526,11 @@ local function runTours(only)
     say("a tour is already running.")
     return
   end
+  local okQueue, queue = pcall(queueOf, req, only)
+  if not okQueue then
+    say("the request is malformed: " .. tostring(queue))
+    return
+  end
   busy = true
   run = { id = req.id, started = time(), t0 = now(), steps = {}, shots = {}, dumps = {},
     errors = {}, only = only }
@@ -473,33 +540,25 @@ local function runTours(only)
   run.client = { build = select(1, GetBuildInfo()), interface = select(4, GetBuildInfo()),
     screen = { pw, ph }, ui = { round(UIParent:GetWidth()), round(UIParent:GetHeight()) },
     uiScale = round(UIParent:GetEffectiveScale()) }
-  local quality = GetCVar("screenshotQuality")
+  savedQuality = GetCVar("screenshotQuality")
   SetCVar("screenshotQuality", "10")
-  local queue = {}
-  for _, tour in ipairs(req.tours) do
-    if only == nil or tour.name == only then
-      local need = tour.need and root(tour.need)
-      if tour.need and not (need and need:IsVisible()) then
-        note("tour " .. tostring(tour.name), false, "skipped: " .. tour.need .. " not shown")
-      else
-        queue[#queue + 1] = { "mark", tour.name }
-        for _, s in ipairs(tour.steps or {}) do
-          queue[#queue + 1] = s
-        end
-      end
-    end
-  end
   local i = 0
-  local function nextStep()
+  local nextStep
+  nextStep = function()
     i = i + 1
     local s = queue[i]
     if s == nil then
-      SetCVar("screenshotQuality", quality)
       finishRun()
       return
     end
-    if s[1] == "mark" then
-      note("tour " .. tostring(s[2]), true)
+    if type(s) ~= "table" then
+      note("step " .. i, false, "not a table")
+      nextStep()
+      return
+    end
+    if s[1] == "mark" or s[1] == "skip" then
+      note("tour " .. tostring(s[2]), s[1] == "mark",
+        s[1] == "skip" and ("skipped: " .. tostring(s[3]) .. " not shown") or nil)
       nextStep()
       return
     end
@@ -509,7 +568,19 @@ local function runTours(only)
       nextStep()
       return
     end
-    fn(s, nextStep)
+    -- Each step moves the run on once, even if it raises after scheduling its next.
+    local moved = false
+    local function go()
+      if not moved then
+        moved = true
+        nextStep()
+      end
+    end
+    local ok, err = pcall(fn, s, go)
+    if not ok then
+      note("step " .. tostring(s[1]) .. " raised", false, tostring(err))
+      after(0, go)
+    end
   end
   say("tour " .. tostring(req.id) .. " starting.")
   nextStep()
@@ -524,15 +595,19 @@ local function watchOk()
     and not InCombatLockdown()
 end
 
-local function scheduleWatch()
+local function scheduleWatch(chain)
+  if chain == nil then
+    watchChain = watchChain + 1
+    chain = watchChain
+  end
   local req = ILDevRequest
-  local every = type(req) == "table" and tonumber(req.watch) or 60
+  local every = math.max(WATCH_MIN, type(req) == "table" and tonumber(req.watch) or 60)
   C_Timer.After(every, function()
-    if not db.watchUntil then
+    if chain ~= watchChain or not db.watchUntil then
       return
     end
     if busy then
-      scheduleWatch()
+      scheduleWatch(chain)
       return
     end
     if watchOk() then
@@ -543,7 +618,7 @@ local function scheduleWatch()
       db.watchUntil = nil
       say("watch mode ended (time limit).")
     else
-      scheduleWatch()
+      scheduleWatch(chain)
     end
   end)
 end
@@ -584,13 +659,16 @@ events:SetScript("OnEvent", function(_, event, a1, a2)
     end
   elseif event == "SCREENSHOT_SUCCEEDED" or event == "SCREENSHOT_FAILED" then
     if shotWaiter then
-      shotWaiter(event == "SCREENSHOT_SUCCEEDED", event ~= "SCREENSHOT_SUCCEEDED" and event
-        or nil)
+      local ok, err = pcall(shotWaiter, event == "SCREENSHOT_SUCCEEDED",
+        event ~= "SCREENSHOT_SUCCEEDED" and event or nil)
+      if not ok then
+        abort(err)
+      end
     end
   elseif event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
-    if a1 == ADDON then
+    if WATCHED[a1] then
       db.blocked = db.blocked or {}
-      db.blocked[#db.blocked + 1] = event .. " " .. tostring(a2)
+      db.blocked[#db.blocked + 1] = event .. " " .. tostring(a1) .. " " .. tostring(a2)
     end
   end
 end)
@@ -604,6 +682,7 @@ SlashCmdList.ILDEV = function(input)
   elseif cmd == "watch" then
     if arg == "off" then
       db.watchUntil = nil
+      watchChain = watchChain + 1
       say("watch mode off.")
     else
       db.watchUntil = time() + WATCH_HOURS * 3600

@@ -279,6 +279,40 @@ describe("ILDev", function()
     assert.equal(1, w.signButton.clicks)
   end)
 
+  it("guards the composer's commit button by its current label", function()
+    -- ILDev refuses the text "Sign"; if SignFlow relabels the button, this must follow.
+    local src = assert(io.open("SignFlow.lua", "rb")):read("*a")
+    assert.equal("Sign", src:match('\n  sign = "([^"]*)"'))
+    local ildev = assert(io.open(HERE .. "ILDev/ILDev.lua", "rb")):read("*a")
+    assert.truthy(ildev:find('local NEVER = { ["Sign"] = true }', 1, true))
+  end)
+
+  it("runs only /ledger, and clicks and hides only in the book and the gossip window", function()
+    w = install({ id = "r6", tours = { { name = "t", steps = {
+      { "slash", "/run", "x" },
+      { "slash", "/LEDGER", "" },
+      { "click", "GameMenuFrame", "Logout" },
+      { "click", "InnkeepersLedgerBook" },
+      { "click", "InnkeepersLedgerBook", "" },
+      { "hide", "UIParent" } } } } })
+    _G.SlashCmdList.SCRIPT = function() w.ran = true end
+    _G.SLASH_SCRIPT1 = "/run"
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    _G.SlashCmdList.SCRIPT, _G.SLASH_SCRIPT1 = nil, nil
+    local steps = stepsOf(_G.ILDevDB)
+    assert.is_nil(w.ran)
+    assert.is_true(has(steps, "FAIL slash /run %(refused"))
+    assert.is_true(has(steps, "^ok slash /LEDGER"))
+    assert.is_true(w.book.shown)
+    assert.is_true(has(steps, "FAIL click GameMenuFrame \"Logout\" 1 %(refused"))
+    local refused = "1 %(refused: no button text"
+    assert.is_true(has(steps, "FAIL click InnkeepersLedgerBook \"nil\" " .. refused))
+    assert.is_true(has(steps, "FAIL click InnkeepersLedgerBook \"\" " .. refused))
+    assert.is_true(has(steps, "FAIL hide UIParent"))
+    assert.is_true(_G.UIParent.shown)
+  end)
+
   it("watch mode reloads only while resting and away, and is switched on in game", function()
     w = install({ id = "r4", watch = 30, tours = {} })
     _G.ILDevDB.lastId = "r4"
@@ -295,19 +329,64 @@ describe("ILDev", function()
     _G.SlashCmdList.ILDEV("watch off")
     w.pump()
     assert.is_nil(_G.ILDevDB.watchUntil)
+    assert.equal(1, w.reloads)
   end)
 
-  it("records a step that raises and carries on to the end", function()
+  it("keeps one watch chain and never reloads faster than every 30 s", function()
+    w = install({ id = "r7", watch = 0, tours = {} })
+    _G.ILDevDB.lastId = "r7"
+    w.fire("PLAYER_LOGIN")
+    _G.SlashCmdList.ILDEV("watch")
+    _G.SlashCmdList.ILDEV("watch")
+    _G.SlashCmdList.ILDEV("watch")
+    assert.equal(3, #w.timers)
+    w.pump(3)
+    assert.equal(1, w.reloads) -- the two older chains stopped
+    assert.equal(30, w.now)
+  end)
+
+  it("carries on past bad steps, and a raising step still ends the run", function()
     w = install({ id = "r5", tours = { { name = "t", steps = {
-      { "nosuch" }, { "click", "NoSuchFrame", "x" },
+      { "nosuch" }, "junk", { "click", "NoSuchFrame", "x" },
+      { "dump", nil, "InnkeepersLedgerBook" }, -- raises: a nil key
       { "dump", "d", "InnkeepersLedgerBook" } } } } })
     w.fire("PLAYER_LOGIN")
     w.pump()
-    local steps = stepsOf(_G.ILDevDB)
+    local db = _G.ILDevDB
+    local steps = stepsOf(db)
     assert.is_true(has(steps, "FAIL unknown step nosuch"))
-    assert.is_true(has(steps, "FAIL click NoSuchFrame \"x\" 1 %(no frame NoSuchFrame%)"))
+    assert.is_true(has(steps, "FAIL step 3 %(not a table%)"))
+    assert.is_true(has(steps, "FAIL click NoSuchFrame \"x\" 1 %(refused: not an allowed frame%)"))
+    assert.is_true(has(steps, "FAIL step dump raised"))
     assert.is_true(has(steps, "^ok dump d"))
-    assert.is_number(_G.ILDevDB.run.finished)
+    assert.is_number(db.run.finished)
+    assert.equal("3", w.cvars.screenshotQuality)
+    assert.equal(1, w.reloads)
+  end)
+
+  it("ends the run when a step raises from a timer, and isn't stuck afterwards", function()
+    w = install({ id = "r8", tours = { { name = "t", steps = {
+      { "slash", "/ledger", "" }, { "shot", "a", "InnkeepersLedgerBook" } } } } })
+    local real = _G.date
+    _G.date = function() error("clock") end -- raises inside the screenshot's callback
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    _G.date = real
+    local db = _G.ILDevDB
+    assert.is_number(db.run.finished)
+    assert.equal("3", w.cvars.screenshotQuality)
+    assert.equal(1, w.reloads)
+    _G.SlashCmdList.ILDEV("run")
+    w.pump()
+    assert.equal(2, w.shots) -- a second run started: not stuck "already running"
+  end)
+
+  it("refuses a malformed request without getting stuck", function()
+    w = install({ id = "r9", tours = { { name = "t", steps = 5 } } })
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    assert.is_nil(_G.ILDevDB.run)
+    assert.is_true(has(w.chat, "malformed"))
   end)
 end)
 

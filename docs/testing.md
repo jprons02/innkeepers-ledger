@@ -169,9 +169,13 @@ Proportional, not ceremonial:
   (`deploy.sh -w`) while the character is resting, away (AFK) and out of combat, so a
   new deploy runs without anyone at the keyboard. It's switched on in game only.
   **Rules:** the steps are a fixed vocabulary (`slash`, `click`, `wait`, `shot`, `dump`,
-  `pages`, `hide`; the request is data, never evaluated). It never clicks a button
-  labelled "Sign" (the composer's commit), and in the gossip window it clicks only the
-  AddOn's own buttons. The AddOn itself has no dev hooks. Nothing sends keystrokes to the
+  `pages`, `hide`). `Request.lua` is itself Lua, trusted like any file in `AddOns/`, but
+  no step is evaluated. A step runs only `/ledger`, and clicks or hides only under the
+  book or the gossip window, by a button's exact text; anything else is refused and
+  logged. It never clicks a button labelled "Sign" (the composer's commit; a spec ties
+  this to `SignFlow`'s label), and in the gossip window it clicks only the AddOn's own
+  buttons. A step that fails or raises is logged and the run goes on or ends cleanly
+  (the screenshot quality restored, the results saved). The AddOn itself has no dev hooks. Nothing sends keystrokes to the
   game window (decisions.md, 2026-10-10). `spec/devclient_spec.lua` runs ILDev over a
   fake frame tree and `read.lua` over a saved run.
 - **Refreshing the AddOn in the client after a merge:** the installed

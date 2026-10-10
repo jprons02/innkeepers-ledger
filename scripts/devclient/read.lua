@@ -104,13 +104,18 @@ for label in pairs(run.dumps or {}) do
   labels[#labels + 1] = label
 end
 table.sort(labels)
-print("\nlayout warnings:")
+-- A warning that repeats across dumps (the same region on every page) prints once.
+local order, seen = {}, {}
 for _, label in ipairs(labels) do
   local rootNode = run.dumps[label]
   local f = assert(io.open(out .. "/" .. label .. ".txt", "wb"))
-  local warnings = {}
   local function warn(path, text)
-    warnings[#warnings + 1] = ("  [%s] %s: %s"):format(label, path, text)
+    local key = path .. ": " .. text
+    if not seen[key] then
+      seen[key] = {}
+      order[#order + 1] = key
+    end
+    table.insert(seen[key], label)
   end
   local function walk(n, depth, path)
     local name = n.name or n.k
@@ -151,8 +156,11 @@ for _, label in ipairs(labels) do
   end
   walk(rootNode, 0, "")
   f:close()
-  for _, w in ipairs(warnings) do
-    print(w)
-  end
+end
+print("\nlayout warnings: " .. #order)
+for _, key in ipairs(order) do
+  local where = seen[key]
+  print(("  %s  [%s]"):format(key, #where == #labels and "every dump" or
+    table.concat(where, ", ")))
 end
 print(("\ntrees: %s/<dump>.txt (%d dumps)"):format(out, #labels))

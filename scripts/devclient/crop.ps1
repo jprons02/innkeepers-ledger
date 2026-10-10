@@ -20,6 +20,10 @@ foreach ($line in Get-Content -LiteralPath $List) {
       $y = [Math]::Max(0, [Math]::Min($y, $img.Height - 1))
       $w = [Math]::Min($w, $img.Width - $x); $h = [Math]::Min($h, $img.Height - $y)
     }
+    if ($w -lt 1 -or $h -lt 1) {
+      Write-Output ("skipped (empty box) -> {0}" -f $f[1])
+      continue
+    }
     $bmp = New-Object System.Drawing.Bitmap $w, $h
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.DrawImage($img, (New-Object System.Drawing.Rectangle 0, 0, $w, $h),

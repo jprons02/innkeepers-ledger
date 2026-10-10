@@ -8,6 +8,7 @@ local LEFT, RIGHT = 1, 2
 return {
   name = "book",
   steps = {
+    { "hide", B }, -- /ledger toggles: start from a closed book
     { "slash", "/ledger", "" },
     { "wait", 0.5 },
     { "pages", B, NEXT, "inns-left-", B, 3, LEFT },

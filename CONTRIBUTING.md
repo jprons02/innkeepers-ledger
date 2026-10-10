@@ -61,6 +61,10 @@ CI; see [Releasing](#releasing).
 [docs/security-checklist.md](docs/security-checklist.md) explains the API and library
 checks.
 
+To try a change in a WoW client, `sh scripts/devclient/deploy.sh` installs the working
+tree's AddOn there. It also installs a dev-only harness that screenshots and measures the
+UI ([docs/testing.md → the dev harness](docs/testing.md#testing-posture)).
+
 **Coverage floors.** Every pure module must keep line coverage at or above its floor:
 95% for `Ledger`, `SyncProtocol` and `SyncSchedule` (the sync boundary), 90% for the other pure
 modules. Glue isn't measured; it's checked in the client. Code can't opt out with a

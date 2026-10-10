@@ -140,6 +140,10 @@ Proportional, not ceremonial:
   the character's name). Since 2026-10-05 the probe adds no gossip button of its own (it
   stacked on the real "Sign the guestbook" button); it still logs every NPC, and an
   innkeeper is the one whose options include *Make this inn your home.* (icon 132052).
+  **The client's copy goes stale:** before reading a screenshot, compare each file the
+  TOC loads, plus `Libs/`, against the client's copy (`cmp`). Re-copy after each merge.
+  On 2026-10-09 the copy was 3 days old, so screenshots showed code from before #102 and
+  #110.
 - **Refreshing the AddOn in the client after a merge:** the installed
   `Interface/AddOns/InnkeepersLedger` is a plain copy, not a link. Copy `Libs`, `Data`,
   `UI`, every top-level `*.lua` and the TOC from `dev` over it (what `install.sh` does,

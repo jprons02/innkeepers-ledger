@@ -10,6 +10,18 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-09 (later) — The pages' covers meet in the middle as the spine
+
+Supersedes the layout half of the entry below (the file choice stands). The maintainer
+looked at the result and wanted the crease in the middle. With covers on the outer
+edges and a 20-wide black gap between the pages, the book read as two separate pages.
+Now the left page is mirrored instead of the right, so both covers and ribbons meet in
+the middle. There's no gap and no spine shadow, and each texture reaches 56 past the
+writing area on the spine side and 12 on the outer side (its ornate border). The book is
+976 × 560 (#137). **Rejected:** *cropping the right page's cover for one ribbon in the
+middle* (it depends on a measured crop point, ~12.3%, that a mockup can't confirm; it's
+kept as a fallback if two ribbons look wrong in the client).
+
 ### 2026-10-09 — Both book pages use `Spellbook-Page-1`, clear of its cover
 
 The first in-client screenshots (#12) showed two things. `Spellbook-Page-2` is smaller

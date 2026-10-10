@@ -5,8 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-09 (after #132: one copy of the place-name rule; the redraw
-follow-up parked until a client measurement)
+**Updated:** 2026-10-09 (after the book's first in-client looks: #135 page file, #136
+stamp bottom, #137 covers meet as the spine)
 
 ## Current state
 
@@ -17,10 +17,17 @@ follow-up parked until a client measurement)
 - **Signing works in the client** (#96, [sign.md](specs/sign.md)), with 8 phrase voices
   (#100). **The composer now shows lists** (#102): line tabs, a voice strip, a
   conjunction strip on line 2, template / category / word lists with page buttons and
-  the mouse wheel. Lists are built, not yet seen in the client; the look is DRAFT.
-- **The book (`UI/Book`, #106, [book.md](specs/book.md))** is built, not yet seen in the
-  client: a parchment spread with Inns, Collection, Cosmetics and Share tabs; `/ledger`
-  toggles it; "Read the guestbook" sits beside "Sign the guestbook". Look is DRAFT.
+  the mouse wheel. Lists are built, **still not seen in the client**; the look is DRAFT.
+- **The book (`UI/Book`, #106, [book.md](specs/book.md)) was first seen in the client on
+  2026-10-09.** Every tab draws, and the #110 "1 of 1+" wording shows. Three fixes came
+  from the screenshots, all merged, installed and verified by tests:
+  - #135: `Spellbook-Page-2` was a blur, so both pages use `Spellbook-Page-1`.
+  - #136: a stamp's bottom side was drawn above the book.
+  - #137: the maintainer wanted the crease in the middle, so both covers and ribbons now
+    meet as the spine, with no black gap.
+  The #137 look is not yet seen in the client. Results are logged in the
+  [checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
+  The look is DRAFT.
 - **No inks (#105):** one ink for every signature; IDs 1100..1199 reserved.
 - **Place rules wait for completeness marks (#110,
   [collection-cosmetics.md §3.11](specs/collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)):**
@@ -28,29 +35,36 @@ follow-up parked until a client measurement)
   `complete`. Nothing is marked, so a signature earns only `inns n` items; the book shows
   "1 of 1+". This settles the partial-atlas release gate. **Fails closed (#118):** if
   any `Data/Inns` record is excluded, nothing counts as complete.
-- **Names (#119, [sync-ledger.md §5.2a](specs/sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119)):**
-  `Ledger.cleanText` rejects malformed UTF-8 and hidden characters (bidi controls,
-  zero-width, non-ASCII spaces, fillers, private use); `validName` and the book's `plain`
-  both use it.
+- **Names** reject malformed UTF-8 and hidden characters (#119,
+  [sync-ledger.md §5.2a](specs/sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119)).
 - **Releasing:** last released to `main` on 2026-10-08 (#129). Since then, `dev` holds
-  #133 (a refactor with no change in behavior; `Collection.validName` is now shared with
-  `Cosmetics`). It goes out with the next release PR. No tags yet (maintainer gate).
+  #133 (a refactor with no change in behavior: `Collection.validName` is now shared with
+  `Cosmetics`) and the book's look fixes #135–#137. They go out with the next release PR.
+  No tags yet (maintainer gate).
   **CI:** eight required checks on `ubuntu-24.04`, green.
 
 ## Next step
 
-- **Agents:** no `ready` ticket (#132 closed 2026-10-08). #12's in-client results drive
-  what's next: retune the DRAFT look from screenshots, add inns and mark zones complete
-  from the walk. The low follow-ups below can fill gaps. Check each one against
-  decisions.md before offering it: the redraw item looked open but a timer was already
-  ruled out.
-- **In the client (maintainer), before the beta ends 2026-10-21:** restart fully (new
-  file `BookView.lua`; `/reload` isn't enough), then run the book's and the composer's checks on the
-  [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04).
-  Most important: parchment textures load, `‹ › ·` render, the mouse wheel scrolls the
-  lists, long conjunctions fit their buttons. A screenshot of each book tab and each
-  composer line. Talk to every innkeeper you pass and **note per zone whether you've seen
-  every inn in it** (that's what lets a zone be marked `complete`).
+- **Agents:** no `ready` ticket. #12's in-client results drive what's next: fix what the
+  screenshots show, add inns and mark zones complete from the walk. The low follow-ups
+  below can fill gaps. Check each one against decisions.md before offering it: the redraw
+  item looked open, but a timer was already ruled out.
+- **Before trusting a screenshot, check the client's copy:** `cmp` each TOC file
+  against `Interface/AddOns/InnkeepersLedger` ([testing.md](testing.md#testing-posture),
+  the in-client probe). On 2026-10-09 the copy was 3 days stale, so the composer and
+  #110 weren't in it. After a merge that touches game files, copy them over; `/reload`
+  is enough unless a file is new.
+- **In the client (maintainer), before the beta ends 2026-10-21** (`/reload` is enough
+  now; the current `dev` is installed), on the
+  [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04):
+  - the spine in the middle looks right (#137)
+  - the Collection stamp has four sides and no red line shows above the book (#136)
+  - the page label `1 / 1` shows (it didn't in the screenshots; the cause is unknown)
+  - `‹ ›` are readable on the page buttons
+  - **the composer**: a screenshot of line 1 and line 2 at Coriella, the mouse wheel
+    scrolls the lists, long conjunctions fit
+  - talk to every innkeeper you pass and **note per zone whether you've seen every inn
+    in it** (that's what lets a zone be marked `complete`)
 
 ## Client access
 
@@ -65,6 +79,10 @@ None block work; DRAFTs ship until answered.
 - **The book** ([book.md → Open questions](specs/book.md#open-questions-maintainer)) and
   **the composer** ([sign.md → Open questions](specs/sign.md#open-questions-maintainer)):
   wording and look.
+  - **The spine:** two ribbons (#137, as built) or one? For one, crop the right page's
+    cover with `SetTexCoord(~0.123, 1, 0, 1)`; decisions.md 2026-10-09 (later).
+  - **Inner padding:** are the right-hand numbers and the Use buttons too close to the
+    page's border?
 - **Phrase wording (#62)**, **cosmetic catalog (#63)**, **export (#64)**: as in each
   spec's Open questions.
 
@@ -84,18 +102,19 @@ space, which #119 requires, #128); a guild round-trip and one dungeon run.
   aren't coalesced** (2–6 ms per ENTRIES on a capped ledger); watch in #12. A timer is
   ruled out (decisions.md, the book entry); any fix waits for a client measurement.
 - **CI runners:** pinned to `ubuntu-24.04` (#117); move on purpose before GitHub retires
-  it. If GitHub's GraphQL API fails (it did on 2026-10-07), `gh api` (REST) still opens
-  and merges PRs ([CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-pull-requests)).
-  **Every job has a `timeout-minutes`, and apt retries a stalled mirror** (#126,
-  `scripts/ci-apt-install.sh`): on 2026-10-07 `apt-get update` hung until GitHub's
-  6-hour default on three runs of #125. If coverage ever nears its 30 min, raise it.
+  it. Job timeouts and the apt retry: decisions.md 2026-10-08. If coverage nears its
+  30 min, raise it. If GraphQL fails, use `gh api` (REST)
+  ([CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-pull-requests)).
 - **Revisit once in groups (#12):** server-clock jumps; other AddOns' traffic; group-map
   rescan budget; a dropped `C_Timer.After`; export build time. Weekly reset rows for live
   regions after launch.
 - **Name hardening, if wanted (low, #119 review):** stacked combining marks, strong RTL
   letters and blank-rendering symbols (U+1D159) still pass (sync-ledger.md §5.2a, Out of
   scope).
+- **The book's page label** (`1 / 1`, `UI/Book.lua` `buildPage`) has its text set
+  (tests), but it didn't show in the client on 2026-10-09. If it's still missing after
+  #137, look at its layer and frame level against the panels, and at the font.
 - **Code tidy (low):** `Phrase`'s load-time asserts; `Ledger`'s quadratic load-time cap
-  pass on a tampered file; `Sign.lua`'s `listField` builds a full `view()` per click. Publish `Data/*` for export
-  consumers once inns exist.
+  pass on a tampered file; `Sign.lua`'s `listField` builds a full `view()` per click.
+  Publish `Data/*` for export consumers once inns exist.
 - Delete GitHub's default labels (maintainer call). Archive [kickoff.md](kickoff.md) at v1.

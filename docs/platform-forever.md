@@ -232,7 +232,12 @@ in the sections above. **Partly** means the rest of the item is still open.
         as different, smaller art, stretched into a blur. **Fix (#135):** both pages
         use `Spellbook-Page-1` (the right one mirrored, `SetTexCoord(1, 0, 0, 1)`), and
         each texture reaches 56 past the writing area on its outer side; the book is
-        972 wide. Re-check: no text on a cover, the mirrored page looks right
+        972 wide. **Second look, same day (current `dev` installed):** no text on a
+        cover ✅, the mirrored right page looks right ✅, "1 of 1+" and "Zones
+        completed: 0 of 1" show the #110 rule ✅. A signed stamp had no bottom side and
+        a stray red line sat above the book: the bottom side was placed `h - 2` above
+        the stamp (fixed, #136). Still to read: the page label (`1 / 1`, bottom center
+        of a paged page) didn't show in the screenshots
   - [ ] fonts and glyphs: titles in the Morpheus face (`QuestTitleFont` exists), body
         text in the game font, the ink readable on the parchment; `‹` `›` and `·` render
         (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `).

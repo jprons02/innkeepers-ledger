@@ -237,7 +237,10 @@ in the sections above. **Partly** means the rest of the item is still open.
         completed: 0 of 1" show the #110 rule ✅. A signed stamp had no bottom side and
         a stray red line sat above the book: the bottom side was placed `h - 2` above
         the stamp (fixed, #136). Still to read: the page label (`1 / 1`, bottom center
-        of a paged page) didn't show in the screenshots
+        of a paged page) didn't show in the screenshots. **The maintainer's call on the
+        look:** the covers on the outer edges and the black gap between the pages read
+        wrong, because a book's crease is in the middle. The covers now meet in the
+        middle as the spine, with no gap (#137). Re-check
   - [ ] fonts and glyphs: titles in the Morpheus face (`QuestTitleFont` exists), body
         text in the game font, the ink readable on the parchment; `‹` `›` and `·` render
         (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `).

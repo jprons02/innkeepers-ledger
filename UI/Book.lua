@@ -34,13 +34,13 @@ local PARCHMENT = { 0.87, 0.80, 0.64 }
 local LOOK = {
   frame = { file = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
     color = { 0.10, 0.07, 0.05, 0.95 } },
-  left = { file = "Interface\\Spellbook\\Spellbook-Page-1",
+  -- One page file for both (Spellbook-Page-2 stretched into a blur on Forever, #12). Its
+  -- cover and ribbon edge go to the middle, where the two meet as the book's spine: the
+  -- left page is mirrored, the right one isn't.
+  left = { file = "Interface\\Spellbook\\Spellbook-Page-1", mirror = true,
     color = { PARCHMENT[1], PARCHMENT[2], PARCHMENT[3], 1 } },
-  -- Spellbook-Page-2 stretched into a blur on Forever (#12, 2026-10-09): the right page
-  -- is the left page's file, mirrored, so its cover edge sits on the outside too.
-  right = { file = "Interface\\Spellbook\\Spellbook-Page-1", mirror = true,
+  right = { file = "Interface\\Spellbook\\Spellbook-Page-1",
     color = { PARCHMENT[1], PARCHMENT[2], PARCHMENT[3], 1 } },
-  spine = { color = { 0, 0, 0, 0.25 } },
   barBack = { color = { INK[1], INK[2], INK[3], 0.15 } },
   ink = { color = { INK[1], INK[2], INK[3], 1 } },
   stamp = { color = { STAMP[1], STAMP[2], STAMP[3], 1 } },
@@ -52,11 +52,13 @@ local LOOK = {
 }
 
 local PAGE_W, PAGE_H = 404, 500
--- The page file's outer edge is a cover and a ribbon (about 12% of its width on Forever,
--- #12): each page texture reaches COVER past the writing area on the outer side, so no
--- text sits on the cover.
-local MARGIN, COVER, GUTTER = 16, 56, 20
-local BOOK_W, BOOK_H = 2 * (MARGIN + COVER + PAGE_W) + GUTTER, 560
+-- One edge of the page file is a cover and a ribbon (about 12% of its width on Forever,
+-- #12), the other an ornate border. Each page texture reaches COVER past the writing
+-- area on the spine side and EDGE on the outer side, so no text sits on either; the two
+-- textures meet in the middle with no gap.
+local MARGIN, COVER, EDGE = 16, 56, 12
+local TEX_W = PAGE_W + COVER + EDGE
+local BOOK_W, BOOK_H = 2 * (MARGIN + TEX_W), 560
 local PAGE_TOP = -44
 local PAD = 24
 local CONTENT_W = PAGE_W - 2 * PAD
@@ -619,8 +621,8 @@ local function buildPage(book, side, look, x)
   local f = CreateFrame("Frame", nil, book)
   f:SetSize(PAGE_W, PAGE_H)
   f:SetPoint("TOPLEFT", book, "TOPLEFT", x, PAGE_TOP)
-  local tex = newTexture(f, "BACKGROUND", look, PAGE_W + COVER, PAGE_H,
-    side == "left" and -COVER or 0, 0)
+  local tex = newTexture(f, "BACKGROUND", look, TEX_W, PAGE_H,
+    side == "left" and -EDGE or -COVER, 0)
   if look.mirror then
     tex:SetTexCoord(1, 0, 0, 1)
   end
@@ -649,9 +651,8 @@ local function build()
   newTexture(book, "BACKGROUND", LOOK.frame)
 
   local ui = { frame = book, tabs = {} }
-  ui.left = buildPage(book, "left", LOOK.left, MARGIN + COVER)
-  ui.right = buildPage(book, "right", LOOK.right, BOOK_W - MARGIN - COVER - PAGE_W)
-  newTexture(book, "ARTWORK", LOOK.spine, GUTTER, PAGE_H, MARGIN + COVER + PAGE_W, PAGE_TOP)
+  ui.left = buildPage(book, "left", LOOK.left, MARGIN + EDGE)
+  ui.right = buildPage(book, "right", LOOK.right, BOOK_W / 2 + COVER)
 
   ui.notice = newText(book, "small", 620, (BOOK_W - 620) / 2, -16, "CENTER")
   color(ui.notice, PARCHMENT, false) -- it sits on the dark frame, not on parchment

@@ -66,7 +66,8 @@ describe("InnkeepersLedger.toc", function()
     setfenv(config, env)()
     local with_wow = {}
     for path, settings in pairs(env.files) do
-      if settings.read_globals then
+      -- The dev harness under scripts/ is never packaged (#139); it's not AddOn glue.
+      if settings.read_globals and not path:find("^scripts/devclient/") then
         with_wow[path] = true
       end
     end

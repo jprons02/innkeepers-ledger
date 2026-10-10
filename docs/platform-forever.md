@@ -273,6 +273,11 @@ in the sections above. **Partly** means the rest of the item is still open.
   - [ ] first open on a fresh character: the title page with the two-part name and the
         help page; nothing else is written to SavedVariables until a share or a quill
         choice
+- [ ] The dev harness (#139, [testing.md](testing.md#testing-posture)): an AddOn's
+      `Screenshot()` call writes a file and fires `SCREENSHOT_SUCCEEDED`; `C_UI.Reload()`
+      (or `ReloadUI()`) works from a timer with no click (ILDev's `reloadWorked`); a
+      Button's `:Click()` from an AddOn runs the book's tab and page handlers; and the
+      idle logout's timing while AFK in an inn with watch mode reloading
 
 ## Sources
 

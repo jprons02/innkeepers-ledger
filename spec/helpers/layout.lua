@@ -1,9 +1,9 @@
 -- Layout checks over the stub's frames (#140): every shown region resolves, stays inside
 -- its parent, overlaps nothing it shouldn't, and its estimated text fits. Geometry comes
 -- from wow.rect (spec/helpers/wow_stub.lua), so it follows the client's anchor rules; text
--- sizes are the stub's conservative estimate. Each check returns a list of problems, one
--- string each with the numbers, so a spec asserts it's empty and a mutation test asserts
--- it isn't.
+-- sizes are the stub's estimate (not yet calibrated in the client). Each check returns a
+-- list of problems, one string each with the numbers, so a spec asserts it's empty and a
+-- mutation test asserts it isn't.
 local wow = require("helpers.wow_stub")
 
 local M = {}
@@ -191,10 +191,14 @@ local function ancestor(a, b)
   return false
 end
 
+-- Kinds that may be a backdrop. A button, check box or edit box takes clicks or keys, so
+-- one that covers its parent still has to clear everything else.
+local BACKDROP = { Texture = true, Frame = true }
+
 -- 3. No two shown regions overlap, except a region and its own parents, and a backdrop: a
--- region that covers its whole parent (panels, page and row backgrounds, highlights).
--- Text counts where it's drawn (M.ink). `allowed(a, b)` returns true for an intentional
--- overlap (either order).
+-- texture or plain frame that covers its whole parent (panels, page and row backgrounds,
+-- highlights). Text counts where it's drawn (M.ink). `allowed(a, b)` returns true for an
+-- intentional overlap (either order).
 function M.overlaps(items, allowed)
   local boxes = {}
   for _, it in ipairs(shownItems(items)) do
@@ -204,7 +208,7 @@ function M.overlaps(items, allowed)
     else
       r = rectOf(it.region)
       local p = it.parent and rectOf(it.parent)
-      if r and p and inside(p, r) then
+      if r and p and BACKDROP[it.region.kind] and inside(p, r) then
         r = nil -- a backdrop
       end
     end
@@ -268,7 +272,33 @@ function M.overflows(items)
   return out
 end
 
--- 5. A region lies inside the screen (UIParent, 1024 x 768).
+-- 5. A region that hangs off a frame by design (a tab under the book, a button under the
+-- gossip window) lies wholly on that `side` of it: "below", "above", "left" or "right".
+-- Touching edges are fine. Needed because such a region is checked against the screen,
+-- not its parent, and that alone would let it slide over the frame.
+function M.beside(region, name, frame, frameName, side)
+  local r, f = rectOf(region), rectOf(frame)
+  if r == nil or f == nil then
+    return { name .. " or " .. frameName .. " doesn't resolve" }
+  end
+  local ok
+  if side == "below" then
+    ok = r[2] + r[4] <= f[2] + EPS
+  elseif side == "above" then
+    ok = r[2] >= f[2] + f[4] - EPS
+  elseif side == "left" then
+    ok = r[1] + r[3] <= f[1] + EPS
+  elseif side == "right" then
+    ok = r[1] >= f[1] + f[3] - EPS
+  end
+  if ok then
+    return {}
+  end
+  return { string.format("%s %s isn't %s %s %s", name, rectText(r[1], r[2], r[3], r[4]),
+    tostring(side), frameName, rectText(f[1], f[2], f[3], f[4])) }
+end
+
+-- 6. A region lies inside the screen (UIParent, 1024 x 768).
 function M.offScreen(region, name)
   local r = rectOf(region)
   if r == nil then

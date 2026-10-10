@@ -175,6 +175,15 @@ end
 -- login({ full = true, db = fullDb() }). opts: phrase (Calmbreeze's signatures; TYPICAL by
 -- default), name(i) (traveler i's name; "MiraA Thornwood" and so on by default),
 -- travelerSeal (a seal on the travelers' signatures; none by default).
+-- The longest inputs: the longest name a ledger keeps (48 + 47 bytes, shown as 64 and
+-- "...") for travelers 1 and 2, typical names for the rest.
+local function longName(i)
+  if i <= 2 then
+    return string.rep("W", 48) .. " " .. string.rep("w", 47)
+  end
+  return string.format("Mira%s Thornwood", string.char(65 + i % 26))
+end
+
 local function fill(ns, opts)
   opts = opts or {}
   local ledger = ns.ledger
@@ -228,7 +237,8 @@ local function bookProblems(ns, label, out)
     [ui.left.frame.textures[1]] = ui.frame,
     [ui.right.frame.textures[1]] = ui.frame,
   }
-  -- The tabs hang under the book by design (book.md 3.11.1): they stay on the screen.
+  -- The tabs hang under the book by design (book.md 3.11.1): they stay on the screen, and
+  -- wholly below the book (layout.beside, below).
   for _, tab in pairs(ui.tabs) do
     instead[tab] = _G.UIParent
   end
@@ -260,7 +270,7 @@ local function bookProblems(ns, label, out)
   concat(out, layout.overflows(items), label)
   concat(out, layout.offScreen(ui.frame, "book"), label)
   for name, tab in pairs(ui.tabs) do
-    concat(out, layout.offScreen(tab, "tabs." .. name), label)
+    concat(out, layout.beside(tab, "tabs." .. name, ui.frame, "book", "below"), label)
   end
   return out
 end
@@ -271,7 +281,8 @@ local function gossipProblems(ns, label, out)
   local ui = ns.Sign.ui
   local items = layout.collect(_G.GossipFrame, ui, "gossip")
   -- The Sign and Read buttons hang under the gossip frame, and the composer stands to its
-  -- right, by design (sign.md 3.7): they stay on the screen.
+  -- right, by design (sign.md 3.7): they stay on the screen, and wholly on their side of
+  -- the gossip frame (layout.beside).
   local instead = {}
   for _, k in ipairs({ "button", "read", "composer" }) do
     if ui[k] then
@@ -288,6 +299,12 @@ local function gossipProblems(ns, label, out)
   concat(out, layout.outside(items, instead), label)
   concat(out, layout.overlaps(items), label)
   concat(out, layout.overflows(items), label)
+  for _, k in ipairs({ { "button", "below" }, { "read", "below" }, { "composer", "right" } }) do
+    local region = ui[k[1]]
+    if region and layout.visible(region, _G.GossipFrame) then
+      concat(out, layout.beside(region, k[1], _G.GossipFrame, "gossip", k[2]), label)
+    end
+  end
   return out
 end
 
@@ -305,12 +322,18 @@ local function unique(list)
 end
 
 -- Known problems (#140): what these checks found in the current UI, left for the
--- maintainer, since the look is a DRAFT. Each is reproduced by a pending case in "Layout:
--- known problems" below. The other cases drop only these, so every other check stays live;
--- drop a pattern once its problem is fixed.
+-- maintainer, since the look is a DRAFT. Each has a case in "Layout: known problems" below
+-- that asserts it's still there. The other cases drop only these, so every other check
+-- stays live; delete a pattern with its case once the problem is fixed.
 local KNOWN = {
-  -- The conjunction strip's labels, at 12 pt in 92-wide buttons (sign.md 3.7).
-  "^lists%.conj%.rows%[%d%]%.button: label ",
+  -- 1. A phrase that needs 3 lines in an inn row's 2 (28 px).
+  '^inn%.rows%[%d%]%.text: ".*" is 3 lines %(36%.0 high%) in 28%.0$',
+  -- 2. An inn row's meta line (name, date, seal) wrapped over the same row's phrase.
+  "^inn%.rows%[(%d)%]%.meta %b() overlaps inn%.rows%[%1%]%.text %b() by [%d%.]+ x [%d%.]+$",
+  -- 3. A long inn name's title wrapped over the inn page's place line.
+  "^inn%.title %b() overlaps inn%.place %b() by [%d%.]+ x [%d%.]+$",
+  -- 4. The conjunction strip's labels, at 12 pt in 92-wide buttons (sign.md 3.7).
+  '^lists%.conj%.rows%[%d%]%.button: label ".-" is [%d%.]+ wide in 92%.0 %(inset 4%)$',
 }
 
 -- Problems listed once each, without the known ones.
@@ -560,6 +583,17 @@ describe("Layout: the book", function()
       local out = visitTab(ns, tab, {})
       assert.same({}, report(out))
     end)
+
+    -- The same with the longest inputs: long inn and zone names, the longest phrase, the
+    -- longest traveler names and a seal on every traveler's signature. Only the known
+    -- problems may show.
+    it("keeps every page of the " .. tab .. " tab in order, longest inputs", function()
+      local ns = login({ full = true, long = true, db = fullDb() })
+      fill(ns, { phrase = longestPhrase(ns.Phrase), name = longName, travelerSeal = 102 })
+      wow.slash("/ledger")
+      local out = visitTab(ns, tab, {})
+      assert.same({}, report(out))
+    end)
   end
 
   it("fills every kind of page to its last row with the full ledger", function()
@@ -680,7 +714,7 @@ describe("Layout: the composer", function()
     assert.is_true(#text <= 160)
     ns.Sign.ui.preview:SetText(text)
     local out = gossipProblems(ns, "longest phrase")
-    -- And any 160 bytes of words.
+    -- And 160 bytes of 7-letter words.
     ns.Sign.ui.preview:SetText(string.rep("Wwwwwww ", 20))
     gossipProblems(ns, "160 bytes", out)
     assert.same({}, report(out))
@@ -794,6 +828,61 @@ describe("Layout: each check fails on a broken layout", function()
     assert.is_true(has(out, "lists.cat.rows[1].text: \"Long"), table.concat(out, "\n"))
   end)
 
+  it("a page texture pushed out of the book is caught", function()
+    local ns = full()
+    local ui = ns.Book.ui
+    assert.same({}, bookProblems(ns, "before"))
+    ui.left.frame.textures[1]:SetPoint("TOPLEFT", ui.left.frame, "TOPLEFT", -40, 0)
+    local out = bookProblems(ns, "broken")
+    assert.is_true(has(out, "left.frame.textures[1] (12.0, 120.0, 472.0 x 500.0) leaves "
+      .. "(24.0, 104.0, 976.0 x 560.0)"), table.concat(out, "\n"))
+  end)
+
+  it("text over text is caught", function()
+    local ns = login()
+    wow.slash("/ledger") -- the title page and the help page
+    local help = ns.Book.ui.help
+    assert.is_true(help.panel:IsShown())
+    assert.same({}, bookProblems(ns, "before"))
+    help.sharesTitle:SetPoint("TOPLEFT", help.panel, "TOPLEFT", 24, -70)
+    local out = bookProblems(ns, "broken")
+    assert.is_true(has(out, "help.sharesTitle", "help.travelersText", "overlaps"),
+      table.concat(out, "\n"))
+  end)
+
+  it("a button covering its parent is no backdrop", function()
+    local ns = full()
+    local ui = ns.Book.ui
+    ui.left.next:Click() -- the list page
+    ui.list.rows[1].button:SetAllPoints(ui.list.panel)
+    local out = bookProblems(ns, "broken")
+    assert.is_true(has(out, "list.rows[1].button", "overlaps list.rows[2].button"),
+      table.concat(out, "\n"))
+  end)
+
+  it("a region hanging off a frame is caught over it", function()
+    local ns = full()
+    local ui = ns.Book.ui
+    -- A tab above the book's top, and one over its bottom edge.
+    ui.tabs.share:SetPoint("TOPLEFT", ui.frame, "TOPLEFT", 396, 30)
+    ui.tabs.inns:SetPoint("TOPLEFT", ui.frame, "BOTTOMLEFT", 24, 10)
+    local out = bookProblems(ns, "broken")
+    assert.is_true(has(out, "tabs.share (", "isn't below book"), table.concat(out, "\n"))
+    assert.is_true(has(out, "tabs.inns (", "isn't below book"), table.concat(out, "\n"))
+    -- The Sign and Read buttons over the gossip window's middle, the composer over it.
+    wow.fire("GOSSIP_SHOW")
+    ns.Sign.ui.button:Click()
+    assert.same({}, gossipProblems(ns, "before"))
+    local G = _G.GossipFrame
+    ns.Sign.ui.button:SetPoint("TOPRIGHT", G, "CENTER", -3, 0)
+    ns.Sign.ui.read:SetPoint("TOPLEFT", G, "CENTER", 3, 0)
+    ns.Sign.ui.composer:SetPoint("TOPLEFT", G, "TOPRIGHT", -100, 0)
+    out = gossipProblems(ns, "broken")
+    assert.is_true(has(out, "button (", "isn't below gossip"), table.concat(out, "\n"))
+    assert.is_true(has(out, "read (", "isn't below gossip"))
+    assert.is_true(has(out, "composer (", "isn't right gossip"))
+  end)
+
   it("a book moved off the screen is caught", function()
     local ns = full()
     ns.Book.ui.frame:SetPoint("CENTER", _G.UIParent, "CENTER", 100, 0)
@@ -805,11 +894,14 @@ end)
 
 -- Problems these checks found in the current UI (#140). The book's and the composer's look
 -- is a DRAFT the maintainer decides, so they're reported, not fixed here. Each case
--- reproduces one; turn it into `it` once it's fixed. Widths are the stub's conservative
--- estimate (0.6 em a character); the numbers at 0.5 em, about the game font's average,
--- are in each comment.
+-- asserts its problem is still there, with its numbers, and that the KNOWN patterns drop
+-- it and nothing else. When one of these fails, the UI was fixed: delete the case and its
+-- KNOWN pattern. Widths are the stub's estimate (0.6 em a character); each comment also
+-- gives 0.5 em for comparison. Neither is measured yet: the #139 dev harness's string
+-- widths (`sw`) will tell.
 describe("Layout: known problems", function()
   after_each(function()
+    assert.same({}, wow.errors)
     wow.uninstall()
   end)
 
@@ -817,46 +909,56 @@ describe("Layout: known problems", function()
   -- night's sleep. Then, LOUDER... Weighed anchor, still thinking of a good night's
   -- sleep." (127 characters), is 914 px of text (762 at 0.5 em) in an inn row's 356-wide
   -- box: 3 lines in a box 28 high (2 lines), so the client cuts it short.
-  pending("an inn row holds the longest phrase (it needs 3 lines of the 2 it has)", function()
+  -- When this fails, the UI was fixed: delete this case and KNOWN pattern 1.
+  it("known problem: an inn row can't hold the longest phrase (3 lines of 2)", function()
     local ns = login({ full = true, db = fullDb() })
     fill(ns, { phrase = longestPhrase(ns.Phrase) })
     ns.Book:OpenInn(CALM)
-    assert.same({}, report(bookProblems(ns, "longest phrase")))
+    local out = bookProblems(ns, "longest phrase")
+    assert.is_true(has(out, "inn.rows[2].text: \"Weighed anchor, still thinking of a good "
+      .. "night's sleep. Then, LOUDER...", "is 3 lines (36.0 high) in 28.0"),
+      table.concat(out, "\n"))
+    assert.same({}, report(out))
   end)
 
   -- A traveler row's meta line (name, date, seal) has 14 px, one line, above the phrase,
   -- and wraps. "MiraB Thornwood · 18 September 2026 · Sealed with Thistle Hills 11 seal"
   -- is 71 characters: 426 px in 356 (355 at 0.5 em, 1 px to spare), so its second line
   -- covers the phrase by 6 px. The longest name a ledger keeps (64 bytes shown, then
-  -- "...") makes it 3 lines, 16 px over the phrase, at any font width.
-  pending("a traveler row's name, date and seal stay on their one line", function()
+  -- "...") makes it 3 lines, 16 px over the phrase (615 px at 0.5 em: still 2 lines).
+  -- When this fails, the UI was fixed: delete this case and KNOWN pattern 2.
+  it("known problem: a traveler row's name, date and seal wrap over its phrase", function()
     local ns = login({ full = true, db = fullDb() })
-    fill(ns, { travelerSeal = 102, name = function(i)
-      if i <= 2 then
-        return string.rep("W", 48) .. " " .. string.rep("w", 47)
-      end
-      return string.format("Mira%s Thornwood", string.char(65 + i % 26))
-    end })
+    fill(ns, { travelerSeal = 102, name = longName })
     ns.Book:OpenInn(CALM)
     local out = bookProblems(ns, state(ns))
     turnAll(ns, ns.Book.ui.right, out)
+    assert.is_true(has(out, "inn.rows[2].meta (592.0, 428.0, 342.0 x 20.0) overlaps "
+      .. "inn.rows[2].text", "by 338.4 x 6.0"), table.concat(out, "\n"))
+    assert.is_true(has(out, "inn.rows[5].meta (592.0, 256.0, 312.0 x 30.0) overlaps "
+      .. "inn.rows[5].text", "by 312.0 x 16.0"), table.concat(out, "\n"))
     assert.same({}, report(out))
   end)
 
   -- An inn's title on its page is QuestTitleFont (18 pt) in 240 px: "The Wandering Wyvern
-  -- 001" (24 characters) is 259 px (216 at 0.5 em), so it wraps onto the place line below.
-  -- Only the estimate flags it; the in-client check decides.
-  pending("a 24-character inn name stays on the inn page's title line", function()
+  -- 001" (24 characters) is 259 px (216 at 0.5 em), so it wraps onto the place line below
+  -- by 8 px. Only the estimate flags it; the in-client check decides.
+  -- When this fails, the UI was fixed: delete this case and KNOWN pattern 3.
+  it("known problem: a 24-character inn name wraps the title over the place", function()
     local ns = login({ full = true, long = true, db = fullDb() })
     fill(ns)
     wow.slash("/ledger")
-    assert.same({}, report(visitTab(ns, "inns", {})))
+    local out = visitTab(ns, "inns", {})
+    assert.is_true(has(out, "inn.title (592.0, 560.0, 216.0 x 36.0) overlaps inn.place "
+      .. "(592.0, 558.0, 240.0 x 10.0) by 216.0 x 8.0"), table.concat(out, "\n"))
+    assert.same({}, report(out))
   end)
 
   -- The conjunction strip's buttons are 92 wide, 84 inside the border: "Then, LOUDER...",
   -- "By the tides..." and "One must add..." (15 characters) are 108 px (90 at 0.5 em). 12
   -- of the 30 labels are over 84 by the estimate, those 3 at 0.5 em.
-  pending("the conjunction strip's labels fit their buttons", function()
+  -- When this fails, the UI was fixed: delete this case and KNOWN pattern 4.
+  it("known problem: 12 conjunction labels are wider than their buttons", function()
     local ns = login()
     wow.fire("GOSSIP_SHOW")
     ns.Sign.ui.button:Click()
@@ -866,6 +968,11 @@ describe("Layout: known problems", function()
       ns.Sign:Pick("voice", v)
       gossipProblems(ns, "voice " .. v, out)
     end
-    assert.same({}, unique(out))
+    out = unique(out)
+    assert.equal(12, #out, table.concat(out, "\n"))
+    for _, label in ipairs({ "Then, LOUDER...", "By the tides...", "One must add..." }) do
+      assert.is_true(has(out, "button: label \"" .. label .. "\" is 108.0 wide in 92.0"), label)
+    end
+    assert.same({}, report(out))
   end)
 end)

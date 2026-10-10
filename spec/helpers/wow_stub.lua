@@ -277,7 +277,7 @@ local function defaults()
   -- The book's parent, the Escape list and the client's font objects (book.md 6.1). Set
   -- any to nil per case to test the fallbacks.
   -- UIParent is the screen for wow.rect: 1024 x 768, the size of UIParent on a 4:3
-  -- screen at UI scale 1 (the smallest the client gives).
+  -- screen at UI scale 1. It isn't the smallest: a 5:4 screen gives 960 x 768.
   api.UIParent = new_frame("UIParent")
   api.UIParent.screen = true
   api.UIParent:SetSize(M.SCREEN_W, M.SCREEN_H)
@@ -460,10 +460,10 @@ end
 -- geometry without a client. Pure: reads what the regions recorded, changes nothing.
 
 -- The font size of each font object (and font string template) the AddOn uses, from the
--- client's FrameXML. Text width is estimated as characters x size x TEXT_EM: 0.6 em is
--- wider than the average glyph of the game fonts (about 0.5 em), so the estimate is
--- conservative: text the checks pass fits; text they flag may still just fit in the client.
--- A line is `size` high.
+-- client's FrameXML. Text width is estimated as characters x size x TEXT_EM. 0.6 em is a
+-- guess, not a measurement: it's meant to be wider than most text, but capitals, wide
+-- letters and Morpheus (QuestTitleFont) may run wider. Calibrate it from the string widths
+-- the #139 dev harness dumps (`sw`). A line is `size` high, also a guess.
 M.FONT_SIZES = {
   GameFontNormal = 12,
   GameFontNormalSmall = 10,

@@ -673,6 +673,18 @@ that.
     three phrase lines (20 + 4 + 36).
   - **A note row** ("You haven't signed this guestbook yet.") starts 4 under its row's
     top.
+  - **What the room rests on** (the #143 review; check these when `Data/Inns` fills,
+    #12). There's no spare room, so each is a limit on our own data, by the estimate:
+    - an inn name of about 40 characters (two title lines of 22), **with** a place line
+      (zone, comma, continent) of up to 40 characters (one line). A two-line title over
+      a two-line place puts the last date 4 over the first row's heading;
+    - a zone name of up to 22 characters, or another seal's name of up to 27, on your
+      own meta line (59 characters with the longest date); a longer one is cut by the
+      client;
+    - a zone name of up to 20 characters on a traveler's meta line: two lines whatever
+      the name;
+    - a line as high as its font's size. A taller line in the client spills an entry
+      row with three phrase lines by the difference.
 - **Stamps:** a signed stamp is a box whose four sides are solid `STAMP` lines with the
   inn's name and date inside in `STAMP`; an unsigned one has **dashed** sides (each side
   six short color-texture dashes with gaps) and its name in faded `INK`.

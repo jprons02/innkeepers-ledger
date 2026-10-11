@@ -634,7 +634,9 @@ Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
   (`OnMouseWheel` with `-1`) moves one row, and both stop at the ends; a list that fits
   hides its page buttons; a slotless template hides the category and word lists; the
   word list follows the category clicked; the selection texture sits on the chosen row
-  only; the first line's tab is disabled while editing it.
+  only; the first line's tab is disabled while editing it. **(#143)** The conjunction
+  strip has 6 buttons, 124 wide, 3 a row; Hearthside's 7 conjunctions page (`>` shows the
+  seventh and then stops), and a voice with 6 or fewer hides the page buttons.
 - **Faction hidden or raising** → signing still works (counted as `nil`).
 - **Errors:** `ns.Sync.WindowChanged` raising → the entry is kept, the `added` line still
   prints, no error escapes; after `"added"`, `ns.Book.Changed` is called once (spy) and a

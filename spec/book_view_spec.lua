@@ -363,8 +363,10 @@ describe("BookView.plain", function()
     assert.equal(string.rep("\208\144", 40) .. "...", plain(cyrillic, 200, "F", 40))
     -- The byte cap still cuts when it comes first (32 letters are 64 bytes).
     assert.equal(string.rep("\208\144", 32) .. "...", plain(cyrillic, 64, "F", 40))
-    -- A hidden character past both cuts still replaces the whole name.
+    -- A hidden character or a pipe past both cuts still replaces the whole name.
     assert.equal("F", plain(string.rep("a", 50) .. "\226\128\174", 64, "F", 40))
+    assert.equal("F", plain(string.rep("a", 50) .. "|", 64, "F", 40))
+    assert.equal("F", plain(string.rep("a", 70) .. "|cffff0000", 64, "F", 40))
     -- Anything but a whole number of 1 or more is no cap on characters.
     for _, bad in ipairs({ 0, -1, 1.5, "40", 0 / 0, {} }) do
       assert.equal(string.rep("a", 64) .. "...", plain(string.rep("a", 70), 64, "F", bad))

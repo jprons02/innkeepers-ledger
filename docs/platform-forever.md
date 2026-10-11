@@ -207,7 +207,16 @@ in the sections above. **Partly** means the rest of the item is still open.
         scrolls them** (`EnableMouseWheel` / `OnMouseWheel` are unverified on Forever);
         the "First line" / "Second line" tabs switch lines and line 2 shows the
         conjunction strip; long voice and conjunction names fit their buttons; nothing
-        overlaps in the ~600-pixel frame. A screenshot of each line for the maintainer
+        overlaps in the ~600-pixel frame. A screenshot of each line for the maintainer.
+        **2026-10-11 (the harness's composer tour):** both strips, the three lists, the
+        gold mark, the line tabs, the seal row and the preview render on both lines ✅;
+        `>` pages the template list ✅; line 2 shows the conjunction strip, 3 wider
+        buttons a row with its own `<` `>` (#143) ✅; the six conjunctions shown are 30
+        to 67.5 wide in 124-wide buttons ✅; no text is truncated on either line ✅. The
+        client's gossip frame is 338 × 496, and the 420 × 600 composer stands at its
+        right edge with the Sign and Read buttons under it ✅. Still open: clicking a
+        row by hand, **the mouse wheel**, and the longest conjunctions ("Then,
+        LOUDER...")
   - [ ] closing the gossip mid-compose hides the composer; talking to another NPC with it
         open closes it; *I would like to buy from you.* closes it too (`GOSSIP_CLOSED`)
   - [ ] after the next weekly reset (Tuesday 2026-10-06 16:00 UTC): the seal row offers Zephras
@@ -240,7 +249,9 @@ in the sections above. **Partly** means the rest of the item is still open.
         of a paged page) didn't show in the screenshots. **The maintainer's call on the
         look:** the covers on the outer edges and the black gap between the pages read
         wrong, because a book's crease is in the middle. The covers now meet in the
-        middle as the spine, with no gap (#137). Re-check
+        middle as the spine, with no gap (#137). **2026-10-11:** seen in the
+        harness's screenshots, the covers meet in the middle ✅ (one ribbon or two is
+        still the maintainer's call)
   - [ ] fonts and glyphs: titles in the Morpheus face (`QuestTitleFont` exists), body
         text in the game font, the ink readable on the parchment; `‹` `›` and `·` render
         (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `).
@@ -248,7 +259,8 @@ in the sections above. **Partly** means the rest of the item is still open.
         1 of 10"), ink readable on `Spellbook-Page-1` ✅. **2026-10-11 (the harness's
         dump):** `‹` `›` are 4.2 wide in the button font, so the page buttons looked
         blank ❌; they are now `<` `>`. The page label (`1 / 1`) was there but in ink on
-        the page file's dark bottom edge ❌; it is now parchment-colored. Re-check both
+        the page file's dark bottom edge ❌; it is now parchment-colored. Re-checked the
+        same day (#146): `1 / 1` and both arrows read on both pages ✅
   - [ ] Escape closes the book; with the Share box focused, the first Escape clears focus
         and the second closes; Escape in combat closes it too, with no "blocked" or
         taint message
@@ -291,8 +303,14 @@ in the sections above. **Partly** means the rest of the item is still open.
     room; the player frame (moved by the player to the bottom center) and the beta's
     Issue Reporter button drew over the tabs under the book, although the tabs are on
     `HIGH`.
-- [ ] The composer tour (`/ildev run composer` at an innkeeper) and the inn page it ends
-      on: still to run
+- [x] The composer tour (`/ildev run composer` at an innkeeper), **2026-10-11:** it
+      runs only while the gossip window is open (a first try without it was skipped,
+      as designed), clicks the AddOn's own buttons and ends on the inn's page through
+      Read ✅. **The inn page (#143) in the client:** the title, place and count hang 8
+      apart; the rows' tops are 118, 148, 212 and 242 below the page's top (a heading,
+      a signature, a heading, a note), exactly the layout checks' numbers ✅. The long
+      cases (three phrase lines, a wrapped traveler line, a two-line inn name) aren't
+      in this ledger: they rest on the layout checks
 
 ## Sources
 

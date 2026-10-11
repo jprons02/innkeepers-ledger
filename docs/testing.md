@@ -82,9 +82,11 @@ Proportional, not ceremonial:
   and textures know their `parent`. A font string with no set width is as wide as its
   text, and with no set height as high as its lines. Text size is an estimate:
   characters × font size × 0.6 wide, the font size high (`wow.FONT_SIZES`,
-  `wow.TEXT_EM`). It isn't measured yet, and capitals, wide letters or Morpheus may run
-  wider. Calibrate it from the string widths (`sw`) the #139 dev harness dumps. Not
-  modeled: scale and clamping to the screen.
+  `wow.TEXT_EM`). **Measured in the client on 2026-10-11** (the harness's first run, 40
+  strings): 0.43 to 0.60 em a character, 0.50 to 0.53 on average, in all three fonts,
+  Morpheus included; a line is 11.7, 10 and 18.3 high for the 12, 10 and 18 pt fonts. So
+  0.6 em stays: it's at the top of what was seen, and a string of capitals or digits can
+  still run wider. Not modeled: scale and clamping to the screen.
   `spec/helpers/layout.lua` holds the checks, each returning a list of problems with the
   numbers. Every shown region (shown with all its parents) resolves, stays inside its
   parent, and overlaps nothing but its own parents and backdrops (a texture or plain
@@ -187,9 +189,11 @@ Proportional, not ceremonial:
      with `/ledger`, clicks tabs and page buttons by their text, and at each step takes a
      `Screenshot()` and dumps the layout (every frame and region under the book: rect,
      shown and visible, strata and level, draw layer, texture and texcoords, text,
-     string width, truncation). Then it reloads to save the results. The `composer`
+     string width, truncation). Then it tries to reload to save the results. **On
+     Forever that reload is blocked** (2026-10-11), so someone types `/reload` once
+     more when the tour ends; the results are on disk after that. The `composer`
      tour needs the gossip window open, so it runs from `/ildev run composer` after
-     talking to an innkeeper.
+     talking to an innkeeper (and ends on the inn's page, through Read).
   3. `sh scripts/devclient/results.sh <out>` (Lua on PATH) prints the run (steps,
      Lua errors, layout warnings: truncated text, text with no size, regions outside the
      book or off screen), writes each dump as an indented tree to `<out>/<label>.txt`
@@ -199,6 +203,9 @@ Proportional, not ceremonial:
   **Watch mode** (`/ildev watch`, 3 hours): the harness reloads every 60 s
   (`deploy.sh -w`) while the character is resting, away (AFK) and out of combat, so a
   new deploy runs without anyone at the keyboard. It's switched on in game only.
+  **It can't work on Forever:** a reload from a timer is blocked there
+  ([platform-forever.md](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)),
+  so each round costs the maintainer one typed `/reload`.
   **Rules:** the steps are a fixed vocabulary (`slash`, `click`, `wait`, `shot`, `dump`,
   `pages`, `hide`). `Request.lua` is itself Lua, trusted like any file in `AddOns/`, but
   no step is evaluated. A step runs only `/ledger`, and clicks or hides only under the

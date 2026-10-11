@@ -460,10 +460,11 @@ end
 -- geometry without a client. Pure: reads what the regions recorded, changes nothing.
 
 -- The font size of each font object (and font string template) the AddOn uses, from the
--- client's FrameXML. Text width is estimated as characters x size x TEXT_EM. 0.6 em is a
--- guess, not a measurement: it's meant to be wider than most text, but capitals, wide
--- letters and Morpheus (QuestTitleFont) may run wider. Calibrate it from the string widths
--- the #139 dev harness dumps (`sw`). A line is `size` high, also a guess.
+-- client's FrameXML. Text width is estimated as characters x size x TEXT_EM. 0.6 em is the
+-- top of what the client showed (the #139 dev harness's first run, 2026-10-11: 40 strings
+-- at 0.43 to 0.60 em, 0.50 to 0.53 on average, Morpheus included), so most text is
+-- narrower; a string of capitals or digits may still run wider. A line is `size` high
+-- (measured: 11.7, 10 and 18.3 for 12, 10 and 18).
 M.FONT_SIZES = {
   GameFontNormal = 12,
   GameFontNormalSmall = 10,

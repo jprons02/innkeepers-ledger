@@ -1,8 +1,8 @@
 -- The book: every tab, each side's pages (up to 3), then closed. A chunk that
 -- deploy.sh wraps into Request.lua; steps are listed in ILDev.lua.
 local B = "InnkeepersLedgerBook"
--- The page button's "›" (BookView.TEXT.next); #1 is the left page's, #2 the right page's.
-local NEXT = "\226\128\186"
+-- The page button's ">" (BookView.TEXT.next); #1 is the left page's, #2 the right page's.
+local NEXT = ">"
 local LEFT, RIGHT = 1, 2
 
 return {

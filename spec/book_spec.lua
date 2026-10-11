@@ -374,6 +374,11 @@ describe("Book: the Inns tab", function()
     assert.is_false(shown(rows[3].mark))
     assert.is_false(shown(rows[4].button))
     assert.equal("1 / 1", ui.left.label:GetText())
+    -- The label and the page buttons sit on the page file's dark bottom edge (#12): the
+    -- label is parchment-colored, and the buttons read < and >.
+    assert.same({ 0.87, 0.80, 0.64, 1 }, ui.left.label.textColor)
+    assert.same({ 0.87, 0.80, 0.64, 1 }, ui.right.label.textColor)
+    assert.same({ "<", ">" }, { ui.left.prev:GetText(), ui.left.next:GetText() })
     assert.is_true(ui.left.prev:IsEnabled())
     assert.is_false(ui.left.next:IsEnabled())
     ui.left.prev:Click()

@@ -47,6 +47,9 @@ local GOSSIP_OK = {
   ["First line"] = true, ["Second line"] = true,
   ["Add a second line"] = true, ["Remove the second line"] = true,
   ["Cancel"] = true, ["<"] = true, [">"] = true,
+  -- The voices (Data/Phrases.lua's PhraseVoices).
+  ["Hearthside"] = true, ["Bardic"] = true, ["Grumbler"] = true, ["Scholar"] = true,
+  ["Rowdy"] = true, ["Mystic"] = true, ["Sailor"] = true, ["Noble"] = true,
 }
 
 local function now()
@@ -172,12 +175,29 @@ local function textOf(x)
   return nil
 end
 
+-- A button's text, or, for one with none of its own (a list row), its first label's.
+local function labelOf(b)
+  local own = textOf(b)
+  if own ~= nil and own ~= "" then
+    return own
+  end
+  for _, rg in ipairs(regions(b)) do
+    if rg.GetObjectType and rg:GetObjectType() == "FontString" then
+      local s = textOf(rg)
+      if s ~= nil and s ~= "" then
+        return s
+      end
+    end
+  end
+  return nil
+end
+
 -- Shown buttons under `f` whose text is `text`, top to bottom, then left to right.
 local function buttons(f, text)
   local found = {}
   local function walk(x, depth)
     local kind = x.GetObjectType and x:GetObjectType()
-    if (kind == "Button" or kind == "CheckButton") and x:IsVisible() and textOf(x) == text then
+    if (kind == "Button" or kind == "CheckButton") and x:IsVisible() and labelOf(x) == text then
       found[#found + 1] = x
     end
     if depth < MAX_DEPTH then
@@ -330,11 +350,16 @@ function steps.wait(s, nextStep)
 end
 
 function steps.hide(s, nextStep)
-  local f = ROOT_OK[s[2]] and root(s[2]) or nil
-  if f then
-    f:Hide()
+  if not ROOT_OK[s[2]] then
+    note("hide " .. tostring(s[2]), false, "refused: not an allowed frame")
+  else
+    -- A frame that isn't built yet (the book before its first /ledger) is hidden already.
+    local f = root(s[2])
+    if f then
+      f:Hide()
+    end
+    note("hide " .. s[2], true, not f and "not built yet" or nil)
   end
-  note("hide " .. tostring(s[2]), f ~= nil)
   after(SETTLE, nextStep)
 end
 
@@ -497,6 +522,17 @@ abort = function(err)
   busy = false
 end
 
+-- Hands the blocked actions recorded so far to the run they happened in or after.
+local function closeBlocked(to)
+  if type(db.blocked) == "table" and type(to) == "table" then
+    to.blocked = type(to.blocked) == "table" and to.blocked or {}
+    for _, b in ipairs(db.blocked) do
+      to.blocked[#to.blocked + 1] = b
+    end
+  end
+  db.blocked = nil
+end
+
 -- The tours' steps in order, with a "mark" before each tour. Raises on a malformed tour.
 local function queueOf(req, only)
   local queue = {}
@@ -531,9 +567,34 @@ local function runTours(only)
     say("the request is malformed: " .. tostring(queue))
     return
   end
+  -- A run with no tour to do (a mistyped name, a tour whose window isn't open) doesn't
+  -- start, so it doesn't replace the last run's results.
+  local todo = false
+  for _, s in ipairs(queue) do
+    if type(s) == "table" and s[1] == "skip" then
+      say(("tour %s skipped: %s isn't shown."):format(tostring(s[2]), tostring(s[3])))
+    else
+      todo = true
+    end
+  end
+  if not todo then
+    db.lastId = req.id
+    say(#queue == 0 and "no such tour in the request." or "nothing to run.")
+    return
+  end
   busy = true
   run = { id = req.id, started = time(), t0 = now(), steps = {}, shots = {}, dumps = {},
     errors = {}, only = only }
+  -- The run before this one is kept if it's the same deploy's (the book tour at login,
+  -- then `/ildev run composer`), so one saving reload keeps both. The actions blocked
+  -- since it started were its own; without one, those since login are this run's.
+  local last = db.run
+  if type(last) == "table" and last.id == req.id then
+    closeBlocked(last)
+    db.earlier = last
+  else
+    db.earlier = nil
+  end
   db.run = run
   db.lastId = req.id
   local pw, ph = GetPhysicalScreenSize()
@@ -637,6 +698,9 @@ events:SetScript("OnEvent", function(_, event, a1, a2)
   if event == "ADDON_LOADED" and a1 == ADDON then
     ILDevDB = type(ILDevDB) == "table" and ILDevDB or {}
     db = ILDevDB
+    -- What was blocked before this load happened after the last run started (its
+    -- reload, on Forever): it's that run's, not the next one's.
+    closeBlocked(db.run)
     -- Did the last automatic reload happen? A load within 20 s of trying says yes.
     if type(db.autoReload) == "table" then
       db.reloadWorked = (time() - (db.autoReload.tried or 0)) < 20

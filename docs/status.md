@@ -5,8 +5,9 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-11 (the dev harness ran in the client for the first time; #143's
-layout fixes and the page label and arrows are merged and seen in the client)
+**Updated:** 2026-10-11 (the dev harness ran in the client; #143's layout fixes and the
+page label and arrows are merged and seen there; the harness's follow-ups, #148, wait for
+one round in the client)
 
 ## Current state
 
@@ -21,6 +22,10 @@ layout fixes and the page label and arrows are merged and seen in the client)
   timer is blocked on Forever,** so each run needs the maintainer to type `/reload`
   (once to load a deploy, once more to save the results), and watch mode can't work.
   Nothing types into the game for him (decisions.md 2026-10-10).
+  **A clean run now reports clean (#148):** 0 layout warnings and 7 frames listed as
+  hanging outside their root on purpose (they were 279 warnings), and one round keeps
+  both tours' results. The composer run of 2026-10-11 was clean: no Lua errors, nothing
+  truncated, everything inside the composer.
 - **Layout checks in busted (#140)** resolve anchors in the stub and check the book and
   the composer. Their text width (0.6 em) is now measured against the client: 0.43 to
   0.60 em over 40 strings, so it stays as the upper bound.
@@ -53,19 +58,26 @@ layout fixes and the page label and arrows are merged and seen in the client)
 
 ## Next step
 
-- **No ticket is open for agents.** #12 is the maintainer's walk. Pick from Follow-ups
-  (check each against decisions.md first), or take the next answer the maintainer gives
-  to an open question.
+- **#148 waits for one round in the client** (below), with the new tours deployed on
+  2026-10-11. Then read the results: every conjunction label's width is in the
+  `conj-<voice>` dumps (`sw`), which answers the conjunction strip question; the book
+  tour should open Calmbreeze Inn's page (dump `inn`) with no failed step. Close #148
+  with that evidence. Otherwise no ticket is open for agents: #12 is the maintainer's
+  walk; pick from Follow-ups (check each against decisions.md first), or take the next
+  answer the maintainer gives to an open question.
 - **The harness loop** (agent): `sh scripts/devclient/deploy.sh -t book,composer`, ask
   the maintainer for the steps below, then `sh scripts/devclient/results.sh <scratch dir>`
-  and read the cropped PNGs, the trees and the layout warnings. Results name the
-  character: keep them out of the repo. A run's results replace the last run's, so read
-  them before the next tour starts. The raw screenshots (`Screenshots/` in the client
-  folder) are readable before the saving reload.
+  (Lua on PATH) and read the cropped PNGs, the trees, the warnings and the list of
+  hanging frames. Results name the character: keep them out of the repo. The book
+  tour's results are in `<scratch dir>/earlier`. **Don't deploy while a round is under
+  way:** a new request runs the book tour at the next `/reload` and replaces the
+  results. The raw screenshots (`Screenshots/` in the client folder) are readable
+  before the saving reload, and show whether a round has started.
 - **In the client (maintainer), before the beta ends 2026-10-21.** One round:
   1. `/reload`. The book tour runs about 4 s later and closes the book when done.
-  2. Talk to an innkeeper, leave the gossip window open, `/ildev run composer` (it never
-     clicks Sign; it ends on the inn's page).
+  2. Talk to an innkeeper, leave the gossip window open, `/ildev run composer` (about
+     20 s: it steps through every voice on line 2; it never clicks Sign; it ends on the
+     inn's page).
   3. `/reload` again, then tell the agent.
   Still by eye, on the
   [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04):
@@ -75,8 +87,8 @@ layout fixes and the page label and arrows are merged and seen in the client)
 ## Client access
 
 In the beta until **2026-10-21**; launch **2026-11-04**. Beta client
-`World of Warcraft\_classic_beta_`, with the probe, ILDev and `dev`'s AddOn as of #146
-installed (deployed 2026-10-11).
+`World of Warcraft\_classic_beta_`, with the probe, ILDev as of #148 and `dev`'s AddOn as
+of #146 installed (deployed 2026-10-11).
 
 ## Open questions (maintainer to decide)
 
@@ -123,17 +135,10 @@ CI doesn't see it. Deleting it is the maintainer's call; until then run
 
 ## Follow-ups
 
-- **Measure the longest conjunction labels in the client:** the six seen were 0.40 to
-  0.49 em ("Best of all..." 67.5 wide), well under the checks' 0.6. If "Then, LOUDER..."
-  is 84 or less, the old 92-wide buttons, 4 a row, held every label and Hearthside
-  needn't page. Add a step to the composer tour that picks Rowdy, Sailor and Noble on
-  line 2 and dumps.
-- **The stub's gossip frame is the wrong size:** the client's is 338 × 496 (the layout
-  spec sets 384 × 512). The composer and the two buttons still fit beside and under it;
-  set the measured size in `spec/layout_spec.lua`.
-- **The harness tour's first step fails** (`hide` before the book exists; harmless), and
-  the book tour doesn't open an inn's page (only the composer tour does, through Read):
-  a list row is a plain button with no text of its own, so `click` can't find it.
+- **Read the conjunction labels' widths from the next composer run (#148):** the six
+  seen were 0.40 to 0.49 em ("Best of all..." 67.5 wide), well under the checks' 0.6. If
+  "Then, LOUDER..." is 84 or less, the old 92-wide buttons, 4 a row, held every label
+  and Hearthside needn't page. The tour now dumps every voice's strip.
 - **Before the first tag:** `CHANGELOG.md` notes; answer #62 and #63 (IDs freeze);
   Interface `16001` → Forever on CurseForge and Wago is unverified until the first upload.
 - **When `Data/Inns` fills (#12):** check the names against the inn page's limits

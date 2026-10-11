@@ -1,11 +1,14 @@
 -- Dev harness (#139): reads ILDev's SavedVariables after a tour and reports it.
--- Usage: lua read.lua <ILDev.lua saved variables> <Screenshots folder> <out folder>
+-- Usage: lua read.lua <ILDev.lua saved variables> <Screenshots folder> <out folder> [earlier]
 -- Prints the run (client facts, steps, errors, layout warnings), writes each dump as an
 -- indented tree to <out>/<label>.txt and the screenshots to crop to <out>/crops.txt
 -- (source|destination|x|y|w|h|screenW|screenH), which crop.ps1 reads.
 -- The output names the character (the book's title): it stays out of the repo.
-local svPath, shotDir, out = arg[1], arg[2], arg[3]
-assert(svPath and shotDir and out, "usage: lua read.lua <saved variables> <Screenshots> <out>")
+-- With `earlier`, reports the same deploy's run before the last one, if ILDev kept one (the
+-- book tour at login, before `/ildev run composer`), and nothing otherwise.
+local svPath, shotDir, out, which = arg[1], arg[2], arg[3], arg[4]
+assert(svPath and shotDir and out,
+  "usage: lua read.lua <saved variables> <Screenshots> <out> [earlier]")
 
 local chunk = assert(loadfile(svPath))
 local env = {}
@@ -13,9 +16,23 @@ setfenv(chunk, env)
 chunk()
 local db = env.ILDevDB or {}
 local run = db.run
-if type(run) ~= "table" then
+if which == "earlier" then
+  run = db.earlier
+  if type(run) ~= "table" then
+    return
+  end
+  print("the run before the last one:")
+elseif type(run) ~= "table" then
   print("no run in " .. svPath)
   os.exit(1)
+end
+-- The actions the client blocked: the run's own, and for the last run those since.
+local blocked = {}
+for _, b in ipairs(type(run.blocked) == "table" and run.blocked or {}) do
+  blocked[#blocked + 1] = b
+end
+for _, b in ipairs(which ~= "earlier" and type(db.blocked) == "table" and db.blocked or {}) do
+  blocked[#blocked + 1] = b
 end
 
 local function exists(path)
@@ -43,7 +60,7 @@ print(("client build %s, interface %s, screen %s, UI %s, scale %s"):format(tostr
   c.ui and table.concat(c.ui, "x") or "?", tostring(c.uiScale)))
 print(("automatic reload worked: %s;  watch until: %s"):format(tostring(db.reloadWorked),
   db.watchUntil and os.date("%H:%M", db.watchUntil) or "off"))
-for _, b in ipairs(db.blocked or {}) do
+for _, b in ipairs(blocked) do
   print("BLOCKED: " .. b)
 end
 
@@ -104,20 +121,31 @@ for label in pairs(run.dumps or {}) do
   labels[#labels + 1] = label
 end
 table.sort(labels)
--- A warning that repeats across dumps (the same region on every page) prints once.
-local order, seen = {}, {}
+-- A line that repeats across dumps (the same region on every page) prints once. `warned`
+-- are the warnings; `hung` are the root's child frames that lie outside it.
+local function tally()
+  return { order = {}, seen = {} }
+end
+local function add(to, key, label)
+  if not to.seen[key] then
+    to.seen[key] = {}
+    to.order[#to.order + 1] = key
+  end
+  table.insert(to.seen[key], label)
+end
+local warned, hung = tally(), tally()
+-- Roots that are the client's own frames: only what hangs outside one is the AddOn's, so
+-- nothing else under it is checked. A child that covers the whole root is the client's
+-- too (the gossip window's panel is larger than the window).
+local CLIENTS = { GossipFrame = true }
 for _, label in ipairs(labels) do
   local rootNode = run.dumps[label]
   local f = assert(io.open(out .. "/" .. label .. ".txt", "wb"))
   local function warn(path, text)
-    local key = path .. ": " .. text
-    if not seen[key] then
-      seen[key] = {}
-      order[#order + 1] = key
-    end
-    table.insert(seen[key], label)
+    add(warned, path .. ": " .. text, label)
   end
-  local function walk(n, depth, path)
+  -- `box` is the node a rect is held against: the root, or the hanging frame it's under.
+  local function walk(n, depth, path, box)
     local name = n.name or n.k
     path = path .. "/" .. name
     f:write(("%s%s%s %s%s%s%s%s%s\n"):format(("  "):rep(depth), n.k,
@@ -127,8 +155,21 @@ for _, label in ipairs(labels) do
       n.layer and (" " .. n.layer .. ":" .. tostring(n.sub)) or "",
       n.text and (" %q"):format(n.text) or "",
       (n.tex and (" tex=" .. n.tex) or "") .. (n.sw and (" sw=" .. n.sw) or "")
-      .. (n.trunc and " TRUNCATED" or "") .. (n.a and n.a < 1 and (" a=" .. n.a) or "")))
-    if n.vis then
+      .. (n.trunc and " TRUNCATED" or "") .. (n.a and n.a < 1 and (" a=" .. n.a) or "")
+      .. (n.enabled == false and " DISABLED" or "")))
+    local under = box
+    local hangs = n.vis and n.r and box.r and box == rootNode and depth == 1 and n.strata
+      and not inside(n.r, box.r) and not (CLIENTS[rootNode.name] and inside(box.r, n.r))
+    if hangs then
+      -- A child frame outside its root hangs there on purpose (the composer beside the
+      -- gossip window, the book's tabs): it's listed once, and what's under it is held
+      -- against it instead.
+      add(hung, ("%s%s %s"):format(path, n.text and (" %q"):format(n.text) or "",
+        fmtRect(n.r)), label)
+      under = n
+    end
+    local checked = hangs or not (CLIENTS[rootNode.name] and box == rootNode)
+    if n.vis and checked then
       if n.k == "FontString" and n.text then
         if n.trunc then
           warn(path, ("text truncated %q (box %s, text %s wide)"):format(n.text,
@@ -141,9 +182,12 @@ for _, label in ipairs(labels) do
           warn(path, ("text %q is fully transparent"):format(n.text))
         end
       end
-      if n.r and rootNode.r and depth > 0 and not inside(n.r, rootNode.r) then
-        warn(path, ("outside %s: %s vs %s"):format(rootNode.name or rootNode.k,
-          fmtRect(n.r), fmtRect(rootNode.r)))
+      -- Under a hanging frame only frames and text count: a texture may bleed past its
+      -- frame (a border, a shadow).
+      if not hangs and n.r and box.r and depth > 0 and not inside(n.r, box.r)
+        and (box == rootNode or n.strata or n.k == "FontString") then
+        warn(path, ("outside %s: %s vs %s"):format(box.name or box.k, fmtRect(n.r),
+          fmtRect(box.r)))
       end
       if n.r and c.ui and (n.r[1] + n.r[3] < 0 or n.r[2] + n.r[4] < 0 or n.r[1] > c.ui[1]
         or n.r[2] > c.ui[2]) then
@@ -151,16 +195,20 @@ for _, label in ipairs(labels) do
       end
     end
     for _, kid in ipairs(n.kids or {}) do
-      walk(kid, depth + 1, path)
+      walk(kid, depth + 1, path, under)
     end
   end
-  walk(rootNode, 0, "")
+  walk(rootNode, 0, "", rootNode)
   f:close()
 end
-print("\nlayout warnings: " .. #order)
-for _, key in ipairs(order) do
-  local where = seen[key]
-  print(("  %s  [%s]"):format(key, #where == #labels and "every dump" or
-    table.concat(where, ", ")))
+local function list(title, t)
+  print(("\n%s: %d"):format(title, #t.order))
+  for _, key in ipairs(t.order) do
+    local where = t.seen[key]
+    print(("  %s  [%s]"):format(key, #where == #labels and "every dump" or
+      table.concat(where, ", ")))
+  end
 end
+list("layout warnings", warned)
+list("frames hanging outside their root (what's under each is held against it)", hung)
 print(("\ntrees: %s/<dump>.txt (%d dumps)"):format(out, #labels))

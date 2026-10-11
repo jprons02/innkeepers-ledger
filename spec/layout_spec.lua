@@ -79,9 +79,9 @@ end
 local npc
 
 -- Loads the AddOn and logs in: resting, at Coriella Calmbreeze, the clock in UTC, the
--- gossip frame where the client puts it (a UIPanel on the left: 384 x 512, its top left 16
--- in and 104 down; the classic client's). opts: full (the full atlas), long (its long
--- names), db (SavedVariables).
+-- gossip frame where the client puts it (a UIPanel on the left: 338 x 496, its top left 16
+-- in and 116 down; measured in the Forever beta, 2026-10-11). opts: full (the full atlas),
+-- long (its long names), db (SavedVariables).
 local function login(opts)
   opts = opts or {}
   npc = CALM_GUID
@@ -97,8 +97,8 @@ local function login(opts)
     date = UTC.date,
     time = UTC.time,
   })
-  _G.GossipFrame:SetSize(384, 512)
-  _G.GossipFrame:SetPoint("TOPLEFT", _G.UIParent, "TOPLEFT", 16, -104)
+  _G.GossipFrame:SetSize(338, 496)
+  _G.GossipFrame:SetPoint("TOPLEFT", _G.UIParent, "TOPLEFT", 16, -116)
   if opts.db ~= nil then
     _G.InnkeepersLedgerDB = opts.db
   end

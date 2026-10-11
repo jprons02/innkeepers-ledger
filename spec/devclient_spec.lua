@@ -102,10 +102,10 @@ local function install(request, db)
   end
   w.tabs = { tab("Inns", 124), tab("Collection", 248), tab("Cosmetics", 372), tab("Share", 496) }
   local left = region("Frame", book, { 116, 110, 404, 480 })
-  w.leftNext = region("Button", left, { 480, 120, 26, 22 }, "\226\128\186")
+  w.leftNext = region("Button", left, { 480, 120, 26, 22 }, ">")
   w.leftNext.onClick = function(b) b.enabled = false end -- two pages
   w.rightNext = region("Button", region("Frame", book, { 480, 110, 404, 480 }),
-    { 850, 120, 26, 22 }, "\226\128\186")
+    { 850, 120, 26, 22 }, ">")
   w.rightNext.enabled = false
   w.label = region("FontString", left, { 260, 120, 120, 12 }, "1 / 2")
   w.label.truncated = true

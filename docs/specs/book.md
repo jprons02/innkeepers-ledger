@@ -57,7 +57,7 @@ The orchestrator writes them into [decisions.md](../decisions.md) as one entry,
    n of m" per zone, a filled mark for signed inns, unsigned inns listed by name, faded.
    Selecting one shows its page on the right: name, "Zone, Continent", a stamp dated by
    the first signature, count and last date, your signatures (date, phrase, seal), then
-   travelers' (name, date, phrase, seal). Page turns (‹ ›), **no scrolling**; the list
+   travelers' (name, date, phrase, seal). Page turns (`<` `>`), **no scrolling**; the list
    pages too.
 3. **Collection:** "N of M inns signed", a bar per continent, zones completed, total
    signatures (weekly returns counted), travelers met (a count); the right page is a
@@ -230,7 +230,7 @@ quillPage, sealPage }`. `build` normalizes it and returns the result as `model.n
 **The model:** `{ tab, nav, notice?, left = <page>, right = <page> }`. `notice` is
 `TEXT.noLedger` when `s.ledger` isn't a table, `TEXT.readOnly` when the ledger is
 read-only, else absent. Each page is a table with a `kind` and, when it pages,
-`page` and `pages` (the glue enables ‹ when `page` is above the first page and › when
+`page` and `pages` (the glue enables `<` when `page` is above the first page and `>` when
 it is below `pages`). Every string in a model is our own constant, our allow-listed data,
 a number, a date from `dateText`, or a peer name that passed `plain`.
 
@@ -255,7 +255,7 @@ the notice differs.
 **`title`** (list page 0): `{ kind = "title", title, steps = { s1, s2, s3 }, hint, page =
 0, pages = <list pages> }`. `title` = `TEXT.titleOf .. name` when `plain(s.name, 64)`
 gives a name, else `TEXT.titleNoName`. The title page is always the list's first page,
-so › turns to the list and ‹ on list page 1 turns back to it; it opens by default only
+so `>` turns to the list and `<` on list page 1 turns back to it; it opens by default only
 when there are no own entries.
 
 **`help`** (right, no inn selected): `{ kind = "help", travelersTitle, travelersText,
@@ -560,14 +560,16 @@ glue measures `offset` ([§3.11.2](#3112-client-reads)); the module never reads 
 
 **Every line is the maintainer's to decide.** One table, `BookView.TEXT`, our constants
 only: no `|`, no `%`, no site, product, service or URL. Lines are joined by
-concatenation. Three glyphs are outside ASCII and need the in-client check
-([§8](#8-in-client-checks-for-12) item 3): `‹` `›` (U+2039, U+203A) and `·` (U+00B7),
-written as UTF-8 byte escapes in the source.
+concatenation. One glyph is outside ASCII: `·` (U+00B7), written as UTF-8 byte escapes
+in the source; it renders on Forever (2026-10-09). **Amended 2026-10-11 (#12):** the page
+turns were `‹` `›` (U+2039, U+203A); in the client they came out 4 px wide, too thin
+to see on a button, so they are `<` `>`, the fallback
+[§8](#8-in-client-checks-for-12) item 3 named.
 
 | Key | Text (DRAFT) |
 |---|---|
 | `tabInns`, `tabCollection`, `tabCosmetics`, `tabShare` | `Inns`, `Collection`, `Cosmetics`, `Share` (settled) |
-| `prev`, `next`, `close` | `‹`, `›`, `Close` |
+| `prev`, `next`, `close` | `<`, `>`, `Close` |
 | `titleOf`, `titleNoName` | `The ledger of `, `Your ledger` |
 | `step1` | `1. Find an innkeeper, the one who keeps your hearthstone, and talk to them.` |
 | `step2` | `2. Rest at the inn and choose Sign the guestbook.` |
@@ -640,9 +642,14 @@ that.
   `Disable()`d to mark it (no tab template).
 - **Close:** a small `UIPanelButtonTemplate` button labeled `TEXT.close` at the book's
   top right.
-- **Page turns:** each page has a ‹ and a › `UIPanelButtonTemplate` button (26 × 22) at
+- **Page turns:** each page has a `<` and a `>` `UIPanelButtonTemplate` button (26 × 22) at
   its bottom corners and a centered page label (`n / m`, numbers only), each enabled
-  from the model ([§3.3](#33-navigation-and-the-model)).
+  from the model ([§3.3](#33-navigation-and-the-model)). **The page file's bottom is
+  dark** (measured in the client, 2026-10-11): its last 16 of 500 are empty (black), and
+  the parchment darkens into the page's edge from about 50 above the bottom (40 on the
+  spine side, 30 on the outer side). The buttons and the label sit on that edge, so the
+  label is `PARCHMENT`-colored like the notice, not `INK` (in ink it couldn't be seen).
+  Rows of ink end 34 above the bottom at the lowest (the inn page's sixth row).
 - **Rows:** each page kind owns a fixed set of widgets at fixed positions (a hidden row
   leaves a gap; no relayout; the inn page aside, below): the list's `listRows` rows (a plain `Button`, a font
   string, a 10 × 10 mark texture filled with `INK` for signed inns, and a `HIGHLIGHT`
@@ -757,7 +764,7 @@ template (`GameFontNormal`) in place. Text color always from §3.10.
 - **`draw()`**: `model = view.build(read(), nav)`; `nav = model.nav`; fill the widgets of
   `model.left.kind` and `model.right.kind`, hide every other kind's; the notice line
   (if any) shows above the pages. `model.error` → both pages show `TEXT.pageError`.
-  Clicks (tab, ‹ ›, inn row, stamp, Use) change `nav` and call `draw()`.
+  Clicks (tab, `<` `>`, inn row, stamp, Use) change `nav` and call `draw()`.
 - **ESC:** at creation, if `UISpecialFrames` is a table, `table.insert(UISpecialFrames,
   "InnkeepersLedgerBook")`, so the client's own Escape handling hides the book (the
   standard way for plain frames; the frame isn't protected, so it works in combat). If
@@ -1193,7 +1200,7 @@ Logged in as `spec/core_spec.lua` does, the faction `"Alliance"`, the real data
   `UISpecialFrames`; with `UISpecialFrames = nil` the book still opens, no error.
   `/ledger version` prints `version dev`; `/ledger debug` still toggles the log.
 - **First open, empty ledger:** the title page (`The ledger of Traveler`, the three
-  steps, the hint) and the help page with the README's words; › turns to list page 1
+  steps, the hint) and the help page with the README's words; `>` turns to list page 1
   listing Zephras Isle, `signed 0 of 1`, Calmbreeze Inn faded.
 - **After a signature** (`addOwn` at `254089`): the list's default page is 1;
   `signed 1 of 1`, the inn's mark shown; clicking its row → the right page reads
@@ -1201,8 +1208,8 @@ Logged in as `spec/core_spec.lua` does, the faction `"Alliance"`, the real data
   with the rendered phrase.
 - **Page turns:** 8 travelers' entries at `254089` (`addForeign`, spread over weeks) →
   two inn pages (heading, note, heading and 3 entries, then the repeated heading and 5;
-  a ninth entry would open a third page); ‹ disabled on page 1, › enabled; › → page 2 shows the rest with the
-  repeated heading, › disabled; the page label reads `2 / 2`.
+  a ninth entry would open a third page); `<` disabled on page 1, `>` enabled; `>` → page 2 shows the rest with the
+  repeated heading, `>` disabled; the page label reads `2 / 2`.
 - **Read button:** `GOSSIP_SHOW` at Calmbreeze → two buttons under `GossipFrame` labeled
   `Sign the guestbook` and `Read the guestbook`; at a vendor → both hidden; Read → the
   book shown on the Inns tab with Calmbreeze's page; `GOSSIP_CLOSED` → both buttons
@@ -1298,12 +1305,13 @@ With `/ledger debug` on; screenshots go to the maintainer (the DRAFT look):
    texture candidate of §3.11.1, whether it loads (not blank, not green) and looks right;
    the chosen files' coordinates. A screenshot of each tab.
 3. **Fonts and glyphs:** titles in the Morpheus face (`QuestTitleFont` exists), body text
-   in the game font, ink colors readable on the parchment; the `‹` `›` and `·` glyphs
-   render (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `).
+   in the game font, ink colors readable on the parchment; the `·` glyph renders (else
+   `TEXT.dot` becomes ` - `). `‹` `›` didn't read on the page buttons, so `TEXT.prev` /
+   `TEXT.next` are `<` / `>` (2026-10-11).
 4. **ESC:** Escape closes the book; with the Share box focused, the first Escape clears
    focus and the second closes; Escape in combat closes it too, with no "blocked" or
    taint message.
-5. **Page turns:** ‹ and › enabled and disabled correctly on the list and on Calmbreeze's
+5. **Page turns:** `<` and `>` enabled and disabled correctly on the list and on Calmbreeze's
    page; with more travelers or inns later, a second page turns and shows the repeated
    heading.
 6. **The Read button:** at Coriella Calmbreeze, "Read the guestbook" sits beside "Sign the
@@ -1333,7 +1341,7 @@ With `/ledger debug` on; screenshots go to the maintainer (the DRAFT look):
 - **Newest first:** your signatures and travelers' are listed newest first on an inn's
   page, so the latest crossing is on the first page.
 - **The title page is the book's first page** and opens by default only while you have no
-  signatures; › turns to the inn list, ‹ from list page 1 turns back to it.
+  signatures; `>` turns to the inn list, `<` from list page 1 turns back to it.
 - **The book keeps your place** (tab, inn, pages) for the session; it isn't saved.
 - **"Since you last shared" means since the share string was last built and shown** (the
   AddOn can't tell whether it was copied without reading keys).

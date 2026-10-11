@@ -245,12 +245,14 @@ in the sections above. **Partly** means the rest of the item is still open.
         text in the game font, the ink readable on the parchment; `‹` `›` and `·` render
         (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `).
         **2026-10-09:** Morpheus titles ✅, game-font body ✅, `·` ✅ ("Sign 10 inns ·
-        1 of 10"), ink readable on `Spellbook-Page-1` ✅. `‹` `›` still to read: too
-        small to make out on the 26 × 22 page buttons in the screenshots
+        1 of 10"), ink readable on `Spellbook-Page-1` ✅. **2026-10-11 (the harness's
+        dump):** `‹` `›` are 4.2 wide in the button font, so the page buttons looked
+        blank ❌; they are now `<` `>`. The page label (`1 / 1`) was there but in ink on
+        the page file's dark bottom edge ❌; it is now parchment-colored. Re-check both
   - [ ] Escape closes the book; with the Share box focused, the first Escape clears focus
         and the second closes; Escape in combat closes it too, with no "blocked" or
         taint message
-  - [ ] page turns: ‹ and › enabled and disabled correctly on the list and on
+  - [ ] page turns: `<` and `>` enabled and disabled correctly on the list and on
         Calmbreeze's page; later, with more travelers or inns, a second page turns and
         repeats its heading
   - [ ] the Read button: at Coriella Calmbreeze, "Read the guestbook" sits beside "Sign
@@ -273,11 +275,24 @@ in the sections above. **Partly** means the rest of the item is still open.
   - [ ] first open on a fresh character: the title page with the two-part name and the
         help page; nothing else is written to SavedVariables until a share or a quill
         choice
-- [ ] The dev harness (#139, [testing.md](testing.md#testing-posture)): an AddOn's
-      `Screenshot()` call writes a file and fires `SCREENSHOT_SUCCEEDED`; `C_UI.Reload()`
-      (or `ReloadUI()`) works from a timer with no click (ILDev's `reloadWorked`); a
-      Button's `:Click()` from an AddOn runs the book's tab and page handlers; and the
-      idle logout's timing while AFK in an inn with watch mode reloading
+- [x] The dev harness (#139, [testing.md](testing.md#testing-posture)), **first run
+      2026-10-11:**
+  - an AddOn's `Screenshot()` call writes a file (`Screenshots/WoWScrnShot_*.jpg`, the
+    whole screen) and the tour moves on after each ✅ (7 of 7 shots, 0 Lua errors);
+  - a Button's `:Click()` from an AddOn runs the book's tab and page handlers ✅;
+  - **a reload from a timer is blocked** ❌: `C_UI.Reload()` (or `ReloadUI()`) from
+    ILDev's timer did nothing, and the results were on disk only after a typed
+    `/reload`. So every run needs one typed `/reload`, and **watch mode can't work on
+    Forever** (its reload is the same call; the idle-logout question no longer matters);
+  - measured in the dump: a line of `GameFontNormal` is 11.7 high, `GameFontNormalSmall`
+    10, `QuestTitleFont` 18.3; text is 0.43 to 0.60 em a character (40 strings; the
+    layout checks assume 0.6, [testing.md](testing.md#testing-posture));
+  - the screen was 2133 × 1200 UI units (2560 × 1440 px), so the 976-wide book fits with
+    room; the player frame (moved by the player to the bottom center) and the beta's
+    Issue Reporter button drew over the tabs under the book, although the tabs are on
+    `HIGH`.
+- [ ] The composer tour (`/ildev run composer` at an innkeeper) and the inn page it ends
+      on: still to run
 
 ## Sources
 

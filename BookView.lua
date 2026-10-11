@@ -47,15 +47,16 @@ local DAY = 86400
 
 -- DRAFT: every player-facing line is the maintainer's to decide (spec 3.10). The tab names
 -- are settled. Our own constants only: no `|`, no `%`, no site, product, service or URL.
--- Lines are joined by concatenation, never format. Three glyphs aren't ASCII: the page
--- turns (U+2039, U+203A) and the middle dot (U+00B7), written as UTF-8 bytes.
+-- Lines are joined by concatenation, never format. One glyph isn't ASCII: the middle dot
+-- (U+00B7), written as UTF-8 bytes. The page turns are `<` and `>`: U+2039 and U+203A
+-- came out 4 px wide on Forever, too thin to see on a button (#12).
 local TEXT = {
   tabInns = "Inns",
   tabCollection = "Collection",
   tabCosmetics = "Cosmetics",
   tabShare = "Share",
-  prev = "\226\128\185",
-  next = "\226\128\186",
+  prev = "<",
+  next = ">",
   close = "Close",
   titleOf = "The ledger of ",
   titleNoName = "Your ledger",

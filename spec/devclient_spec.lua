@@ -108,6 +108,11 @@ local function install(request, db)
     { 850, 120, 26, 22 }, ">")
   w.rightNext.enabled = false
   w.label = region("FontString", left, { 260, 120, 120, 12 }, "1 / 2")
+  -- A list row: a button with no text of its own, its label a font string.
+  w.row = region("Button", left, { 128, 500, 356, 21 })
+  region("Texture", w.row, { 128, 500, 356, 21 })
+  region("FontString", w.row, { 150, 504, 250, 12 }, "Calmbreeze Inn")
+  w.row.onClick = function() w.inn = "Calmbreeze Inn" end
   w.label.truncated = true
   region("Texture", left, { 104, 110, 472, 480 })
 
@@ -222,6 +227,10 @@ describe("ILDev", function()
     assert.is_true(has(steps, "^ok shot inns%-left%-2$"))
     assert.is_false(has(steps, "inns%-left%-3"))
     assert.is_true(has(steps, "^ok pages inns%-right%- stop %(disabled%)"))
+    -- An inn's page opens through its row, a button named by its label.
+    assert.is_true(has(steps, "^ok click InnkeepersLedgerBook \"Calmbreeze Inn\" 1$"))
+    assert.equal("Calmbreeze Inn", w.inn)
+    assert.is_true(has(steps, "^ok shot inn$"))
     assert.is_true(has(steps, "^ok click InnkeepersLedgerBook \"Share\""))
     assert.is_true(has(steps, "^ok shot share$"))
     assert.is_true(has(steps, "^FAIL tour composer %(skipped: GossipFrame not shown%)"))
@@ -277,6 +286,76 @@ describe("ILDev", function()
     assert.equal(0, w.commit.clicks)
     assert.equal(0, w.home.clicks)
     assert.equal(1, w.signButton.clicks)
+  end)
+
+  it("the composer tour clicks only what ILDev allows, and every voice by its name", function()
+    w = install({ id = "r10", tours = { tour("composer") } })
+    w.gossip:Show()
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    local steps = stepsOf(_G.ILDevDB)
+    -- The fake gossip window has no composer, so its buttons aren't found; none is refused.
+    assert.is_true(has(steps, "^ok click GossipFrame \"Sign the guestbook\" 1$"))
+    assert.is_false(has(steps, "refused"), table.concat(steps, "\n"))
+    assert.equal(0, w.commit.clicks)
+    assert.equal(0, w.home.clicks)
+    -- If a voice is renamed, the tour and ILDev's list must follow.
+    local ns = {}
+    assert(loadfile("Data/Phrases.lua"))("InnkeepersLedger", ns)
+    local ildev = assert(io.open(HERE .. "ILDev/ILDev.lua", "rb")):read("*a")
+    for i, voice in ipairs(ns.Data.PhraseVoices) do
+      assert.truthy(ildev:find(('["%s"] = true'):format(voice), 1, true), voice)
+      -- Line 2 opens on the first voice, so only the others are clicked.
+      assert.equal(i > 1, has(steps, ("click GossipFrame \"%s\" 1"):format(voice)), voice)
+      assert.equal(i > 1, has(steps, "^ok dump conj%-" .. voice:lower() .. " "), voice)
+    end
+    assert.is_true(has(steps, "^ok dump conj%-hearthside%-2 "))
+  end)
+
+  it("hiding a frame that isn't built yet is no failure", function()
+    w = install({ id = "r11", tours = { { name = "t", steps = {
+      { "hide", "InnkeepersLedgerBook" } } } } })
+    _G.InnkeepersLedgerBook = nil
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    assert.is_true(has(stepsOf(_G.ILDevDB), "^ok hide InnkeepersLedgerBook %(not built yet%)$"))
+  end)
+
+  it("records the blocked actions of this run only, its own and the AddOn's", function()
+    w = install({ id = "r12", tours = { { name = "t", steps = { { "wait", 1 } } } } },
+      { blocked = { "ADDON_ACTION_BLOCKED ILDev UNKNOWN()" } })
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    assert.is_nil(_G.ILDevDB.blocked)
+    w.fire("ADDON_ACTION_BLOCKED", "ILDev", "UNKNOWN()")
+    w.fire("ADDON_ACTION_FORBIDDEN", "InnkeepersLedger", "Reload()")
+    w.fire("ADDON_ACTION_BLOCKED", "SomeOtherAddOn", "CastSpellByName()")
+    assert.same({ "ADDON_ACTION_BLOCKED ILDev UNKNOWN()",
+      "ADDON_ACTION_FORBIDDEN InnkeepersLedger Reload()" }, _G.ILDevDB.blocked)
+  end)
+
+  it("keeps the same deploy's run before this one, with what was blocked in it", function()
+    w = install({ id = "r13", tours = { { name = "a", steps = { { "wait", 1 } } },
+      { name = "b", steps = { { "wait", 1 } } } } })
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    local db = _G.ILDevDB
+    local first = db.run
+    assert.is_nil(db.earlier)
+    w.fire("ADDON_ACTION_BLOCKED", "ILDev", "UNKNOWN()")
+    _G.SlashCmdList.ILDEV("run b")
+    w.pump()
+    assert.equal(first, db.earlier)
+    assert.same({ "ADDON_ACTION_BLOCKED ILDev UNKNOWN()" }, db.earlier.blocked)
+    assert.is_nil(db.blocked)
+    assert.equal("b", db.run.only)
+    -- Another deploy's run isn't kept.
+    w.uninstall()
+    w = install({ id = "r14", tours = { { name = "a", steps = { { "wait", 1 } } } } }, db)
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    assert.equal("r14", db.run.id)
+    assert.is_nil(db.earlier)
   end)
 
   it("guards the composer's commit button by its current label", function()
@@ -397,7 +476,10 @@ describe("read.lua", function()
     local shot = dir .. "/WoWScrnShot_101026_120001.jpg"
     local f = assert(io.open(sv, "wb"))
     f:write([[
-ILDevDB = { lastId = "r9", reloadWorked = false, run = {
+ILDevDB = { lastId = "r9", reloadWorked = false, blocked = { "ADDON_ACTION_BLOCKED ILDev B()" },
+  earlier = { id = "r9", started = 1791633500, finished = 1791633510, steps = {
+    { t = 0.1, op = "tour book", ok = true } }, blocked = { "ADDON_ACTION_BLOCKED ILDev A()" } },
+  run = {
   id = "r9", started = 1791633600, finished = 1791633630,
   client = { build = "1.60.1", interface = 16001, screen = { 2048, 1536 }, ui = { 1024, 768 } },
   steps = { { t = 0.5, op = "shot inns", ok = true }, { t = 1, op = "click x", ok = false,
@@ -409,29 +491,77 @@ ILDevDB = { lastId = "r9", reloadWorked = false, run = {
     r = { 100, 100, 800, 500 }, kids = {
       { k = "FontString", vis = true, r = { 260, 120, 120, 12 }, text = "1 / 2", trunc = true },
       { k = "FontString", vis = true, r = { 950, 120, 120, 12 }, text = "stray" },
-      { k = "FontString", vis = false, r = { 950, 120, 120, 12 }, text = "hidden" } } } },
+      { k = "FontString", vis = false, r = { 950, 120, 120, 12 }, text = "hidden" },
+      -- A tab hangs under the book: listed once, its own regions held against it.
+      { k = "Button", vis = true, strata = "HIGH", level = 3, r = { 124, 70, 120, 24 },
+        text = "Inns", enabled = false, kids = {
+          { k = "Texture", vis = true, r = { 120, 66, 128, 32 }, tex = "1" },
+          { k = "FontString", vis = true, r = { 150, 76, 60, 12 }, text = "Inns" },
+          { k = "FontString", vis = true, r = { 150, 40, 60, 12 }, text = "fell out" } } } } },
+    -- The gossip window is the client's: only what hangs outside it is checked.
+    gossip = { k = "Frame", name = "GossipFrame", vis = true, r = { 16, 588, 338, 496 }, kids = {
+      { k = "Frame", vis = true, strata = "MEDIUM", level = 500, r = { 16, 588, 338, 496 }, kids = {
+        { k = "Texture", vis = true, r = { 3, 1005, 95, 95 }, tex = "2" },
+        { k = "FontString", vis = true, text = "Welcome, traveler." } } },
+      { k = "Frame", vis = true, strata = "MEDIUM", level = 2, r = { 354, 484, 420, 600 }, kids = {
+        { k = "FontString", vis = true, r = { 404, 700, 320, 12 }, text = "Sign the guestbook" },
+        { k = "FontString", vis = true, r = { 366, 564, 390, 12 }, text = "a long preview",
+          trunc = true, sw = 400 } } } } } },
 } }
 ]])
     f:close()
     -- One second off the recorded stamp, as a slow write can be.
     assert(io.open(shot, "wb")):close()
-    local printed = {}
-    local env = setmetatable({ arg = { sv, dir, dir },
-      print = function(s) printed[#printed + 1] = s end }, { __index = _G })
-    local chunk = assert(loadfile(HERE .. "read.lua"))
-    setfenv(chunk, env)
-    chunk()
-    local text = table.concat(printed, "\n")
+    local function report(file, which)
+      local printed = {}
+      local env = setmetatable({ arg = { file, dir, dir, which },
+        print = function(s) printed[#printed + 1] = s end }, { __index = _G })
+      local chunk = assert(loadfile(HERE .. "read.lua"))
+      setfenv(chunk, env)
+      chunk()
+      return table.concat(printed, "\n")
+    end
+    local early = report(sv, "earlier")
+    local text = report(sv)
+    local bare = dir .. "/ildev_spec_sv2.lua"
+    f = assert(io.open(bare, "wb"))
+    f:write("ILDevDB = { run = { id = 'r1', steps = {} } }\n")
+    f:close()
+    local none = report(bare, "earlier")
+    os.remove(bare)
     os.remove(sv)
     os.remove(shot)
     local crops = assert(io.open(dir .. "/crops.txt", "rb")):read("*a")
     os.remove(dir .. "/crops.txt")
+    local tree = assert(io.open(dir .. "/inns.txt", "rb")):read("*a")
     os.remove(dir .. "/inns.txt")
+    os.remove(dir .. "/gossip.txt")
     assert.truthy(text:find("FAIL click x  (no frame)", 1, true))
     assert.truthy(text:find("Book.lua:1: boom", 1, true))
     assert.truthy(text:find("text truncated \"1 / 2\"", 1, true))
     assert.truthy(text:find("outside InnkeepersLedgerBook: 950,120 120x12", 1, true))
     assert.is_nil(text:find("hidden", 1, true))
+    -- The tab: one line under the hanging frames, no warning for it or its texture.
+    assert.truthy(text:find("/InnkeepersLedgerBook/Button \"Inns\" 124,70 120x24  [inns]", 1, true))
+    assert.is_nil(text:find("outside InnkeepersLedgerBook: 124,70", 1, true))
+    assert.is_nil(text:find("120,66 128x32", 1, true))
+    assert.truthy(text:find("/Button/FontString: outside Button: 150,40 60x12 vs 124,70 120x24",
+      1, true))
+    assert.truthy(tree:find("Button V 124,70 120x24 HIGH:3 \"Inns\" DISABLED", 1, true))
+    -- The gossip window: the composer hangs beside it and is checked, the client's own
+    -- border and text aren't.
+    assert.truthy(text:find("/GossipFrame/Frame 354,484 420x600  [gossip]", 1, true))
+    assert.truthy(text:find("text truncated \"a long preview\"", 1, true))
+    assert.is_nil(text:find("Welcome, traveler.", 1, true))
+    assert.is_nil(text:find("outside GossipFrame", 1, true))
+    assert.truthy(text:find("layout warnings: 4", 1, true))
     assert.equal(shot .. "|" .. dir .. "/01-inns.png|192|328|1616|1076|2048|1536\n", crops)
+    assert.truthy(text:find("BLOCKED: ADDON_ACTION_BLOCKED ILDev B()", 1, true))
+    assert.is_nil(text:find("ILDev A()", 1, true))
+    assert.truthy(early:find("the run before the last one:", 1, true))
+    assert.truthy(early:find("ok   tour book", 1, true))
+    assert.truthy(early:find("BLOCKED: ADDON_ACTION_BLOCKED ILDev A()", 1, true))
+    assert.is_nil(early:find("ILDev B()", 1, true))
+    assert.equal("", none)
   end)
 end)

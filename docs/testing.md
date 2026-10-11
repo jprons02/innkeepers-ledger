@@ -193,13 +193,25 @@ Proportional, not ceremonial:
      Forever that reload is blocked** (2026-10-11), so someone types `/reload` once
      more when the tour ends; the results are on disk after that. The `composer`
      tour needs the gossip window open, so it runs from `/ildev run composer` after
-     talking to an innkeeper (and ends on the inn's page, through Read).
+     talking to an innkeeper. It dumps the conjunction strip for every voice (each
+     label's width is the dump's `sw`) and ends on the inn's page, through Read. **One
+     round gives both tours:** a run keeps the same deploy's run before it, so the
+     order is `/reload` (the book tour), `/ildev run composer`, `/reload` (saves both).
   3. `sh scripts/devclient/results.sh <out>` (Lua on PATH) prints the run (steps,
-     Lua errors, layout warnings: truncated text, text with no size, regions outside the
-     book or off screen), writes each dump as an indented tree to `<out>/<label>.txt`
-     and crops every screenshot to the frame it shows (`<out>/NN-<label>.png`, which an
-     agent views with its Read tool). Keep `<out>` outside the repo: the book's title
-     names the character.
+     Lua errors, the actions the client blocked, layout warnings: truncated text, text
+     with no size, regions outside the book or off screen), writes each dump as an
+     indented tree to `<out>/<label>.txt` (a disabled button says `DISABLED`) and crops
+     every screenshot to the frame it shows (`<out>/NN-<label>.png`, which an agent
+     views with its Read tool). The kept earlier run is reported first, into
+     `<out>/earlier`. Keep `<out>` outside the repo: the book's title names the
+     character.
+     **What the report doesn't flag (#148):** a child frame of the root that lies
+     outside it hangs there on purpose (the composer and the two buttons beside the
+     gossip window, the book's tabs). Each is listed once under "frames hanging outside
+     their root", and the frames and text under it are held against it instead (a
+     texture may bleed past its frame). The gossip window is the client's own: only what
+     hangs outside it is checked. A clean run reports 0 warnings, and on Forever one
+     blocked action (the reload).
   **Watch mode** (`/ildev watch`, 3 hours): the harness reloads every 60 s
   (`deploy.sh -w`) while the character is resting, away (AFK) and out of combat, so a
   new deploy runs without anyone at the keyboard. It's switched on in game only.
@@ -209,11 +221,13 @@ Proportional, not ceremonial:
   **Rules:** the steps are a fixed vocabulary (`slash`, `click`, `wait`, `shot`, `dump`,
   `pages`, `hide`). `Request.lua` is itself Lua, trusted like any file in `AddOns/`, but
   no step is evaluated. A step runs only `/ledger`, and clicks or hides only under the
-  book or the gossip window, by a button's exact text; anything else is refused and
-  logged. It never clicks a button labelled "Sign" (the composer's commit; a spec ties
-  this to `SignFlow`'s label), and in the gossip window it clicks only the AddOn's own
-  buttons. A step that fails or raises is logged and the run goes on or ends cleanly
-  (the screenshot quality restored, the results saved). The AddOn itself has no dev hooks. Nothing sends keystrokes to the
+  book or the gossip window, by a button's exact text (a list row has none of its own,
+  so its label's); anything else is refused and logged. It never clicks a button
+  labelled "Sign" (the composer's commit; a spec ties this to `SignFlow`'s label), and
+  in the gossip window it clicks only the AddOn's own buttons, by a fixed list of their
+  texts (a spec ties the voices in it to `Data/Phrases.lua`). A step that fails or
+  raises is logged and the run goes on or ends cleanly (the screenshot quality restored,
+  the results saved). The AddOn itself has no dev hooks. Nothing sends keystrokes to the
   game window (decisions.md, 2026-10-10). `spec/devclient_spec.lua` runs ILDev over a
   fake frame tree and `read.lua` over a saved run.
 - **Refreshing the AddOn in the client after a merge:** the installed

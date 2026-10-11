@@ -47,6 +47,9 @@ local GOSSIP_OK = {
   ["First line"] = true, ["Second line"] = true,
   ["Add a second line"] = true, ["Remove the second line"] = true,
   ["Cancel"] = true, ["<"] = true, [">"] = true,
+  -- The voices (Data/Phrases.lua's PhraseVoices).
+  ["Hearthside"] = true, ["Bardic"] = true, ["Grumbler"] = true, ["Scholar"] = true,
+  ["Rowdy"] = true, ["Mystic"] = true, ["Sailor"] = true, ["Noble"] = true,
 }
 
 local function now()
@@ -172,12 +175,29 @@ local function textOf(x)
   return nil
 end
 
+-- A button's text, or, for one with none of its own (a list row), its first label's.
+local function labelOf(b)
+  local own = textOf(b)
+  if own ~= nil and own ~= "" then
+    return own
+  end
+  for _, rg in ipairs(regions(b)) do
+    if rg.GetObjectType and rg:GetObjectType() == "FontString" then
+      local s = textOf(rg)
+      if s ~= nil and s ~= "" then
+        return s
+      end
+    end
+  end
+  return nil
+end
+
 -- Shown buttons under `f` whose text is `text`, top to bottom, then left to right.
 local function buttons(f, text)
   local found = {}
   local function walk(x, depth)
     local kind = x.GetObjectType and x:GetObjectType()
-    if (kind == "Button" or kind == "CheckButton") and x:IsVisible() and textOf(x) == text then
+    if (kind == "Button" or kind == "CheckButton") and x:IsVisible() and labelOf(x) == text then
       found[#found + 1] = x
     end
     if depth < MAX_DEPTH then
@@ -330,11 +350,16 @@ function steps.wait(s, nextStep)
 end
 
 function steps.hide(s, nextStep)
-  local f = ROOT_OK[s[2]] and root(s[2]) or nil
-  if f then
-    f:Hide()
+  if not ROOT_OK[s[2]] then
+    note("hide " .. tostring(s[2]), false, "refused: not an allowed frame")
+  else
+    -- A frame that isn't built yet (the book before its first /ledger) is hidden already.
+    local f = root(s[2])
+    if f then
+      f:Hide()
+    end
+    note("hide " .. s[2], true, not f and "not built yet" or nil)
   end
-  note("hide " .. tostring(s[2]), f ~= nil)
   after(SETTLE, nextStep)
 end
 
@@ -534,6 +559,17 @@ local function runTours(only)
   busy = true
   run = { id = req.id, started = time(), t0 = now(), steps = {}, shots = {}, dumps = {},
     errors = {}, only = only }
+  -- The run before this one is kept if it's the same deploy's (the book tour at login,
+  -- then `/ildev run composer`), so one saving reload keeps both. The actions blocked so
+  -- far were that run's.
+  local last = db.run
+  if type(last) == "table" and last.id == req.id then
+    last.blocked = db.blocked
+    db.earlier = last
+  else
+    db.earlier = nil
+  end
+  db.blocked = nil
   db.run = run
   db.lastId = req.id
   local pw, ph = GetPhysicalScreenSize()

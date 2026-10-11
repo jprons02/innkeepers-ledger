@@ -10,6 +10,34 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-11 — The inn page sizes to its text; the conjunction strip gets wider buttons
+
+The layout checks (#140) found four texts too long for their boxes; #143 fixed them with
+size and spacing only, no wording changed. All widths are the checks' estimate (0.6 em),
+to be re-checked against the client's measured widths.
+- **Inn rows are as high as their kind** (a heading 30, any other row 64) and are placed
+  as the page is drawn. A row's phrase hangs under its name line and its flourish under
+  the phrase, by anchors, so the longest phrase (three lines) and a wrapped name line
+  fit, and a short phrase keeps its flourish close. Six rows a page stay: every page
+  starts with a heading, so the worst page is 30 + 5 × 64, exactly the room there is.
+- **A traveler's name on a row is cut to 40 characters** (`BookView.LIMITS.rowNameChars`),
+  so name, date and seal never need a third line. A real name (12 letters, a space and a
+  realm) is well under 40.
+- **The inn page's header lines hang under the title,** which may take two lines.
+- **The conjunction strip shows 6 buttons, 3 a row, 124 wide** (a voice's stay 92, 4 a
+  row). Hearthside's 7 conjunctions page; the other voices' fit.
+
+**Rejected:** *five rows a page with room for three lines each* (a signature fewer on
+every page, and wide gaps under the usual one-line phrase); *measuring the text*
+(`GetStringHeight`) to pack rows (a client call the stub would have to imitate, and a
+full page could still run off the bottom); *a byte cap for the row's name* (40 bytes is
+20 Cyrillic letters: real names would be cut); *four wider conjunction buttons a row*
+(a composer about 520 wide); *three rows of conjunctions* (no paging, but 22 more of
+height and everything under the strip moves; the maintainer can still pick it);
+*a smaller label font* (15 characters at 10 pt are still wider than a 92 button, and
+it needs button-font calls unverified on Forever); *shorter conjunctions* (wording is
+the maintainer's).
+
 ### 2026-10-10 — Agents see the UI through a dev harness in the client
 
 Every look fix so far waited on the maintainer's screenshots, and one batch showed a

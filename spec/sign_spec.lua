@@ -639,12 +639,20 @@ describe("Sign: the composer's lists (#102)", function()
     assert.equal(8, #lists.template.rows)
     assert.equal(9, #lists.cat.rows)
     assert.equal(9, #lists.word.rows)
-    for _, key in ipairs({ "voice", "conj" }) do
-      assert.equal(8, #lists[key].rows)
+    -- The strips: 8 voices, 4 a row; 6 conjunctions, 3 wider buttons a row (#143).
+    for key, count in pairs({ voice = 8, conj = 6 }) do
+      assert.equal(count, #lists[key].rows)
       for _, row in ipairs(lists[key].rows) do
         assert.equal("UIPanelButtonTemplate", row.button.template)
       end
     end
+    local voice, conj = lists.voice, lists.conj
+    assert.same({ 92, 20 }, { voice.rows[1].button.width, voice.rows[1].button.height })
+    assert.same({ 124, 20 }, { conj.rows[1].button.width, conj.rows[1].button.height })
+    -- The second row starts under the first; a row's third conjunction is 2 x 126 along.
+    assert.same({ "TOPLEFT", voice.frame, "TOPLEFT", 0, -22 }, voice.rows[5].button.points[1])
+    assert.same({ "TOPLEFT", conj.frame, "TOPLEFT", 0, -22 }, conj.rows[4].button.points[1])
+    assert.same({ "TOPLEFT", conj.frame, "TOPLEFT", 252, 0 }, conj.rows[3].button.points[1])
   end)
 
   it("shows the voices as a strip, the chosen one disabled", function()
@@ -677,6 +685,30 @@ describe("Sign: the composer's lists (#102)", function()
     assert.is_false(ui.lists.conj.frame:IsShown()) -- line 1 has no conjunction
     assert.is_false(ui.line1:IsEnabled())
     assert.is_true(ui.line2:IsEnabled())
+  end)
+
+  -- #143: the strip shows 6 conjunctions; Hearthside has 7, so its strip pages.
+  it("pages the conjunction strip of a voice with more than six", function()
+    local ns = login()
+    click(ns)
+    local ui, P = ns.Sign.ui, ns.Phrase
+    ui.toggle:Click()
+    local conj = ui.lists.conj
+    local all = P.conjunctions(1)
+    assert.equal(7, #all)
+    assert.equal(6, #texts(conj))
+    assert.equal(P.text(all[1]), conj.rows[1].button:GetText())
+    assert.is_true(conj.next:IsShown() and conj.next:IsEnabled())
+    assert.is_false(conj.prev:IsEnabled())
+    conj.next:Click()
+    local shownTexts = texts(conj)
+    assert.equal(P.text(all[7]), shownTexts[#shownTexts])
+    assert.is_false(conj.next:IsEnabled())
+    assert.is_true(conj.prev:IsEnabled())
+    -- A voice with six or fewer shows them all, with no page buttons.
+    ns.Sign:Pick("voice", 2)
+    assert.equal(#P.conjunctions(2), #texts(conj))
+    assert.is_false(conj.next:IsShown())
   end)
 
   it("pages and wheels the template list, stopping at both ends", function()

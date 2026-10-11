@@ -97,10 +97,12 @@ Proportional, not ceremonial:
   times: an empty ledger, a full one (an atlas of 38 extra inns) and the longest inputs
   (long inn and zone names, the longest phrase, the longest traveler names, a seal on
   every traveler's signature). Each exception is listed in the spec with its reason, and
-  each check has a case showing it fails on a broken layout. Problems found in the
-  current UI (the look is a DRAFT) are matched by narrow `KNOWN` patterns, which the
-  other cases drop. Each has a live "known problem" case that asserts it's still there,
-  with its numbers. When one fails, the UI was fixed: delete the case and its pattern.
+  each check has a case showing it fails on a broken layout. The four problems the
+  checks first found (#143: a phrase, a traveler's name line, an inn's title and the
+  conjunction labels, each too long for its box) are fixed, and each has a case showing
+  its longest input fitting, with the numbers. A problem that can't be fixed at once
+  gets a narrow pattern the other cases drop and a case asserting it's still there, so
+  every other check stays live.
 - **The sync harness** (`spec/helpers/sync_harness.lua`): N `Sync` clients in one Lua
   state, each with its own `ns`, ledger, GUID and fake `api` (no stub, no `_G`), sharing
   a clock, a timer queue, an addon-message bus that echoes to the sender, and the group

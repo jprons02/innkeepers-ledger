@@ -63,7 +63,13 @@ local PAGE_TOP = -44
 local PAD = 24
 local CONTENT_W = PAGE_W - 2 * PAD
 local LIST_ROW_H = 27
-local INN_ROW_H = 54
+-- An inn page's rows (spec 3.11.1): a heading row takes HEAD_ROW_H, any other row
+-- ENTRY_ROW_H (two lines of name, date and seal over three of phrase, or one over three
+-- and a flourish). They're placed from INN_ROWS_TOP down as the page is drawn. Every page
+-- starts with a heading, so six rows reach at most 30 + 5 * 64 = 350 down: the page
+-- buttons' top.
+local INN_ROWS_TOP = -118
+local HEAD_ROW_H, ENTRY_ROW_H = 30, 64
 local STAMP_W, STAMP_H = 108, 88
 local DASHES = 6
 
@@ -306,6 +312,13 @@ local function setText(fs, text)
   shown(fs, text ~= nil)
 end
 
+-- Hangs a font string under `above`, `gap` below its last line, so it moves down when
+-- `above` wraps.
+local function hang(fs, above, gap)
+  fs:ClearAllPoints()
+  fs:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -gap)
+end
+
 -- A stamp: four solid sides (signed) or four dashed ones (unsigned), a name and a date.
 local function newStamp(parent, w, h, x, y)
   local st = { solid = {}, dashes = {} }
@@ -405,22 +418,27 @@ end
 local function buildInn(page)
   local p = newPanel(page)
   local ui = { panel = p, rows = {} }
+  -- The header's lines hang under each other: a long inn name takes two lines and moves
+  -- the rest down, still above the rows.
   ui.title = newText(p, "title", CONTENT_W - STAMP_W - 8, PAD, -24)
-  ui.place = newText(p, "small", CONTENT_W - STAMP_W - 8, PAD, -52)
-  ui.count = newText(p, "body", CONTENT_W - STAMP_W - 8, PAD, -72)
-  ui.last = newText(p, "small", CONTENT_W - STAMP_W - 8, PAD, -92)
+  ui.place = newText(p, "small", CONTENT_W - STAMP_W - 8, PAD, -50)
+  hang(ui.place, ui.title, 8)
+  ui.count = newText(p, "body", CONTENT_W - STAMP_W - 8, PAD, -68)
+  hang(ui.count, ui.place, 8)
+  ui.last = newText(p, "small", CONTENT_W - STAMP_W - 8, PAD, -88)
+  hang(ui.last, ui.count, 8)
   ui.stamp = newStamp(p, STAMP_W - 12, 64, PAD + CONTENT_W - STAMP_W + 12, -20)
   for i = 1, LIMITS.innRows do
-    local y = -118 - (i - 1) * INN_ROW_H
+    -- fill.inn places and sizes the row; its lines hang under each other.
     local f = CreateFrame("Frame", nil, p)
-    f:SetSize(CONTENT_W, INN_ROW_H - 2)
-    f:SetPoint("TOPLEFT", p, "TOPLEFT", PAD, y)
+    f:SetSize(CONTENT_W, ENTRY_ROW_H - 2)
+    f:SetPoint("TOPLEFT", p, "TOPLEFT", PAD, INN_ROWS_TOP)
     local row = { frame = f }
     row.head = newText(f, "title", CONTENT_W, 0, -4)
     row.meta = newText(f, "small", CONTENT_W, 0, 0)
-    row.text = newText(f, "body", CONTENT_W, 0, -14)
-    row.text:SetHeight(28) -- two lines, word-wrapped
-    row.flourish = newText(f, "small", CONTENT_W, 0, -42, "CENTER")
+    row.text = newText(f, "body", CONTENT_W, 0, -4)
+    row.flourish = newText(f, "small", CONTENT_W, 0, 0, "CENTER")
+    hang(row.flourish, row.text, 2)
     ui.rows[i] = row
   end
   return ui
@@ -751,10 +769,19 @@ function fill.inn(ui, m)
   local stamp = m.stamp or {}
   drawStamp(ui.stamp, stamp.signed == true, m.title, stamp.date)
   local rows = m.rows or {}
+  local y = INN_ROWS_TOP
   for i, w in ipairs(ui.rows) do
     local r = rows[i]
     shown(w.frame, r ~= nil)
     r = r or {}
+    if rows[i] ~= nil then
+      -- Each row sits under the one before, as high as its kind.
+      local h = r.kind == "heading" and HEAD_ROW_H or ENTRY_ROW_H
+      w.frame:SetHeight(h - 2)
+      w.frame:ClearAllPoints()
+      w.frame:SetPoint("TOPLEFT", ui.panel, "TOPLEFT", PAD, y)
+      y = y - h
+    end
     if r.kind == "heading" then
       setText(w.head, r.text)
       setText(w.meta, nil)
@@ -763,6 +790,8 @@ function fill.inn(ui, m)
     elseif r.kind == "note" then
       setText(w.head, nil)
       setText(w.meta, nil)
+      w.text:ClearAllPoints()
+      w.text:SetPoint("TOPLEFT", w.frame, "TOPLEFT", 0, -4)
       setText(w.text, r.text)
       color(w.text, INK, true)
       setText(w.flourish, nil)
@@ -775,7 +804,16 @@ function fill.inn(ui, m)
         meta = meta .. TEXT.dot .. r.seal
       end
       setText(w.head, nil)
+      -- A traveler's name, date and seal may take a second line; your own date and seal
+      -- stay on one (the client cuts a line that doesn't wrap).
+      w.meta:SetWordWrap(r.kind == "foreign")
       setText(w.meta, meta)
+      if meta ~= "" then
+        hang(w.text, w.meta, 4)
+      else
+        w.text:ClearAllPoints()
+        w.text:SetPoint("TOPLEFT", w.frame, "TOPLEFT", 0, -4)
+      end
       setText(w.text, r.text)
       color(w.text, INK, false)
       setText(w.flourish, r.flourish)

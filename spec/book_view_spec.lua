@@ -183,10 +183,10 @@ describe("BookView.new", function()
     assert.equal(Ledger.LIMITS.tMax, LIMITS.tMax)
     assert.equal(Ledger.LIMITS.cosmeticIdMax, LIMITS.cosmeticIdMax)
     assert.equal(NS.Collection.LIMITS.ownMax, LIMITS.ownMax)
-    assert.same({ 16, 6, 6, 12, 6, 7, 1000, 600, 8, 20000, 64 }, {
+    assert.same({ 16, 6, 6, 12, 6, 7, 1000, 600, 8, 20000, 64, 40 }, {
       LIMITS.listRows, LIMITS.innRows, LIMITS.barRows, LIMITS.stampCells, LIMITS.quillRows,
       LIMITS.sealRows, LIMITS.ownReadMax, LIMITS.foreignReadMax, LIMITS.aliasesMax,
-      LIMITS.innsReadMax, LIMITS.nameBytes })
+      LIMITS.innsReadMax, LIMITS.nameBytes, LIMITS.rowNameChars })
   end)
 
   it("raises without ns.Ledger", function()
@@ -352,6 +352,23 @@ describe("BookView.plain", function()
     -- A bad maxBytes uses the name cap.
     assert.equal(string.rep("a", 64) .. "...", plain(name, "x", "F"))
     assert.equal(string.rep("a", 64) .. "...", plain(name, 0 / 0, "F"))
+  end)
+
+  -- #143: an inn row's name is cut by characters, since a row's width holds characters.
+  it("cuts at a number of characters too, whichever cut comes first", function()
+    assert.equal(string.rep("a", 40) .. "...", plain(string.rep("a", 41), 64, "F", 40))
+    assert.equal(string.rep("a", 40), plain(string.rep("a", 40), 64, "F", 40))
+    -- Characters, not bytes: 45 two-byte letters are 90 bytes.
+    local cyrillic = string.rep("\208\144", 45)
+    assert.equal(string.rep("\208\144", 40) .. "...", plain(cyrillic, 200, "F", 40))
+    -- The byte cap still cuts when it comes first (32 letters are 64 bytes).
+    assert.equal(string.rep("\208\144", 32) .. "...", plain(cyrillic, 64, "F", 40))
+    -- A hidden character past both cuts still replaces the whole name.
+    assert.equal("F", plain(string.rep("a", 50) .. "\226\128\174", 64, "F", 40))
+    -- Anything but a whole number of 1 or more is no cap on characters.
+    for _, bad in ipairs({ 0, -1, 1.5, "40", 0 / 0, {} }) do
+      assert.equal(string.rep("a", 64) .. "...", plain(string.rep("a", 70), 64, "F", bad))
+    end
   end)
 
   it("never returns a pipe", function()
@@ -976,6 +993,9 @@ describe("BookView: an inn's page", function()
             phrase = { 2 } } },
           { signer = traveler(5), name = "Mi\226\128\141ra", entry = { inn = 5001, t = T - 1,
             phrase = { 2 } } }, -- a ZWJ (#119)
+          -- 12 Cyrillic letters, a space and 15 more: 28 characters in 55 bytes.
+          { signer = traveler(6), name = string.rep("\208\144", 12) .. " "
+            .. string.rep("\208\145", 15), entry = { inn = 5001, t = T - 2, phrase = { 2 } } },
         } }
       end }
     local m = newView({ sizes = { innRows = 10 } }).build(sit(fake), { inn = 5101 })
@@ -985,8 +1005,9 @@ describe("BookView: an inn's page", function()
         names[#names + 1] = r.name
       end
     end
-    assert.same({ string.rep("x", 64) .. "...", "A traveler", "A traveler", "A traveler",
-      "A traveler" }, names)
+    -- A row shows 40 characters of a name (LIMITS.rowNameChars, #143); a real name fits.
+    assert.same({ string.rep("x", 40) .. "...", "A traveler", "A traveler", "A traveler",
+      "A traveler", string.rep("\208\144", 12) .. " " .. string.rep("\208\145", 15) }, names)
   end)
 
   it("draws the quill's flourish under own rows only, none for the plain quill", function()

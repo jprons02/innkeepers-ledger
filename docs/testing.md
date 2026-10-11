@@ -197,6 +197,8 @@ Proportional, not ceremonial:
      label's width is the dump's `sw`) and ends on the inn's page, through Read. **One
      round gives both tours:** a run keeps the same deploy's run before it, so the
      order is `/reload` (the book tour), `/ildev run composer`, `/reload` (saves both).
+     A run with nothing to do (a mistyped tour name, the gossip window closed) says so
+     and doesn't start, so it replaces nothing.
   3. `sh scripts/devclient/results.sh <out>` (Lua on PATH) prints the run (steps,
      Lua errors, the actions the client blocked, layout warnings: truncated text, text
      with no size, regions outside the book or off screen), writes each dump as an
@@ -206,12 +208,14 @@ Proportional, not ceremonial:
      `<out>/earlier`. Keep `<out>` outside the repo: the book's title names the
      character.
      **What the report doesn't flag (#148):** a child frame of the root that lies
-     outside it hangs there on purpose (the composer and the two buttons beside the
-     gossip window, the book's tabs). Each is listed once under "frames hanging outside
-     their root", and the frames and text under it are held against it instead (a
-     texture may bleed past its frame). The gossip window is the client's own: only what
-     hangs outside it is checked. A clean run reports 0 warnings, and on Forever one
-     blocked action (the reload).
+     outside it is taken to hang there on purpose. Each is listed once under "frames
+     hanging outside their root", and the frames and text under it are held against it
+     instead (a texture may bleed past its frame). **Seven are expected:** the composer
+     and the Sign and Read buttons beside the gossip window, and the book's four tabs.
+     An eighth is a frame that slipped out of its root: the list is where it shows, not
+     the warnings. The gossip window is the client's own: only what hangs outside it is
+     checked (its panel, which covers the whole window, isn't). A clean run reports
+     0 warnings, and on Forever one blocked action per run (the reload).
   **Watch mode** (`/ildev watch`, 3 hours): the harness reloads every 60 s
   (`deploy.sh -w`) while the character is resting, away (AFK) and out of combat, so a
   new deploy runs without anyone at the keyboard. It's switched on in game only.

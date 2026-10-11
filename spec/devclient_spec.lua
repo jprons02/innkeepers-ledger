@@ -310,6 +310,70 @@ describe("ILDev", function()
       assert.equal(i > 1, has(steps, "^ok dump conj%-" .. voice:lower() .. " "), voice)
     end
     assert.is_true(has(steps, "^ok dump conj%-hearthside%-2 "))
+    -- The tour pages the strip for the first voice only: no other voice may outgrow it.
+    local sign = assert(io.open("Sign.lua", "rb")):read("*a")
+    local shown = tonumber(sign:match("conj = { strip = true, x = %d+, y = %-%d+, n = (%d+)"))
+    assert.is_number(shown)
+    local count = {}
+    for _, p in pairs(ns.Data.Phrases) do
+      if p.kind == "conj" then
+        count[p.voice] = (count[p.voice] or 0) + 1
+      end
+    end
+    for v in ipairs(ns.Data.PhraseVoices) do
+      assert.equal(v == 1, count[v] > shown, "voice " .. v)
+      assert.is_true(count[v] <= 2 * shown, "voice " .. v)
+    end
+  end)
+
+  it("the book tour opens an inn that Data/Inns holds", function()
+    local inns = assert(io.open("Data/Inns.lua", "rb")):read("*a")
+    local book = assert(io.open(HERE .. "tours/book.lua", "rb")):read("*a")
+    local name = book:match('{ "click", B, "([^"]+ Inn)" }')
+    assert.is_string(name)
+    assert.truthy(inns:find(('name = "%s"'):format(name), 1, true), name)
+  end)
+
+  it("finds a button by its own text first, and never the commit button by a label", function()
+    w = install({ id = "r15", tours = { { name = "g", need = "GossipFrame", steps = {
+      { "click", "GossipFrame", "Cancel" },
+      { "click", "InnkeepersLedgerBook", "Sign" } } } } })
+    -- The commit button with a second label, and a textless button labelled "Sign".
+    region("FontString", w.commit, { 30, 220, 60, 12 }, "Cancel")
+    local guise = region("Button", w.book, { 200, 200, 120, 24 })
+    region("FontString", guise, { 200, 200, 60, 12 }, "Sign")
+    w.book:Show()
+    w.gossip:Show()
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    local steps = stepsOf(_G.ILDevDB)
+    assert.is_true(has(steps, "FAIL click GossipFrame \"Cancel\" 1 %(no shown button"))
+    assert.is_true(has(steps, "FAIL click InnkeepersLedgerBook \"Sign\" 1 %(refused"))
+    assert.equal(0, w.commit.clicks)
+    assert.equal(0, guise.clicks)
+  end)
+
+  it("a run with nothing to do doesn't start, so the last run's results stay", function()
+    w = install({ id = "r16", tours = { tour("book"), tour("composer") } })
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    local db = _G.ILDevDB
+    local first = db.run
+    _G.SlashCmdList.ILDEV("run composer") -- the gossip window isn't open
+    _G.SlashCmdList.ILDEV("run composr")
+    w.pump()
+    assert.equal(first, db.run)
+    assert.is_nil(db.earlier)
+    assert.is_true(has(w.chat, "tour composer skipped: GossipFrame isn't shown"))
+    assert.is_true(has(w.chat, "no such tour"))
+    assert.equal(1, w.reloads)
+    -- A request with nothing to do at login isn't tried again at every login.
+    w.uninstall()
+    w = install({ id = "r17", tours = { tour("composer") } }, db)
+    w.fire("PLAYER_LOGIN")
+    w.pump()
+    assert.equal("r17", db.lastId)
+    assert.equal(first, db.run)
   end)
 
   it("hiding a frame that isn't built yet is no failure", function()
@@ -322,16 +386,26 @@ describe("ILDev", function()
   end)
 
   it("records the blocked actions of this run only, its own and the AddOn's", function()
+    -- What an earlier session left belongs to its last run, or to none.
     w = install({ id = "r12", tours = { { name = "t", steps = { { "wait", 1 } } } } },
-      { blocked = { "ADDON_ACTION_BLOCKED ILDev UNKNOWN()" } })
-    w.fire("PLAYER_LOGIN")
-    w.pump()
+      { blocked = { "ADDON_ACTION_BLOCKED ILDev OLD()" } })
     assert.is_nil(_G.ILDevDB.blocked)
+    w.fire("PLAYER_LOGIN")
+    -- Blocked between login and the first tour: reported with that tour.
+    w.fire("ADDON_ACTION_FORBIDDEN", "InnkeepersLedger", "AtLogin()")
+    w.pump()
     w.fire("ADDON_ACTION_BLOCKED", "ILDev", "UNKNOWN()")
-    w.fire("ADDON_ACTION_FORBIDDEN", "InnkeepersLedger", "Reload()")
     w.fire("ADDON_ACTION_BLOCKED", "SomeOtherAddOn", "CastSpellByName()")
-    assert.same({ "ADDON_ACTION_BLOCKED ILDev UNKNOWN()",
-      "ADDON_ACTION_FORBIDDEN InnkeepersLedger Reload()" }, _G.ILDevDB.blocked)
+    local db = _G.ILDevDB
+    assert.same({ "ADDON_ACTION_FORBIDDEN InnkeepersLedger AtLogin()",
+      "ADDON_ACTION_BLOCKED ILDev UNKNOWN()" }, db.blocked)
+    assert.is_nil(db.run.blocked)
+    -- After a reload they're the run's, so the next run's list starts empty.
+    w.uninstall()
+    w = install({ id = "r12", tours = {} }, db)
+    assert.is_nil(db.blocked)
+    assert.same({ "ADDON_ACTION_FORBIDDEN InnkeepersLedger AtLogin()",
+      "ADDON_ACTION_BLOCKED ILDev UNKNOWN()" }, db.run.blocked)
   end)
 
   it("keeps the same deploy's run before this one, with what was blocked in it", function()
@@ -481,6 +555,7 @@ ILDevDB = { lastId = "r9", reloadWorked = false, blocked = { "ADDON_ACTION_BLOCK
     { t = 0.1, op = "tour book", ok = true } }, blocked = { "ADDON_ACTION_BLOCKED ILDev A()" } },
   run = {
   id = "r9", started = 1791633600, finished = 1791633630,
+  blocked = { "ADDON_ACTION_FORBIDDEN InnkeepersLedger C()" },
   client = { build = "1.60.1", interface = 16001, screen = { 2048, 1536 }, ui = { 1024, 768 } },
   steps = { { t = 0.5, op = "shot inns", ok = true }, { t = 1, op = "click x", ok = false,
     note = "no frame" } },
@@ -500,7 +575,7 @@ ILDevDB = { lastId = "r9", reloadWorked = false, blocked = { "ADDON_ACTION_BLOCK
           { k = "FontString", vis = true, r = { 150, 40, 60, 12 }, text = "fell out" } } } } },
     -- The gossip window is the client's: only what hangs outside it is checked.
     gossip = { k = "Frame", name = "GossipFrame", vis = true, r = { 16, 588, 338, 496 }, kids = {
-      { k = "Frame", vis = true, strata = "MEDIUM", level = 500, r = { 16, 588, 338, 496 }, kids = {
+      { k = "Frame", vis = true, strata = "MEDIUM", level = 500, r = { 16, 572, 384, 512 }, kids = {
         { k = "Texture", vis = true, r = { 3, 1005, 95, 95 }, tex = "2" },
         { k = "FontString", vis = true, text = "Welcome, traveler." } } },
       { k = "Frame", vis = true, strata = "MEDIUM", level = 2, r = { 354, 484, 420, 600 }, kids = {
@@ -553,10 +628,12 @@ ILDevDB = { lastId = "r9", reloadWorked = false, blocked = { "ADDON_ACTION_BLOCK
     assert.truthy(text:find("/GossipFrame/Frame 354,484 420x600  [gossip]", 1, true))
     assert.truthy(text:find("text truncated \"a long preview\"", 1, true))
     assert.is_nil(text:find("Welcome, traveler.", 1, true))
+    assert.is_nil(text:find("/GossipFrame/Frame 16,572", 1, true))
     assert.is_nil(text:find("outside GossipFrame", 1, true))
     assert.truthy(text:find("layout warnings: 4", 1, true))
     assert.equal(shot .. "|" .. dir .. "/01-inns.png|192|328|1616|1076|2048|1536\n", crops)
-    assert.truthy(text:find("BLOCKED: ADDON_ACTION_BLOCKED ILDev B()", 1, true))
+    assert.truthy(text:find("BLOCKED: ADDON_ACTION_FORBIDDEN InnkeepersLedger C()\n"
+      .. "BLOCKED: ADDON_ACTION_BLOCKED ILDev B()", 1, true))
     assert.is_nil(text:find("ILDev A()", 1, true))
     assert.truthy(early:find("the run before the last one:", 1, true))
     assert.truthy(early:find("ok   tour book", 1, true))

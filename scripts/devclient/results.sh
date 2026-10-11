@@ -9,8 +9,10 @@ set -eu
 out=${1:?out folder, e.g. a scratch directory}
 client=${2:-${ILDEV_CLIENT:-"C:/Program Files (x86)/World of Warcraft/_classic_beta_"}}
 here=$(cd "$(dirname "$0")" && pwd)
+# A reused out folder keeps nothing of an older report's earlier run.
+rm -rf "$out/earlier"
 mkdir -p "$out/earlier"
-rm -f "$out/crops.txt" "$out/earlier/crops.txt"
+rm -f "$out/crops.txt"
 sv=
 for f in "$client"/WTF/Account/*/SavedVariables/ILDev.lua; do
   [ -f "$f" ] || continue
@@ -25,5 +27,6 @@ crop() {
 }
 lua "$here/read.lua" "$sv" "$client/Screenshots" "$out/earlier" earlier
 crop "$out/earlier"
+rmdir "$out/earlier" 2>/dev/null || true # empty: no earlier run
 lua "$here/read.lua" "$sv" "$client/Screenshots" "$out"
 crop "$out"

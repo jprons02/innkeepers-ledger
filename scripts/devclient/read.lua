@@ -15,17 +15,24 @@ local env = {}
 setfenv(chunk, env)
 chunk()
 local db = env.ILDevDB or {}
-local run, blocked = db.run, db.blocked
+local run = db.run
 if which == "earlier" then
   run = db.earlier
   if type(run) ~= "table" then
     return
   end
-  blocked = run.blocked
   print("the run before the last one:")
 elseif type(run) ~= "table" then
   print("no run in " .. svPath)
   os.exit(1)
+end
+-- The actions the client blocked: the run's own, and for the last run those since.
+local blocked = {}
+for _, b in ipairs(type(run.blocked) == "table" and run.blocked or {}) do
+  blocked[#blocked + 1] = b
+end
+for _, b in ipairs(which ~= "earlier" and type(db.blocked) == "table" and db.blocked or {}) do
+  blocked[#blocked + 1] = b
 end
 
 local function exists(path)
@@ -53,7 +60,7 @@ print(("client build %s, interface %s, screen %s, UI %s, scale %s"):format(tostr
   c.ui and table.concat(c.ui, "x") or "?", tostring(c.uiScale)))
 print(("automatic reload worked: %s;  watch until: %s"):format(tostring(db.reloadWorked),
   db.watchUntil and os.date("%H:%M", db.watchUntil) or "off"))
-for _, b in ipairs(blocked or {}) do
+for _, b in ipairs(blocked) do
   print("BLOCKED: " .. b)
 end
 
@@ -128,7 +135,8 @@ local function add(to, key, label)
 end
 local warned, hung = tally(), tally()
 -- Roots that are the client's own frames: only what hangs outside one is the AddOn's, so
--- nothing else under it is checked.
+-- nothing else under it is checked. A child that covers the whole root is the client's
+-- too (the gossip window's panel is larger than the window).
 local CLIENTS = { GossipFrame = true }
 for _, label in ipairs(labels) do
   local rootNode = run.dumps[label]
@@ -151,7 +159,7 @@ for _, label in ipairs(labels) do
       .. (n.enabled == false and " DISABLED" or "")))
     local under = box
     local hangs = n.vis and n.r and box.r and box == rootNode and depth == 1 and n.strata
-      and not inside(n.r, box.r)
+      and not inside(n.r, box.r) and not (CLIENTS[rootNode.name] and inside(box.r, n.r))
     if hangs then
       -- A child frame outside its root hangs there on purpose (the composer beside the
       -- gossip window, the book's tabs): it's listed once, and what's under it is held

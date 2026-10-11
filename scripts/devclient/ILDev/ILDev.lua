@@ -522,6 +522,17 @@ abort = function(err)
   busy = false
 end
 
+-- Hands the blocked actions recorded so far to the run they happened in or after.
+local function closeBlocked(to)
+  if type(db.blocked) == "table" and type(to) == "table" then
+    to.blocked = type(to.blocked) == "table" and to.blocked or {}
+    for _, b in ipairs(db.blocked) do
+      to.blocked[#to.blocked + 1] = b
+    end
+  end
+  db.blocked = nil
+end
+
 -- The tours' steps in order, with a "mark" before each tour. Raises on a malformed tour.
 local function queueOf(req, only)
   local queue = {}
@@ -556,20 +567,34 @@ local function runTours(only)
     say("the request is malformed: " .. tostring(queue))
     return
   end
+  -- A run with no tour to do (a mistyped name, a tour whose window isn't open) doesn't
+  -- start, so it doesn't replace the last run's results.
+  local todo = false
+  for _, s in ipairs(queue) do
+    if type(s) == "table" and s[1] == "skip" then
+      say(("tour %s skipped: %s isn't shown."):format(tostring(s[2]), tostring(s[3])))
+    else
+      todo = true
+    end
+  end
+  if not todo then
+    db.lastId = req.id
+    say(#queue == 0 and "no such tour in the request." or "nothing to run.")
+    return
+  end
   busy = true
   run = { id = req.id, started = time(), t0 = now(), steps = {}, shots = {}, dumps = {},
     errors = {}, only = only }
   -- The run before this one is kept if it's the same deploy's (the book tour at login,
-  -- then `/ildev run composer`), so one saving reload keeps both. The actions blocked so
-  -- far were that run's.
+  -- then `/ildev run composer`), so one saving reload keeps both. The actions blocked
+  -- since it started were its own; without one, those since login are this run's.
   local last = db.run
   if type(last) == "table" and last.id == req.id then
-    last.blocked = db.blocked
+    closeBlocked(last)
     db.earlier = last
   else
     db.earlier = nil
   end
-  db.blocked = nil
   db.run = run
   db.lastId = req.id
   local pw, ph = GetPhysicalScreenSize()
@@ -673,6 +698,9 @@ events:SetScript("OnEvent", function(_, event, a1, a2)
   if event == "ADDON_LOADED" and a1 == ADDON then
     ILDevDB = type(ILDevDB) == "table" and ILDevDB or {}
     db = ILDevDB
+    -- What was blocked before this load happened after the last run started (its
+    -- reload, on Forever): it's that run's, not the next one's.
+    closeBlocked(db.run)
     -- Did the last automatic reload happen? A load within 20 s of trying says yes.
     if type(db.autoReload) == "table" then
       db.reloadWorked = (time() - (db.autoReload.tried or 0)) < 20

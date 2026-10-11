@@ -5,8 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-11 (#143: the four layout problems the checks found are fixed; the
-harness's first run in the client is still to come)
+**Updated:** 2026-10-11 (the dev harness ran in the client for the first time; #143's
+layout fixes and the page label and arrows are merged and seen in the client)
 
 ## Current state
 
@@ -14,30 +14,30 @@ harness's first run in the client is still to come)
   tested and security-reviewed. **Phase 2 (#12) is under way in the Forever beta**
   ([platform-forever.md](platform-forever.md)). `Data/Inns` holds one inn: Calmbreeze Inn
   (NPC `254089`), Zephras Isle (zone 2521, seal 101, Azeroth 947).
-- **Agents can see the UI without the maintainer's screenshots** (decisions.md
-  2026-10-10, [testing.md](testing.md#testing-posture)):
-  - **The dev harness (#139):** `scripts/devclient/`. `deploy.sh` installs the working
-    tree's AddOn and `ILDev` (never packaged) with a tour; on the next login or `/reload`
-    the client screenshots each step and dumps the real layout; `results.sh <out>` reports
-    the run and crops the images. **Not yet run in the client**: whether `Screenshot()`
-    and a timed reload work in Forever is on the platform-forever checklist.
-  - **Layout checks in busted (#140):** the stub resolves anchors (`wow.rect`);
-    `spec/layout_spec.lua` checks the book (every tab and page, three ledgers, the longest
-    inputs) and the composer for regions off their page, overlaps and text that doesn't
-    fit. Text widths are an uncalibrated 0.6 em guess.
-  - **The four layout problems they found are fixed (#143,** decisions.md 2026-10-11,
-    [book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft)**):** the inn page
-    sizes to its text (rows as high as their kind, the phrase under a name line that may
-    wrap, the header under a title that may take two lines), a traveler's name on a row
-    is cut to 40 characters, and the conjunction strip has 6 wider buttons, 3 a row.
-    Proven by the layout checks only; **not yet seen in the client**.
+- **Agents see the UI through the dev harness, and it works in the client** (#139,
+  [testing.md](testing.md#testing-posture); first runs 2026-10-11): `deploy.sh` installs
+  the working tree's AddOn and a tour, the client screenshots each step and dumps the
+  real layout, `results.sh <out>` reports the run and crops the images. **A reload from a
+  timer is blocked on Forever,** so each run needs the maintainer to type `/reload`
+  (once to load a deploy, once more to save the results), and watch mode can't work.
+  Nothing types into the game for him (decisions.md 2026-10-10).
+- **Layout checks in busted (#140)** resolve anchors in the stub and check the book and
+  the composer. Their text width (0.6 em) is now measured against the client: 0.43 to
+  0.60 em over 40 strings, so it stays as the upper bound.
+- **Seen in the client on 2026-10-11:**
+  - the spine (#137): the covers meet in the middle;
+  - #143's fixes (#145, decisions.md 2026-10-11,
+    [book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft)): the inn page's rows
+    and header sit exactly where the layout checks put them, and the conjunction strip
+    has 6 wider buttons, 3 a row;
+  - the composer's lists (#102), both lines;
+  - the page label and the `<` `>` page buttons (#146): the label was ink on the page
+    file's dark bottom edge and the old arrows were 4 px wide; both read now.
+  The long cases (a three-line phrase, a wrapped traveler line, a two-line inn name)
+  exist only in the layout checks: the maintainer's ledger has one short signature.
 - **Signing works in the client** (#96, [sign.md](specs/sign.md)), with 8 phrase voices
-  (#100). **The composer shows lists** (#102), built but **not yet seen in the client**;
-  the look is DRAFT.
-- **The book (`UI/Book`, #106, [book.md](specs/book.md)) was first seen in the client on
-  2026-10-09.** Three fixes came from those screenshots (#135 one page file, #136 the
-  stamp's bottom side, #137 the covers meet as the spine). #137 is not yet seen in the
-  client. The look is DRAFT.
+  (#100). The book (`UI/Book`, #106, [book.md](specs/book.md)) and the composer are
+  DRAFT looks.
 - **No inks (#105):** one ink for every signature; IDs 1100..1199 reserved.
 - **Place rules wait for completeness marks (#110,
   [collection-cosmetics.md §3.11](specs/collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)):**
@@ -46,39 +46,37 @@ harness's first run in the client is still to come)
 - **Names** reject malformed UTF-8 and hidden characters (#119,
   [sync-ledger.md §5.2a](specs/sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119)).
 - **Releasing:** last released to `main` on 2026-10-08 (#129). Since then, `dev` holds
-  #133, the book fixes #135–#137 and the dev tooling #139/#140 (spec and `scripts/` only;
-  nothing that ships changed). They go out with the next release PR. No tags yet
-  (maintainer gate). **CI:** eight required checks on `ubuntu-24.04`, green.
+  #133, the book fixes #135–#137, the dev tooling #139/#140, and #145 and #146 (both
+  change what ships: `UI/Book.lua`, `Sign.lua`, `BookView.lua`). They go out with the
+  next release PR. No tags yet (maintainer gate). **CI:** eight required checks on
+  `ubuntu-24.04`, green.
 
 ## Next step
 
-- **Agents:** once the harness has run, read its screenshots and dumps: confirm #143's
-  fixes and #137's spine in the client, calibrate the text width and find the missing
-  page label (Follow-ups). Then use the harness on #12's open looks. The low follow-ups
-  below can fill gaps; check each one against decisions.md before offering it.
-- **The harness loop** (agent): `sh scripts/devclient/deploy.sh -t book` (add `composer`
-  when the maintainer will talk to an innkeeper), ask for a `/reload` (or rely on watch
-  mode), then `sh scripts/devclient/results.sh <scratch dir>` and read the cropped PNGs
-  and the layout warnings. Results name the character: keep them out of the repo.
-  `deploy.sh` also replaces the manual "copy the AddOn over and `cmp` it" step.
-- **In the client (maintainer), before the beta ends 2026-10-21:**
-  - **First, start the client** (ILDev is a new AddOn folder; a `/reload` won't load it).
-    A book tour runs about 4 s after login and then reloads the UI by itself. If it
-    says the automatic reload didn't happen, type `/reload`. Then tell the agent.
-  - To let agents iterate while you're away: in an inn, `/ildev watch`, then go AFK
-    (it reloads every 60 s only while resting and AFK; `/ildev watch off` ends it).
-  - At Coriella, with the gossip window open: `/ildev run composer` (screenshots both
-    composer lines; it never clicks Sign).
-  - Still by eye, on the
-    [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04):
-    the mouse wheel on the composer lists; talk to every innkeeper you pass and **note
-    per zone whether you've seen every inn in it**.
+- **No ticket is open for agents.** #12 is the maintainer's walk. Pick from Follow-ups
+  (check each against decisions.md first), or take the next answer the maintainer gives
+  to an open question.
+- **The harness loop** (agent): `sh scripts/devclient/deploy.sh -t book,composer`, ask
+  the maintainer for the steps below, then `sh scripts/devclient/results.sh <scratch dir>`
+  and read the cropped PNGs, the trees and the layout warnings. Results name the
+  character: keep them out of the repo. A run's results replace the last run's, so read
+  them before the next tour starts. The raw screenshots (`Screenshots/` in the client
+  folder) are readable before the saving reload.
+- **In the client (maintainer), before the beta ends 2026-10-21.** One round:
+  1. `/reload`. The book tour runs about 4 s later and closes the book when done.
+  2. Talk to an innkeeper, leave the gossip window open, `/ildev run composer` (it never
+     clicks Sign; it ends on the inn's page).
+  3. `/reload` again, then tell the agent.
+  Still by eye, on the
+  [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04):
+  the mouse wheel on the composer lists; talk to every innkeeper you pass and **note per
+  zone whether you've seen every inn in it**.
 
 ## Client access
 
 In the beta until **2026-10-21**; launch **2026-11-04**. Beta client
-`World of Warcraft\_classic_beta_`, with the probe, ILDev and the AddOn with #143's
-fixes installed, and a book tour waiting (deployed 2026-10-11; the client was closed).
+`World of Warcraft\_classic_beta_`, with the probe, ILDev and `dev`'s AddOn as of #146
+installed (deployed 2026-10-11).
 
 ## Open questions (maintainer to decide)
 
@@ -88,17 +86,22 @@ None block work; DRAFTs ship until answered.
 - **The book** ([book.md → Open questions](specs/book.md#open-questions-maintainer)) and
   **the composer** ([sign.md → Open questions](specs/sign.md#open-questions-maintainer)):
   wording and look.
-  - **The spine:** two ribbons (#137, as built) or one? For one, crop the right page's
-    cover with `SetTexCoord(~0.123, 1, 0, 1)`; decisions.md 2026-10-09 (later).
+  - **Where the tabs go (new, 2026-10-11):** they hang under the book, and in the client
+    the player frame (moved to the bottom center) and the beta's Issue Reporter button
+    drew over them: "Inns" half covered, "Share" almost hidden. Keep them there, or put
+    them inside the book (for example along its top, beside Close)?
+  - **The spine:** two ribbons (#137, as built and now seen) or one? For one, crop the
+    right page's cover with `SetTexCoord(~0.123, 1, 0, 1)`; decisions.md 2026-10-09
+    (later).
   - **Inner padding:** are the right-hand numbers and the Use buttons too close to the
     page's border?
   - **Small screens:** the book is 976 wide; at UI scale 1 a 5:4 screen gives 960, so
     it would be clamped against the edges. Shrink it, scale it, or accept it?
   - **The conjunction strip (#143):** 6 buttons, 3 a row, so Hearthside's 7 conjunctions
-    page. Keep it, or three rows of three (no paging; the composer grows 22 taller)?
+    page. Keep it, three rows of three (no paging; the composer grows 22 taller), or
+    back to 4 a row if the longest labels turn out to fit (Follow-ups)?
   - **The inn page (#143):** a heading row is now 30 high and the others 64 (they were
-    all 54), so a page with short phrases has more air between signatures. Fine, or
-    tighter?
+    all 54). Fine, or tighter?
 - **An offline renderer** (the stub's frames drawn in a browser with the client's
   textures, for the gap from 2026-10-21 to launch): decide once the gap is near
   (decisions.md 2026-10-10).
@@ -107,21 +110,35 @@ None block work; DRAFTs ship until answered.
 
 ## Waiting on the maintainer
 
-**In the client** (#12): the first harness run (above); the unticked items of the
-platform-forever checklist (more innkeepers and which zones are fully walked; the rest
-of the signing checks; a second character in a party for round-trips,
-`UnitFullName("partyN")` and cross-realm names, #119/#128; a guild round-trip and one
-dungeon run). The book's and composer's look checks move to the harness once it runs.
+**In the client** (#12): the unticked items of the platform-forever checklist (more
+innkeepers and which zones are fully walked; the rest of the signing checks; a second
+character in a party for round-trips, `UnitFullName("partyN")` and cross-realm names,
+#119/#128; a guild round-trip and one dungeon run).
+
+**On the dev machine:** a leftover agent worktree folder, `.claude/worktrees/agent-…`
+(untracked, clean, at a commit already on `main`), makes `busted` fail one case
+(`addon_load_spec`: its Lua files aren't in the TOC) and `luacheck .` report its files.
+CI doesn't see it. Deleting it is the maintainer's call; until then run
+`luacheck . --exclude-files ".claude/**"` and expect that one failure.
 
 ## Follow-ups
 
-- **Calibrate the layout checks' text width** (`wow.TEXT_EM`, 0.6 em) from the harness's
-  dumped string widths (`sw`) once a run exists; then re-check #143's numbers (the inn
-  rows fit with nothing to spare, and line heights are guessed as the font size).
-- **The book's page label** (`1 / 1`) didn't show in the client on 2026-10-09. The
-  harness's dump shows its rect, layer, level and alpha: read it from the first run.
+- **Measure the longest conjunction labels in the client:** the six seen were 0.40 to
+  0.49 em ("Best of all..." 67.5 wide), well under the checks' 0.6. If "Then, LOUDER..."
+  is 84 or less, the old 92-wide buttons, 4 a row, held every label and Hearthside
+  needn't page. Add a step to the composer tour that picks Rowdy, Sailor and Noble on
+  line 2 and dumps.
+- **The stub's gossip frame is the wrong size:** the client's is 338 × 496 (the layout
+  spec sets 384 × 512). The composer and the two buttons still fit beside and under it;
+  set the measured size in `spec/layout_spec.lua`.
+- **The harness tour's first step fails** (`hide` before the book exists; harmless), and
+  the book tour doesn't open an inn's page (only the composer tour does, through Read):
+  a list row is a plain button with no text of its own, so `click` can't find it.
 - **Before the first tag:** `CHANGELOG.md` notes; answer #62 and #63 (IDs freeze);
   Interface `16001` → Forever on CurseForge and Wago is unverified until the first upload.
+- **When `Data/Inns` fills (#12):** check the names against the inn page's limits
+  ([book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft), "What the room
+  rests on").
 - **DRAFT wording:** the `continent` rule's "0 of 1" fallback has no "+". **Book redraws
   aren't coalesced** (2–6 ms per ENTRIES on a capped ledger); watch in #12. A timer is
   ruled out (decisions.md, the book entry); any fix waits for a client measurement.

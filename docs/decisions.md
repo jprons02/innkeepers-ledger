@@ -10,6 +10,27 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-11 (later) — What the harness's first runs settled
+
+The dev harness (the entry of 2026-10-10) ran in the client and showed three things that
+change how we work or what ships ([platform-forever.md](platform-forever.md), the
+harness items; #146).
+- **Every harness round costs the maintainer two typed `/reload`s** (one to load a
+  deploy, one to save the results). The client blocks a reload that no key press or
+  click started, so ILDev's own reload does nothing and **watch mode can't work on
+  Forever**. Its code stays (it's harmless, and launch may differ). Nothing types into
+  the game for the maintainer: the 2026-10-10 rejection of input automation stands,
+  re-asked and re-answered today.
+- **The page buttons read `<` and `>`.** `‹` `›` were 4 px wide in the button font. This
+  is the fallback book.md §8 named, so it needed no new wording decision.
+- **The page label is parchment-colored,** because it sits on the page file's dark
+  bottom edge with the buttons. **Rejected:** *cropping the file's empty bottom*
+  (`SetTexCoord`) to bring parchment under the label: it stretches the page art and
+  moves every row's background for one small label.
+- **The layout checks keep 0.6 em.** Measured text is 0.43 to 0.60 em, so 0.6 is the
+  upper bound it was meant to be. **Rejected:** *lowering it to the average* (0.5): the
+  checks would pass text that doesn't fit when it's capitals or digits.
+
 ### 2026-10-11 — The inn page sizes to its text; the conjunction strip gets wider buttons
 
 The layout checks (#140) found four texts too long for their boxes; #143 fixed them with

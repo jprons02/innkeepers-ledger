@@ -202,7 +202,7 @@ unknown); `quill` and `shared` the saved record's fields ([§3.7](#37-the-share-
 | `BookView.nudge(stored, current)` | the nudge line or `nil` ([§3.7](#37-the-share-tab-and-the-saved-record)) |
 | `BookView.readPrefs(rec)` | `{ quill, shared, writable }` ([§3.7](#37-the-share-tab-and-the-saved-record)) |
 | `BookView.prefsRecord(quill, shared)` | a fresh v1 record ([§4.1](#41-savedvariables-the-books-record)) |
-| `BookView.plain(s, maxBytes, fallback)` | safe display text ([§3.8](#38-text-safety-and-dates)) |
+| `BookView.plain(s, maxBytes, fallback, maxChars)` | safe display text ([§3.8](#38-text-safety-and-dates)) |
 | `BookView.dateText(t, offset)` | `"5 October 2026"`, or `nil` ([§3.8](#38-text-safety-and-dates)) |
 | `BookView.TEXT`, `BookView.LIMITS`, `BookView.FLOURISHES` | copies of the constants ([§3.9](#39-bounds-and-readiness), [§3.10](#310-text-draft), [§3.6](#36-the-cosmetics-tab)) |
 
@@ -315,7 +315,9 @@ Per row:
   `info.name .. TEXT.zoneSealSuffix` ("Zephras Isle seal"), any other seal `info.name`
   ("Wayfarer's seal"), and an unknown ID `TEXT.aSeal`. The line reads `TEXT.sealedWith ..
   <label>`.
-- `name` (foreign): `plain(rec.name, LIMITS.nameBytes, TEXT.aTraveler)`.
+- `name` (foreign): `plain(rec.name, LIMITS.nameBytes, TEXT.aTraveler,
+  LIMITS.rowNameChars)`: at most 40 characters and `"..."`, so the row's name, date and
+  seal fit two lines (#143, [§3.11.1](#3111-frames-and-the-look-draft)).
 - `flourish` (own): `FLOURISHES` entry for the effective quill ([§3.6](#36-the-cosmetics-tab)),
   absent for the plain quill.
 
@@ -489,6 +491,11 @@ points lives in
    byte loop needs only each lead byte's length (`< 0x80` 1, `< 0xE0` 2, `< 0xF0` 3,
    else 4) and step 3's `|` test; drop the failure branches step 2 makes unreachable
    rather than leave them uncovered.
+   **Amended 2026-10-11 (#143):** an optional `maxChars` (an integer of 1 or more;
+   anything else is no cap) also cuts after that many **characters**, whichever cut
+   comes first, with the same `"..."`. A row's width holds characters, not bytes: 40
+   Cyrillic letters are 80 bytes, and a byte cap small enough for a row would cut real
+   names in half. Steps 1–3 still run on the whole input first.
 5. Else `s` unchanged.
 
 Checks use `string.byte` and plain comparisons only (no patterns over the data, never
@@ -531,6 +538,7 @@ glue measures `offset` ([§3.11.2](#3112-client-reads)); the module never reads 
 | `aliasesMax` | 8 | NPC IDs per inn group |
 | `innsReadMax` | 20 000 | `Data/Inns` keys read at `new` |
 | `nameBytes` | 64 | display bytes of a name |
+| `rowNameChars` | 40 | display characters of a traveler's name on an inn row (#143) |
 
 - **Work per build** is bounded by these and by what `Collection` and `Cosmetics`
   already bound (`progress` reads at most `ownMax` entries; `unlocked` at most the
@@ -636,14 +644,47 @@ that.
   its bottom corners and a centered page label (`n / m`, numbers only), each enabled
   from the model ([§3.3](#33-navigation-and-the-model)).
 - **Rows:** each page kind owns a fixed set of widgets at fixed positions (a hidden row
-  leaves a gap; no relayout): the list's `listRows` rows (a plain `Button`, a font
+  leaves a gap; no relayout; the inn page aside, below): the list's `listRows` rows (a plain `Button`, a font
   string, a 10 × 10 mark texture filled with `INK` for signed inns, and a `HIGHLIGHT`
   layer texture at low alpha); the inn page's header strings, a stamp box and `innRows`
-  row boxes (meta line: name or date and seal; phrase text, word-wrapped to 2 lines;
-  flourish line); the summary's lines and `barRows` bars (a background texture and a
+  row boxes (below); the summary's lines and `barRows` bars (a background texture and a
   fill texture whose width is `fraction` × the bar width); a 3 × 4 grid of stamp cells
   (a `Button` each); quill and seal rows (a quill row's **Use** button enabled from
   `canUse`).
+- **The inn page sizes to its text (amended 2026-10-11, #143).** The one page that isn't
+  at fixed positions, because its texts vary most. Widths are the layout checks'
+  estimate ([testing.md](../testing.md#testing-posture)), not yet measured in the client.
+  - **Header:** the title (240 wide, beside the stamp) may take two lines: a
+    24-character inn name is wider than one. The place, the count and the last date
+    each hang 8 under the line above (`TOPLEFT` to its `BOTTOMLEFT`), so a second title
+    line moves them down 18, still ending above the rows.
+  - **Rows:** placed as the page is drawn, each under the one before, from 118 below
+    the page's top. A heading row takes 30, any other row 64. Every page starts with a
+    heading ([§3.3](#33-navigation-and-the-model)), so six rows reach at most
+    30 + 5 × 64 = 350 down: the top of the page buttons.
+  - **An entry row:** the meta line (a traveler's name, the date, the seal) at the top;
+    the phrase hangs 4 under it, with no set height; the flourish hangs 2 under the
+    phrase. The longest phrase (127 characters) is three lines. **Your own** meta line
+    (date and seal) doesn't wrap: the client cuts a line that's too long. **A
+    traveler's** wraps to a second line, and the name is cut to 40 characters
+    ([§3.9](#39-bounds-and-readiness), `rowNameChars`) so it never needs a third with a
+    zone name of up to 20 characters. Worst cases, both inside the row's 62: one meta
+    line, three phrase lines and a flourish (10 + 4 + 36 + 2 + 10); two meta lines and
+    three phrase lines (20 + 4 + 36).
+  - **A note row** ("You haven't signed this guestbook yet.") starts 4 under its row's
+    top.
+  - **What the room rests on** (the #143 review; check these when `Data/Inns` fills,
+    #12). There's no spare room, so each is a limit on our own data, by the estimate:
+    - an inn name of about 40 characters (two title lines of 22), **with** a place line
+      (zone, comma, continent) of up to 40 characters (one line). A two-line title over
+      a two-line place puts the last date 4 over the first row's heading;
+    - a zone name of up to 22 characters, or another seal's name of up to 27, on your
+      own meta line (59 characters with the longest date); a longer one is cut by the
+      client;
+    - a zone name of up to 20 characters on a traveler's meta line: two lines whatever
+      the name;
+    - a line as high as its font's size. A taller line in the client spills an entry
+      row with three phrase lines by the difference.
 - **Stamps:** a signed stamp is a box whose four sides are solid `STAMP` lines with the
   inn's name and date inside in `STAMP`; an unsigned one has **dashed** sides (each side
   six short color-texture dashes with gaps) and its name in faded `INK`.
@@ -1038,7 +1079,10 @@ book ignores any kind but quill and seal.
   fallback; `nil`, `7`, `""`, `{}`, both stand-ins → fallback, no throw; a 70-byte
   ASCII name at 64 → its first 64 bytes + `"..."`; a name whose 64th–65th bytes are one
   two-byte character → its first 63 bytes + `"..."` (the cut backs off); never returns
-  `|`.
+  `|`. With `maxChars = 40` (#143): 41 letters → the first 40 + `"..."`, 40 → unchanged;
+  45 two-byte letters → 40 of them + `"..."` at 200 bytes, 32 at 64 bytes (the byte cut
+  comes first); a hidden character past both cuts → fallback; a `maxChars` that isn't an
+  integer of 1 or more → no character cap.
 - **`plain`, hidden characters (amended 2026-10-07, #119):** → fallback for an RLO
   (`E2 80 AE`), a ZWJ (`E2 80 8D`), an NBSP (`C2 A0`), an ideographic space (`E3 80 80`)
   and a Hangul filler (`E3 85 A4`), each at the start, the middle and the end of

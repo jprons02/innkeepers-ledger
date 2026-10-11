@@ -5,8 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-10 (agents can now see the UI: the dev harness #139 and layout
-checks #140; four layout problems ticketed as #143)
+**Updated:** 2026-10-11 (#143: the four layout problems the checks found are fixed; the
+harness's first run in the client is still to come)
 
 ## Current state
 
@@ -25,10 +25,12 @@ checks #140; four layout problems ticketed as #143)
     `spec/layout_spec.lua` checks the book (every tab and page, three ledgers, the longest
     inputs) and the composer for regions off their page, overlaps and text that doesn't
     fit. Text widths are an uncalibrated 0.6 em guess.
-  - **They found four layout problems** (live "known problem" cases): the longest phrase
-    and a long traveler meta line overflow an inn row, a 24-character inn name wraps the
-    inn title, and 12 conjunction labels are too wide for their buttons. Fixing them is
-    **#143** (`ready`).
+  - **The four layout problems they found are fixed (#143,** decisions.md 2026-10-11,
+    [book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft)**):** the inn page
+    sizes to its text (rows as high as their kind, the phrase under a name line that may
+    wrap, the header under a title that may take two lines), a traveler's name on a row
+    is cut to 40 characters, and the conjunction strip has 6 wider buttons, 3 a row.
+    Proven by the layout checks only; **not yet seen in the client**.
 - **Signing works in the client** (#96, [sign.md](specs/sign.md)), with 8 phrase voices
   (#100). **The composer shows lists** (#102), built but **not yet seen in the client**;
   the look is DRAFT.
@@ -50,9 +52,10 @@ checks #140; four layout problems ticketed as #143)
 
 ## Next step
 
-- **Agents:** **#143** (fix the four layout problems; the layout checks prove the fix).
-  Then use the harness on #12's open looks. The low follow-ups below can fill gaps; check
-  each one against decisions.md before offering it.
+- **Agents:** once the harness has run, read its screenshots and dumps: confirm #143's
+  fixes and #137's spine in the client, calibrate the text width and find the missing
+  page label (Follow-ups). Then use the harness on #12's open looks. The low follow-ups
+  below can fill gaps; check each one against decisions.md before offering it.
 - **The harness loop** (agent): `sh scripts/devclient/deploy.sh -t book` (add `composer`
   when the maintainer will talk to an innkeeper), ask for a `/reload` (or rely on watch
   mode), then `sh scripts/devclient/results.sh <scratch dir>` and read the cropped PNGs
@@ -74,8 +77,8 @@ checks #140; four layout problems ticketed as #143)
 ## Client access
 
 In the beta until **2026-10-21**; launch **2026-11-04**. Beta client
-`World of Warcraft\_classic_beta_`, with the probe, ILDev and the current `dev` AddOn
-installed (deployed 2026-10-10; the client was closed).
+`World of Warcraft\_classic_beta_`, with the probe, ILDev and the AddOn with #143's
+fixes installed, and a book tour waiting (deployed 2026-10-11; the client was closed).
 
 ## Open questions (maintainer to decide)
 
@@ -91,8 +94,11 @@ None block work; DRAFTs ship until answered.
     page's border?
   - **Small screens:** the book is 976 wide; at UI scale 1 a 5:4 screen gives 960, so
     it would be clamped against the edges. Shrink it, scale it, or accept it?
-  - **Conjunction labels (#143):** if wider strip buttons don't fit, shorter labels are
-    a wording call ("Then, LOUDER...", "By the tides...", "One must add...").
+  - **The conjunction strip (#143):** 6 buttons, 3 a row, so Hearthside's 7 conjunctions
+    page. Keep it, or three rows of three (no paging; the composer grows 22 taller)?
+  - **The inn page (#143):** a heading row is now 30 high and the others 64 (they were
+    all 54), so a page with short phrases has more air between signatures. Fine, or
+    tighter?
 - **An offline renderer** (the stub's frames drawn in a browser with the client's
   textures, for the gap from 2026-10-21 to launch): decide once the gap is near
   (decisions.md 2026-10-10).
@@ -110,7 +116,8 @@ dungeon run). The book's and composer's look checks move to the harness once it 
 ## Follow-ups
 
 - **Calibrate the layout checks' text width** (`wow.TEXT_EM`, 0.6 em) from the harness's
-  dumped string widths (`sw`) once a run exists; then re-check #143's numbers.
+  dumped string widths (`sw`) once a run exists; then re-check #143's numbers (the inn
+  rows fit with nothing to spare, and line heights are guessed as the font size).
 - **The book's page label** (`1 / 1`) didn't show in the client on 2026-10-09. The
   harness's dump shows its rect, layer, level and alpha: read it from the first run.
 - **Before the first tag:** `CHANGELOG.md` notes; answer #62 and #63 (IDs freeze);

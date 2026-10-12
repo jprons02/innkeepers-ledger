@@ -5,9 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-11 (the dev harness ran in the client; #143's layout fixes and the
-page label and arrows are merged and seen there; the harness's follow-ups, #148, wait for
-one round in the client)
+**Updated:** 2026-10-12 (#148's round ran clean in the client and the ticket is closed;
+the conjunction labels are measured, so the strip's buttons stay 124 wide)
 
 ## Current state
 
@@ -22,10 +21,9 @@ one round in the client)
   timer is blocked on Forever,** so each run needs the maintainer to type `/reload`
   (once to load a deploy, once more to save the results), and watch mode can't work.
   Nothing types into the game for him (decisions.md 2026-10-10).
-  **A clean run now reports clean (#148):** 0 layout warnings and 7 frames listed as
-  hanging outside their root on purpose (they were 279 warnings), and one round keeps
-  both tours' results. The composer run of 2026-10-11 was clean: no Lua errors, nothing
-  truncated, everything inside the composer.
+  **A clean run reports clean (#148, done):** the round of 2026-10-12 ran both tours
+  with no failed step, no Lua errors, 0 layout warnings and the 7 expected frames
+  hanging outside their root; one round keeps both tours' results.
 - **Layout checks in busted (#140)** resolve anchors in the stub and check the book and
   the composer. Their text width (0.6 em) is now measured against the client: 0.43 to
   0.60 em over 40 strings, so it stays as the upper bound.
@@ -40,6 +38,11 @@ one round in the client)
     file's dark bottom edge and the old arrows were 4 px wide; both read now.
   The long cases (a three-line phrase, a wrapped traveler line, a two-line inn name)
   exist only in the layout checks: the maintainer's ledger has one short signature.
+- **Seen in the client on 2026-10-12 (#148's round):** every tab of the book and
+  Calmbreeze Inn's page (opened through its row, and through Read at the innkeeper); the
+  composer on both lines; every voice's conjunction strip. **The conjunction labels are
+  30 to 95.8 wide** (0.42 to 0.55 em), so the 124-wide buttons stay: three labels are
+  too wide for the old 92 (decisions.md 2026-10-12).
 - **Signing works in the client** (#96, [sign.md](specs/sign.md)), with 8 phrase voices
   (#100). The book (`UI/Book`, #106, [book.md](specs/book.md)) and the composer are
   DRAFT looks.
@@ -58,13 +61,10 @@ one round in the client)
 
 ## Next step
 
-- **#148 waits for one round in the client** (below), with the new tours deployed on
-  2026-10-11. Then read the results: every conjunction label's width is in the
-  `conj-<voice>` dumps (`sw`), which answers the conjunction strip question; the book
-  tour should open Calmbreeze Inn's page (dump `inn`) with no failed step. Close #148
-  with that evidence. Otherwise no ticket is open for agents: #12 is the maintainer's
-  walk; pick from Follow-ups (check each against decisions.md first), or take the next
-  answer the maintainer gives to an open question.
+- **No ticket is open for agents.** #12 is the maintainer's walk; pick from Follow-ups
+  (check each against decisions.md first), or take the next answer the maintainer gives
+  to an open question. `dev` is ahead of `main` (Releasing, above): a release PR can go
+  at any time.
 - **The harness loop** (agent): `sh scripts/devclient/deploy.sh -t book,composer`, ask
   the maintainer for the steps below, then `sh scripts/devclient/results.sh <scratch dir>`
   (Lua on PATH) and read the cropped PNGs, the trees, the warnings and the list of
@@ -72,14 +72,17 @@ one round in the client)
   tour's results are in `<scratch dir>/earlier`. **Don't deploy while a round is under
   way:** a new request runs the book tour at the next `/reload` and replaces the
   results. The raw screenshots (`Screenshots/` in the client folder) are readable
-  before the saving reload, and show whether a round has started.
-- **In the client (maintainer), before the beta ends 2026-10-21.** One round:
-  1. `/reload`. The book tour runs about 4 s later and closes the book when done.
+  before the saving reload, and show whether a round has started. **A request runs once:**
+  after a round that went wrong, deploy again before the next `/reload`
+  ([testing.md](testing.md#testing-posture), the two traps).
+- **A harness round (maintainer), when an agent asks for one:**
+  1. `/reload`. The book tour runs about 4 s later and closes the book when done
+     (about 15 s; leave the book alone until then).
   2. Talk to an innkeeper, leave the gossip window open, `/ildev run composer` (about
      20 s: it steps through every voice on line 2; it never clicks Sign; it ends on the
      inn's page).
   3. `/reload` again, then tell the agent.
-  Still by eye, on the
+- **In the client (maintainer), before the beta ends 2026-10-21.** Still by eye, on the
   [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04):
   the mouse wheel on the composer lists; talk to every innkeeper you pass and **note per
   zone whether you've seen every inn in it**.
@@ -88,7 +91,8 @@ one round in the client)
 
 In the beta until **2026-10-21**; launch **2026-11-04**. Beta client
 `World of Warcraft\_classic_beta_`, with the probe, ILDev as of #148 and `dev`'s AddOn as
-of #146 installed (deployed 2026-10-11).
+of #146 installed (deployed 2026-10-12; that request has run, so nothing runs at the
+next `/reload`).
 
 ## Open questions (maintainer to decide)
 
@@ -110,8 +114,8 @@ None block work; DRAFTs ship until answered.
   - **Small screens:** the book is 976 wide; at UI scale 1 a 5:4 screen gives 960, so
     it would be clamped against the edges. Shrink it, scale it, or accept it?
   - **The conjunction strip (#143):** 6 buttons, 3 a row, so Hearthside's 7 conjunctions
-    page. Keep it, three rows of three (no paging; the composer grows 22 taller), or
-    back to 4 a row if the longest labels turn out to fit (Follow-ups)?
+    page. Keep it, or three rows of three (no paging; the composer grows 22 taller)?
+    Back to 4 a row is out: the labels are measured (decisions.md 2026-10-12).
   - **The inn page (#143):** a heading row is now 30 high and the others 64 (they were
     all 54). Fine, or tighter?
 - **An offline renderer** (the stub's frames drawn in a browser with the client's
@@ -135,10 +139,6 @@ CI doesn't see it. Deleting it is the maintainer's call; until then run
 
 ## Follow-ups
 
-- **Read the conjunction labels' widths from the next composer run (#148):** the six
-  seen were 0.40 to 0.49 em ("Best of all..." 67.5 wide), well under the checks' 0.6. If
-  "Then, LOUDER..." is 84 or less, the old 92-wide buttons, 4 a row, held every label
-  and Hearthside needn't page. The tour now dumps every voice's strip.
 - **Before the first tag:** `CHANGELOG.md` notes; answer #62 and #63 (IDs freeze);
   Interface `16001` → Forever on CurseForge and Wago is unverified until the first upload.
 - **When `Data/Inns` fills (#12):** check the names against the inn page's limits

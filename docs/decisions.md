@@ -10,6 +10,18 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-12 — The conjunction buttons stay 124 wide: measured
+
+The composer tour dumped every voice's conjunction strip in the client (#148). The 30
+labels are 30 to 95.8 wide (0.42 to 0.55 em a character, under the checks' 0.6). Three
+don't fit a 92-wide button, which holds about 84: "Then, LOUDER..." 95.8, "One must
+add..." 92.5, "Huzzah, and..." 84.2. So the entry of 2026-10-11 stands as built: 124
+wide, 3 a row.
+
+**Rejected:** *back to 92 wide, 4 a row* (the follow-up that asked for this
+measurement): three labels would be cut. Still the maintainer's: 6 buttons with
+Hearthside paging (as built) or three rows of three.
+
 ### 2026-10-11 (later) — What the harness's first runs settled
 
 The dev harness (the entry of 2026-10-10) ran in the client and showed three things that

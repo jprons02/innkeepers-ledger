@@ -198,7 +198,11 @@ Proportional, not ceremonial:
      round gives both tours:** a run keeps the same deploy's run before it, so the
      order is `/reload` (the book tour), `/ildev run composer`, `/reload` (saves both).
      A run with nothing to do (a mistyped tour name, the gossip window closed) says so
-     and doesn't start, so it replaces nothing.
+     and doesn't start, so it replaces nothing. **Two traps (2026-10-12):** a request
+     runs at login once, so a round that went wrong needs a new deploy before the next
+     `/reload`; and a tour only clicks what's shown, so the frames stay untouched while
+     it runs (about 15 s). In one round the book was closed 2 s in (Escape, most
+     likely): every later click failed and the screenshots showed the world.
   3. `sh scripts/devclient/results.sh <out>` (Lua on PATH) prints the run (steps,
      Lua errors, the actions the client blocked, layout warnings: truncated text, text
      with no size, regions outside the book or off screen), writes each dump as an

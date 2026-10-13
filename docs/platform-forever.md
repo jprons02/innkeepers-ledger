@@ -171,7 +171,10 @@ in the sections above. **Partly** means the rest of the item is still open.
       seals are numbered 101, 102, … in the order zones are added
       ([specs/collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
       The probe logs every NPC talked to, so this fills in during normal play.
-      **Partly** ✅: 1 inn so far (Calmbreeze Inn, Zephras Isle; zone seal 101)
+      **Partly** ✅: 1 inn so far (Calmbreeze Inn, Zephras Isle; zone seal 101). The
+      probe's log read on 2026-10-13: 14 NPCs, all on Zephras Isle (Thendal Village,
+      Thendal Grove, Shen'dar Village), and Coriella Calmbreeze is the only one whose
+      gossip offers *Make this inn your home.*
 - [ ] Map IDs readable at each inn (`C_Map.GetBestMapForUnit("player")`, then the
       `C_Map.GetMapInfo(id).parentMapID` chain up to the first *Zone*- and
       *Continent*-type maps, or a *World* map if it comes first); a capital city is its
@@ -214,9 +217,10 @@ in the sections above. **Partly** means the rest of the item is still open.
         buttons a row with its own `<` `>` (#143) ✅; the six conjunctions shown are 30
         to 67.5 wide in 124-wide buttons ✅; no text is truncated on either line ✅. The
         client's gossip frame is 338 × 496, and the 420 × 600 composer stands at its
-        right edge with the Sign and Read buttons under it ✅. Still open: clicking a
-        row by hand, **the mouse wheel**, and the longest conjunctions ("Then,
-        LOUDER...")
+        right edge with the Sign and Read buttons under it ✅. **2026-10-12 (the tour
+        again, #148):** every voice's conjunction strip, 30 labels, 30 to 95.8 wide in
+        124-wide buttons; the longest ("Then, LOUDER...") fits ✅. Still open: clicking
+        a row by hand and **the mouse wheel**
   - [ ] closing the gossip mid-compose hides the composer; talking to another NPC with it
         open closes it; *I would like to buy from you.* closes it too (`GOSSIP_CLOSED`)
   - [ ] after the next weekly reset (Tuesday 2026-10-06 16:00 UTC): the seal row offers Zephras
@@ -229,7 +233,10 @@ in the sections above. **Partly** means the rest of the item is still open.
       `/ledger debug` on and Lua errors shown; screenshots go to the maintainer (the
       look is a DRAFT):
   - [ ] opening: `/ledger` opens the book mid-screen and closes it; `/ledger version`
-        prints the version; no Lua error
+        prints the version; no Lua error. **2026-10-12 (the harness's book tour):**
+        `/ledger` opens it in the middle of the screen (976 × 560 at 578.7, 320 of
+        2133 × 1200) with no Lua error ✅. Still open: `/ledger` again closes it;
+        `/ledger version`
   - [ ] the look: the dark frame, two parchment pages and the spine render; for each
         texture candidate (`UI-DialogBox-Background-Dark`, `Spellbook-Page-1` / `-2`,
         `QuestBG`, `StationeryTest1`), whether it loads (not blank, not green) and looks
@@ -266,10 +273,16 @@ in the sections above. **Partly** means the rest of the item is still open.
         taint message
   - [ ] page turns: `<` and `>` enabled and disabled correctly on the list and on
         Calmbreeze's page; later, with more travelers or inns, a second page turns and
-        repeats its heading
+        repeats its heading. **2026-10-12 (the harness's dumps), every page at
+        `1 / 1`:** on the list `<` is enabled (it turns back to the title page) and `>`
+        disabled; on Calmbreeze's page, Collection and Cosmetics both are disabled ✅.
+        Still open: a second page
   - [ ] the Read button: at Coriella Calmbreeze, "Read the guestbook" sits beside "Sign
         the guestbook" without overlapping; it opens the book on Calmbreeze Inn's page;
-        both buttons hide when the gossip closes and the book stays open
+        both buttons hide when the gossip closes and the book stays open.
+        **2026-10-12 (the composer tour):** the two buttons are 160 wide, 6 apart, on
+        one line under the gossip frame ✅; Read opens the book on Calmbreeze Inn's
+        page ✅. Still open: both hide when the gossip closes while the book stays
   - [ ] Share: `/ledger share` shows the string preselected and the box unticked; Ctrl+C
         then a paste outside the game gives the whole string (its length equals the
         debug line's `book: share <n> bytes`); ticking rebuilds it longer when travelers

@@ -5,8 +5,9 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-12 (#148's round ran clean in the client and the ticket is closed;
-the conjunction labels are measured, so the strip's buttons stay 124 wide)
+**Updated:** 2026-10-13 (#148's round ran clean in the client and the ticket is closed;
+the conjunction labels are measured, so the strip's buttons stay 124 wide; #12's
+checklist ticked where the round's dumps prove an item)
 
 ## Current state
 
@@ -82,6 +83,9 @@ the conjunction labels are measured, so the strip's buttons stay 124 wide)
      20 s: it steps through every voice on line 2; it never clicks Sign; it ends on the
      inn's page).
   3. `/reload` again, then tell the agent.
+- **What #12 still needs can't be read from disk.** The probe's log (read 2026-10-13)
+  holds no innkeeper but Coriella Calmbreeze: every NPC talked to so far is on Zephras
+  Isle. The checklist items the harness's dumps prove are ticked as far as they go.
 - **In the client (maintainer), before the beta ends 2026-10-21.** Still by eye, on the
   [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04):
   the mouse wheel on the composer lists; talk to every innkeeper you pass and **note per

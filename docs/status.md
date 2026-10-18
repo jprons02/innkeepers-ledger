@@ -6,7 +6,7 @@
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
 **Updated:** 2026-10-18 (released to `main` (#153) with the first changelog notes
-(#152); the leftover agent worktree is gone)
+(#152); a go-live audit, now Path to launch; the leftover agent worktree is gone)
 
 ## Current state
 
@@ -55,8 +55,28 @@
   [sync-ledger.md §5.2a](specs/sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119)).
 - **Releasing:** last released to `main` on 2026-10-18 (#153, security review in the PR:
   no defects). `main` and `dev` hold the same content. `CHANGELOG.md` has the first
-  release's notes under `## Unreleased` (#152). No tags yet (maintainer gate). **CI:** eight required checks on
-  `ubuntu-24.04`, green.
+  release's notes under `## Unreleased` (#152). No tags yet (maintainer gate). **CI:**
+  eight required checks on `ubuntu-24.04`, green.
+
+## Path to launch
+
+Audited 2026-10-18 against [kickoff.md](kickoff.md) Phases 2–3. The code is ready; what's
+left is in-client data and checks, the maintainer's answers, and the tag. The CurseForge
+and Wago projects, their page text and the `release` environment's tokens are all done
+(decisions.md 2026-10-01).
+1. **Before the beta ends 2026-10-21 (maintainer, client):** the innkeepers for
+   `Data/Inns`, which holds one inn, so the AddOn does nothing at any other innkeeper;
+   and one session with a second character in a party. Sync between two players is
+   untested (the party, guild and instance items in Waiting on the maintainer).
+2. **Answers (maintainer):** #62 and #63 before the first tag (their IDs freeze), and
+   which zones to mark complete. The other open questions can ship as DRAFTs.
+3. **Agent, once inns arrive:** fill `Data/Inns`, mark the chosen zones, run a release
+   PR, rename `CHANGELOG.md`'s `## Unreleased` to the tag's `## vX.Y.Z`, and update the
+   notes if `dev` changed.
+4. **Tag and publish (maintainer):** see
+   [CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing). Interface `16001` →
+   Forever on CurseForge and Wago is unverified until that first upload. Then the
+   screenshots, and posts in the launch window.
 
 ## Next step
 
@@ -134,10 +154,6 @@ character in a party for round-trips, `UnitFullName("partyN")` and cross-realm n
 
 ## Follow-ups
 
-- **Before the first tag:** `CHANGELOG.md`'s notes are drafted under `## Unreleased`
-  (2026-10-18): rename the heading to the tag's `## vX.Y.Z` and update them if `dev`
-  changes; answer #62 and #63 (IDs freeze);
-  Interface `16001` → Forever on CurseForge and Wago is unverified until the first upload.
 - **When `Data/Inns` fills (#12):** check the names against the inn page's limits
   ([book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft), "What the room
   rests on").

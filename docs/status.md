@@ -5,9 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-13 (#148's round ran clean in the client and the ticket is closed;
-the conjunction labels are measured, so the strip's buttons stay 124 wide; #12's
-checklist ticked where the round's dumps prove an item)
+**Updated:** 2026-10-18 (released to `main` (#153) with the first changelog notes
+(#152); the leftover agent worktree is gone)
 
 ## Current state
 
@@ -54,18 +53,16 @@ checklist ticked where the round's dumps prove an item)
   Nothing is marked, so the book shows "1 of 1+". **Fails closed (#118).**
 - **Names** reject malformed UTF-8 and hidden characters (#119,
   [sync-ledger.md §5.2a](specs/sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119)).
-- **Releasing:** last released to `main` on 2026-10-08 (#129). Since then, `dev` holds
-  #133, the book fixes #135–#137, the dev tooling #139/#140, and #145 and #146 (both
-  change what ships: `UI/Book.lua`, `Sign.lua`, `BookView.lua`). They go out with the
-  next release PR. No tags yet (maintainer gate). **CI:** eight required checks on
+- **Releasing:** last released to `main` on 2026-10-18 (#153, security review in the PR:
+  no defects). `main` and `dev` hold the same content. `CHANGELOG.md` has the first
+  release's notes under `## Unreleased` (#152). No tags yet (maintainer gate). **CI:** eight required checks on
   `ubuntu-24.04`, green.
 
 ## Next step
 
 - **No ticket is open for agents.** #12 is the maintainer's walk; pick from Follow-ups
   (check each against decisions.md first), or take the next answer the maintainer gives
-  to an open question. `dev` is ahead of `main` (Releasing, above): a release PR can go
-  at any time.
+  to an open question. `main` is current (Releasing, above).
 - **The harness loop** (agent): `sh scripts/devclient/deploy.sh -t book,composer`, ask
   the maintainer for the steps below, then `sh scripts/devclient/results.sh <scratch dir>`
   (Lua on PATH) and read the cropped PNGs, the trees, the warnings and the list of

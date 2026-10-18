@@ -135,15 +135,11 @@ innkeepers and which zones are fully walked; the rest of the signing checks; a s
 character in a party for round-trips, `UnitFullName("partyN")` and cross-realm names,
 #119/#128; a guild round-trip and one dungeon run).
 
-**On the dev machine:** a leftover agent worktree folder, `.claude/worktrees/agent-…`
-(untracked, clean, at a commit already on `main`), makes `busted` fail one case
-(`addon_load_spec`: its Lua files aren't in the TOC) and `luacheck .` report its files.
-CI doesn't see it. Deleting it is the maintainer's call; until then run
-`luacheck . --exclude-files ".claude/**"` and expect that one failure.
-
 ## Follow-ups
 
-- **Before the first tag:** `CHANGELOG.md` notes; answer #62 and #63 (IDs freeze);
+- **Before the first tag:** `CHANGELOG.md`'s notes are drafted under `## Unreleased`
+  (2026-10-18): rename the heading to the tag's `## vX.Y.Z` and update them if `dev`
+  changes; answer #62 and #63 (IDs freeze);
   Interface `16001` → Forever on CurseForge and Wago is unverified until the first upload.
 - **When `Data/Inns` fills (#12):** check the names against the inn page's limits
   ([book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft), "What the room

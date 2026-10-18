@@ -6,8 +6,8 @@
 - **Signing:** talk to an innkeeper and choose "Sign the guestbook". Compose your entry
   from a phrase builder in eight voices, pick a wax seal you've earned, and sign. Each
   inn takes one signature from you per week.
-- **The ledger:** type /ledger to open your book. The Inns tab lists every inn you've
-  signed, and each inn's page holds your signatures and those of travelers who stayed
+- **The ledger:** type /ledger to open your book. The Inns tab lists the inns, marking
+  the ones you've signed, and each inn's page holds your signatures and those of travelers who stayed
   there. "Read the guestbook" at an innkeeper opens that inn's page.
 - **Collection:** see how many inns you've signed, by continent and zone, with a stamp
   for each inn.

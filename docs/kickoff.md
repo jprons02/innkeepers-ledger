@@ -64,7 +64,7 @@ See `CLAUDE.md` → Build loop and Branch flow. Specs and review reports live in
 
 ## Kickoff complete when
 
-- [ ] Pure modules built and tested; CI runs luacheck + busted green
+- [x] Pure modules built and tested; CI runs luacheck + busted green (Phase 1)
 - [ ] Platform checklist verified in a Forever client
 - [ ] Signing, collection, party/guild sync and the book work in-game
 - [ ] Published on CurseForge + Wago

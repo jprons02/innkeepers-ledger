@@ -190,9 +190,10 @@ launch the session does this on its own. A finding that needs a maintainer decis
     projects in the diff, including docs and tickets.
 12. **Workflows:** read-only token, `persist-credentials: false`, actions pinned by SHA,
     no `pull_request_target`, no new third-party actions (the one allowed is the
-    packager, pinned by SHA), runners on a named image (`ubuntu-24.04`, never `-latest`).
-    Only `release.yml`'s `publish` job has `contents: write`
-    or sees the tokens. The [repository settings](#repository-settings) still hold.
+    packager, pinned by SHA), runners on a named image (`ubuntu-24.04`, never `-latest`),
+    every job with a `timeout-minutes` and apt only through `scripts/ci-apt-install.sh`
+    ([decisions.md](decisions.md), 2026-10-08). Only `release.yml`'s `publish` job has
+    `contents: write` or sees the tokens. The [repository settings](#repository-settings) still hold.
 13. **Packaged version:** the version the packager writes into the TOC (`## Version`)
     matches `[A-Za-z0-9._+-]{1,32}`. Anything else (a space, a `/`, 33 bytes) makes every
     export refuse with `"addon"` ([specs/export.md §3.5](specs/export.md#35-build-rules)).

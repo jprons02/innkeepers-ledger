@@ -405,6 +405,31 @@ describe("Collection.bind", function()
     assert.equal(5401, atlas.innOf(5402))
   end)
 
+  -- Collection.validName is rule 5 for Cosmetics too (spec 3.5): one copy of the rule.
+  it("Collection.validName: rule 5 at 48 bytes, or at a given 1..48 limit", function()
+    local vn = Collection.validName
+    assert.is_true(vn("G" .. ("l"):rep(47)))
+    assert.is_true(vn("Az09 ',.-azAZ Inn"))
+    assert.is_true(vn("A", 1))
+    assert.is_true(vn("G" .. ("l"):rep(31), 32))
+    assert.is_false(vn("G" .. ("l"):rep(32), 32))
+    assert.is_true(vn("G" .. ("l"):rep(47), 48))
+    for _, case in ipairs(BAD_NAMES) do
+      assert.is_false(vn(case[2]), case[1])
+      assert.is_false(vn(case[2], 48), case[1])
+    end
+  end)
+
+  it("Collection.validName fails closed on a bad limit and never throws", function()
+    local bad = { 0, -1, 49, 1.5, 0 / 0, math.huge, -math.huge, "32", {}, true, false,
+      function() end }
+    for _, limit in ipairs(bad) do
+      assert.is_false(Collection.validName("Glen", limit), tostring(limit))
+    end
+    assert.is_false(Collection.validName(setmetatable({}, { __len = function() return 4 end })))
+    assert.is_false(Collection.validName())
+  end)
+
   it("two zones with seal 101 are both excluded, and their inns too", function()
     local inns, zones, conts = fx.places()
     zones[12] = zone("Glen", 1, 101)

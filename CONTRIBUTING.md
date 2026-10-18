@@ -61,6 +61,10 @@ CI; see [Releasing](#releasing).
 [docs/security-checklist.md](docs/security-checklist.md) explains the API and library
 checks.
 
+To try a change in a WoW client, `sh scripts/devclient/deploy.sh` installs the working
+tree's AddOn there. It also installs a dev-only harness that screenshots and measures the
+UI ([docs/testing.md → the dev harness](docs/testing.md#testing-posture)).
+
 **Coverage floors.** Every pure module must keep line coverage at or above its floor:
 95% for `Ledger`, `SyncProtocol` and `SyncSchedule` (the sync boundary), 90% for the other pure
 modules. Glue isn't measured; it's checked in the client. Code can't opt out with a
@@ -74,7 +78,9 @@ whether a module is done.
 - Open the PR against `dev`. It's squash-merged once CI is green.
 - `main` only receives `dev → main` release PRs.
 - **A check that failed for GitHub's reasons** (the job log says "not acquired by Runner
-  … even after multiple attempts", a 15-minute timeout) isn't a code failure. Re-run it
+  … even after multiple attempts", a 15-minute timeout, a job cancelled at its own
+  `timeout-minutes` during the install step, or `apt failed after 3 attempts` from
+  `scripts/ci-apt-install.sh`) isn't a code failure. Re-run it
   from the Actions page; the agents' token can't (`gh run rerun` gets "Resource not
   accessible by personal access token"), so agents push an empty commit to the branch
   instead, which starts fresh runs. Check [githubstatus.com](https://www.githubstatus.com/)

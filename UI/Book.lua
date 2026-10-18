@@ -34,11 +34,13 @@ local PARCHMENT = { 0.87, 0.80, 0.64 }
 local LOOK = {
   frame = { file = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
     color = { 0.10, 0.07, 0.05, 0.95 } },
-  left = { file = "Interface\\Spellbook\\Spellbook-Page-1",
+  -- One page file for both (Spellbook-Page-2 stretched into a blur on Forever, #12). Its
+  -- cover and ribbon edge go to the middle, where the two meet as the book's spine: the
+  -- left page is mirrored, the right one isn't.
+  left = { file = "Interface\\Spellbook\\Spellbook-Page-1", mirror = true,
     color = { PARCHMENT[1], PARCHMENT[2], PARCHMENT[3], 1 } },
-  right = { file = "Interface\\Spellbook\\Spellbook-Page-2",
+  right = { file = "Interface\\Spellbook\\Spellbook-Page-1",
     color = { PARCHMENT[1], PARCHMENT[2], PARCHMENT[3], 1 } },
-  spine = { color = { 0, 0, 0, 0.25 } },
   barBack = { color = { INK[1], INK[2], INK[3], 0.15 } },
   ink = { color = { INK[1], INK[2], INK[3], 1 } },
   stamp = { color = { STAMP[1], STAMP[2], STAMP[3], 1 } },
@@ -49,13 +51,25 @@ local LOOK = {
   checkBack = { color = { 0.10, 0.07, 0.05, 0.9 } },
 }
 
-local BOOK_W, BOOK_H = 860, 560
 local PAGE_W, PAGE_H = 404, 500
+-- One edge of the page file is a cover and a ribbon (about 12% of its width on Forever,
+-- #12), the other an ornate border. Each page texture reaches COVER past the writing
+-- area on the spine side and EDGE on the outer side, so no text sits on either; the two
+-- textures meet in the middle with no gap.
+local MARGIN, COVER, EDGE = 16, 56, 12
+local TEX_W = PAGE_W + COVER + EDGE
+local BOOK_W, BOOK_H = 2 * (MARGIN + TEX_W), 560
 local PAGE_TOP = -44
 local PAD = 24
 local CONTENT_W = PAGE_W - 2 * PAD
 local LIST_ROW_H = 27
-local INN_ROW_H = 54
+-- An inn page's rows (spec 3.11.1): a heading row takes HEAD_ROW_H, any other row
+-- ENTRY_ROW_H (two lines of name, date and seal over three of phrase, or one over three
+-- and a flourish). They're placed from INN_ROWS_TOP down as the page is drawn. Every page
+-- starts with a heading, so six rows reach at most 30 + 5 * 64 = 350 down: the page
+-- buttons' top.
+local INN_ROWS_TOP = -118
+local HEAD_ROW_H, ENTRY_ROW_H = 30, 64
 local STAMP_W, STAMP_H = 108, 88
 local DASHES = 6
 
@@ -298,6 +312,13 @@ local function setText(fs, text)
   shown(fs, text ~= nil)
 end
 
+-- Hangs a font string under `above`, `gap` below its last line, so it moves down when
+-- `above` wraps.
+local function hang(fs, above, gap)
+  fs:ClearAllPoints()
+  fs:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -gap)
+end
+
 -- A stamp: four solid sides (signed) or four dashed ones (unsigned), a name and a date.
 local function newStamp(parent, w, h, x, y)
   local st = { solid = {}, dashes = {} }
@@ -305,7 +326,8 @@ local function newStamp(parent, w, h, x, y)
   f:SetSize(w, h)
   f:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
   st.frame = f
-  local sides = { { 0, 0, w, 2 }, { 0, -(h - 2), w, 2 }, { 0, 0, 2, h }, { w - 2, 0, 2, h } }
+  -- { x, down, width, height }: `down` is the distance below the stamp's top.
+  local sides = { { 0, 0, w, 2 }, { 0, h - 2, w, 2 }, { 0, 0, 2, h }, { w - 2, 0, 2, h } }
   for i, side in ipairs(sides) do
     st.solid[i] = newTexture(f, "ARTWORK", LOOK.stamp, side[3], side[4], side[1], -side[2])
   end
@@ -396,22 +418,27 @@ end
 local function buildInn(page)
   local p = newPanel(page)
   local ui = { panel = p, rows = {} }
+  -- The header's lines hang under each other: a long inn name takes two lines and moves
+  -- the rest down, still above the rows.
   ui.title = newText(p, "title", CONTENT_W - STAMP_W - 8, PAD, -24)
-  ui.place = newText(p, "small", CONTENT_W - STAMP_W - 8, PAD, -52)
-  ui.count = newText(p, "body", CONTENT_W - STAMP_W - 8, PAD, -72)
-  ui.last = newText(p, "small", CONTENT_W - STAMP_W - 8, PAD, -92)
+  ui.place = newText(p, "small", CONTENT_W - STAMP_W - 8, PAD, -50)
+  hang(ui.place, ui.title, 8)
+  ui.count = newText(p, "body", CONTENT_W - STAMP_W - 8, PAD, -68)
+  hang(ui.count, ui.place, 8)
+  ui.last = newText(p, "small", CONTENT_W - STAMP_W - 8, PAD, -88)
+  hang(ui.last, ui.count, 8)
   ui.stamp = newStamp(p, STAMP_W - 12, 64, PAD + CONTENT_W - STAMP_W + 12, -20)
   for i = 1, LIMITS.innRows do
-    local y = -118 - (i - 1) * INN_ROW_H
+    -- fill.inn places and sizes the row; its lines hang under each other.
     local f = CreateFrame("Frame", nil, p)
-    f:SetSize(CONTENT_W, INN_ROW_H - 2)
-    f:SetPoint("TOPLEFT", p, "TOPLEFT", PAD, y)
+    f:SetSize(CONTENT_W, ENTRY_ROW_H - 2)
+    f:SetPoint("TOPLEFT", p, "TOPLEFT", PAD, INN_ROWS_TOP)
     local row = { frame = f }
     row.head = newText(f, "title", CONTENT_W, 0, -4)
     row.meta = newText(f, "small", CONTENT_W, 0, 0)
-    row.text = newText(f, "body", CONTENT_W, 0, -14)
-    row.text:SetHeight(28) -- two lines, word-wrapped
-    row.flourish = newText(f, "small", CONTENT_W, 0, -42, "CENTER")
+    row.text = newText(f, "body", CONTENT_W, 0, -4)
+    row.flourish = newText(f, "small", CONTENT_W, 0, 0, "CENTER")
+    hang(row.flourish, row.text, 2)
     ui.rows[i] = row
   end
   return ui
@@ -612,7 +639,11 @@ local function buildPage(book, side, look, x)
   local f = CreateFrame("Frame", nil, book)
   f:SetSize(PAGE_W, PAGE_H)
   f:SetPoint("TOPLEFT", book, "TOPLEFT", x, PAGE_TOP)
-  newTexture(f, "BACKGROUND", look)
+  local tex = newTexture(f, "BACKGROUND", look, TEX_W, PAGE_H,
+    side == "left" and -EDGE or -COVER, 0)
+  if look.mirror then
+    tex:SetTexCoord(1, 0, 0, 1)
+  end
   local ui = { frame = f }
   ui.prev = newButton(f, TEXT.prev, 26, 22)
   ui.prev:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 10)
@@ -621,6 +652,7 @@ local function buildPage(book, side, look, x)
   ui.next:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 10)
   ui.next:SetScript("OnClick", function() guard("turn", turn, side, 1) end)
   ui.label = newText(f, "small", 120, PAGE_W / 2 - 60, -(PAGE_H - 30), "CENTER")
+  color(ui.label, PARCHMENT, false) -- it sits on the page art's dark bottom edge (#12)
   ui.error = newText(f, "body", CONTENT_W, PAD, -PAGE_H / 2, "CENTER")
   ui.error:SetText(TEXT.pageError)
   ui.error:Hide()
@@ -638,9 +670,8 @@ local function build()
   newTexture(book, "BACKGROUND", LOOK.frame)
 
   local ui = { frame = book, tabs = {} }
-  ui.left = buildPage(book, "left", LOOK.left, 16)
-  ui.right = buildPage(book, "right", LOOK.right, BOOK_W - 16 - PAGE_W)
-  newTexture(book, "ARTWORK", LOOK.spine, BOOK_W - 32 - 2 * PAGE_W, PAGE_H, 16 + PAGE_W, PAGE_TOP)
+  ui.left = buildPage(book, "left", LOOK.left, MARGIN + EDGE)
+  ui.right = buildPage(book, "right", LOOK.right, BOOK_W / 2 + COVER)
 
   ui.notice = newText(book, "small", 620, (BOOK_W - 620) / 2, -16, "CENTER")
   color(ui.notice, PARCHMENT, false) -- it sits on the dark frame, not on parchment
@@ -739,10 +770,19 @@ function fill.inn(ui, m)
   local stamp = m.stamp or {}
   drawStamp(ui.stamp, stamp.signed == true, m.title, stamp.date)
   local rows = m.rows or {}
+  local y = INN_ROWS_TOP
   for i, w in ipairs(ui.rows) do
     local r = rows[i]
     shown(w.frame, r ~= nil)
     r = r or {}
+    if rows[i] ~= nil then
+      -- Each row sits under the one before, as high as its kind.
+      local h = r.kind == "heading" and HEAD_ROW_H or ENTRY_ROW_H
+      w.frame:SetHeight(h - 2)
+      w.frame:ClearAllPoints()
+      w.frame:SetPoint("TOPLEFT", ui.panel, "TOPLEFT", PAD, y)
+      y = y - h
+    end
     if r.kind == "heading" then
       setText(w.head, r.text)
       setText(w.meta, nil)
@@ -751,6 +791,8 @@ function fill.inn(ui, m)
     elseif r.kind == "note" then
       setText(w.head, nil)
       setText(w.meta, nil)
+      w.text:ClearAllPoints()
+      w.text:SetPoint("TOPLEFT", w.frame, "TOPLEFT", 0, -4)
       setText(w.text, r.text)
       color(w.text, INK, true)
       setText(w.flourish, nil)
@@ -763,7 +805,16 @@ function fill.inn(ui, m)
         meta = meta .. TEXT.dot .. r.seal
       end
       setText(w.head, nil)
+      -- A traveler's name, date and seal may take a second line; your own date and seal
+      -- stay on one (the client cuts a line that doesn't wrap).
+      w.meta:SetWordWrap(r.kind == "foreign")
       setText(w.meta, meta)
+      if meta ~= "" then
+        hang(w.text, w.meta, 4)
+      else
+        w.text:ClearAllPoints()
+        w.text:SetPoint("TOPLEFT", w.frame, "TOPLEFT", 0, -4)
+      end
       setText(w.text, r.text)
       color(w.text, INK, false)
       setText(w.flourish, r.flourish)

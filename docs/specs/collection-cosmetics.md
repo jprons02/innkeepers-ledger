@@ -261,7 +261,7 @@ One ID space of 1..`Ledger.LIMITS.cosmeticIdMax` (9 999), the key space of `earn
   Record rules (`Cosmetics.bind` excludes and names anything else, like 3.2): the key is
   an integer in its kind's range (a seal outside 1..99, e.g. 100 or 101, is excluded:
   zone seals come only from `Data/Zones`); exactly `kind`, `name`, `rule`; `kind` is
-  `"seal"` or `"quill"`; `name` 1..32 bytes under 3.2 rule 5; `rule` a table
+  `"seal"` or `"quill"`; `name` 1..32 bytes under 3.2 rule 5 (`Collection.validName`); `rule` a table
   that is exactly one of:
 
   | Rule | Fields | Met when |
@@ -350,6 +350,7 @@ Returned tables are new each call; changing them changes nothing inside the modu
 |---|---|
 | `Collection.LIMITS` | `{ nameBytes = 48, mapKeyMax = 999999, ownMax = 100000 }` (a copy; `innMax`, `tMin`, `tMax` are read from `Ledger.LIMITS`, not repeated) |
 | `Collection.FACTIONS` | `{ Alliance = true, Horde = true }` (a copy) |
+| `Collection.validName(s, maxBytes)` | `true` if `s` passes 3.2 rule 5 at `maxBytes` bytes (48 when `nil`), else `false`; a `maxBytes` that isn't an integer in 1..48 gives `false`. The one copy of the rule: `Cosmetics` checks its names with it (#132) |
 | `Collection.bind(inns, zones, continents)` | an **atlas**: the functions below as closures over a private copy of the kept records, plus `atlas.invalid` |
 | `atlas.progress(own, faction)` | the table of 3.3. `faction` other than exactly `"Alliance"`/`"Horde"` (any other string, a non-string, a hidden-value stand-in) counts as `nil` |
 | `atlas.innOf(npcId)` | the inn key for a kept primary or alias NPC ID, else `nil` |

@@ -72,6 +72,39 @@ Proportional, not ceremonial:
   `SetTexture` (set `wow.textureResult = false` for a file the client can't find);
   `ClearAllPoints`; and the globals `UIParent`, `UISpecialFrames`, the `GameFont*` and
   `QuestTitleFont` objects, `date` and `time`, each settable to `nil` per case.
+- **Layout (#140):** `wow.rect(region)` resolves anchors the way the client does and
+  returns left, bottom, width, height, or `nil` when it can't (no points, no size, a bad
+  point, an anchor cycle). `UIParent` is the screen, 1024 × 768 (a 4:3 screen at UI
+  scale 1; a 5:4 one gives 960). It handles `SetPoint` with any of the nine points,
+  offsets, a region, a global name or the parent (the default), `SetAllPoints`,
+  `SetSize` / `SetWidth` / `SetHeight`, and two points on an axis (a stretch sets the
+  size). `SetPoint` replaces a point of the same name, as the client does. Font strings
+  and textures know their `parent`. A font string with no set width is as wide as its
+  text, and with no set height as high as its lines. Text size is an estimate:
+  characters × font size × 0.6 wide, the font size high (`wow.FONT_SIZES`,
+  `wow.TEXT_EM`). **Measured in the client on 2026-10-11** (the harness's first run, 40
+  strings): 0.43 to 0.60 em a character, 0.50 to 0.53 on average, in all three fonts,
+  Morpheus included; a line is 11.7, 10 and 18.3 high for the 12, 10 and 18 pt fonts. So
+  0.6 em stays: it's at the top of what was seen, and a string of capitals or digits can
+  still run wider. Not modeled: scale and clamping to the screen.
+  `spec/helpers/layout.lua` holds the checks, each returning a list of problems with the
+  numbers. Every shown region (shown with all its parents) resolves, stays inside its
+  parent, and overlaps nothing but its own parents and backdrops (a texture or plain
+  frame covering its parent; never a button). Its text fits. A region that hangs off a
+  frame by design (the tabs under the book, the Sign and Read buttons under the gossip
+  window, the composer beside it) is checked against the screen and must lie wholly on
+  its side of that frame (`layout.beside`). `spec/layout_spec.lua` runs the checks over
+  every page of every tab of the book and over the composer (every voice's templates,
+  every category's words, the seal row, the preview at its cap). The book runs three
+  times: an empty ledger, a full one (an atlas of 38 extra inns) and the longest inputs
+  (long inn and zone names, the longest phrase, the longest traveler names, a seal on
+  every traveler's signature). Each exception is listed in the spec with its reason, and
+  each check has a case showing it fails on a broken layout. The four problems the
+  checks first found (#143: a phrase, a traveler's name line, an inn's title and the
+  conjunction labels, each too long for its box) are fixed, and each has a case showing
+  its longest input fitting, with the numbers. A problem that can't be fixed at once
+  gets a narrow pattern the other cases drop and a case asserting it's still there, so
+  every other check stays live.
 - **The sync harness** (`spec/helpers/sync_harness.lua`): N `Sync` clients in one Lua
   state, each with its own `ns`, ledger, GUID and fake `api` (no stub, no `_G`), sharing
   a clock, a timer queue, an addon-message bus that echoes to the sender, and the group
@@ -140,10 +173,75 @@ Proportional, not ceremonial:
   the character's name). Since 2026-10-05 the probe adds no gossip button of its own (it
   stacked on the real "Sign the guestbook" button); it still logs every NPC, and an
   innkeeper is the one whose options include *Make this inn your home.* (icon 132052).
+  **The client's copy goes stale:** before reading a screenshot, compare each file the
+  TOC loads, plus `Libs/`, against the client's copy (`cmp`). Re-copy after each merge.
+  On 2026-10-09 the copy was 3 days old, so screenshots showed code from before #102 and
+  #110.
+- **The dev harness (#139): the client screenshots and measures the UI itself.**
+  `scripts/devclient/` holds `ILDev`, a second AddOn that's never packaged (the packager
+  ignores `scripts/`), plus the scripts around it. The loop:
+  1. `sh scripts/devclient/deploy.sh -t book,composer` copies the working tree's AddOn
+     and ILDev into the client (`$ILDEV_CLIENT`, or the default beta folder), writes a
+     tour request (`tours/<name>.lua`, wrapped into `ILDev/Request.lua`) and checks the
+     copy byte for byte. It says when a restart is needed (a new AddOn folder or TOC
+     file); otherwise `/reload` loads it.
+  2. In game, `/reload`. A new request runs a few seconds after login: it opens the book
+     with `/ledger`, clicks tabs and page buttons by their text, and at each step takes a
+     `Screenshot()` and dumps the layout (every frame and region under the book: rect,
+     shown and visible, strata and level, draw layer, texture and texcoords, text,
+     string width, truncation). Then it tries to reload to save the results. **On
+     Forever that reload is blocked** (2026-10-11), so someone types `/reload` once
+     more when the tour ends; the results are on disk after that. The `composer`
+     tour needs the gossip window open, so it runs from `/ildev run composer` after
+     talking to an innkeeper. It dumps the conjunction strip for every voice (each
+     label's width is the dump's `sw`) and ends on the inn's page, through Read. **One
+     round gives both tours:** a run keeps the same deploy's run before it, so the
+     order is `/reload` (the book tour), `/ildev run composer`, `/reload` (saves both).
+     A run with nothing to do (a mistyped tour name, the gossip window closed) says so
+     and doesn't start, so it replaces nothing. **Two traps (2026-10-12):** a request
+     runs at login once, so a round that went wrong needs a new deploy before the next
+     `/reload`; and a tour only clicks what's shown, so the frames stay untouched while
+     it runs (about 15 s). In one round the book was closed 2 s in (Escape, most
+     likely): every later click failed and the screenshots showed the world.
+  3. `sh scripts/devclient/results.sh <out>` (Lua on PATH) prints the run (steps,
+     Lua errors, the actions the client blocked, layout warnings: truncated text, text
+     with no size, regions outside the book or off screen), writes each dump as an
+     indented tree to `<out>/<label>.txt` (a disabled button says `DISABLED`) and crops
+     every screenshot to the frame it shows (`<out>/NN-<label>.png`, which an agent
+     views with its Read tool). The kept earlier run is reported first, into
+     `<out>/earlier`. Keep `<out>` outside the repo: the book's title names the
+     character.
+     **What the report doesn't flag (#148):** a child frame of the root that lies
+     outside it is taken to hang there on purpose. Each is listed once under "frames
+     hanging outside their root", and the frames and text under it are held against it
+     instead (a texture may bleed past its frame). **Seven are expected:** the composer
+     and the Sign and Read buttons beside the gossip window, and the book's four tabs.
+     An eighth is a frame that slipped out of its root: the list is where it shows, not
+     the warnings. The gossip window is the client's own: only what hangs outside it is
+     checked (its panel, which covers the whole window, isn't). A clean run reports
+     0 warnings, and on Forever one blocked action per run (the reload).
+  **Watch mode** (`/ildev watch`, 3 hours): the harness reloads every 60 s
+  (`deploy.sh -w`) while the character is resting, away (AFK) and out of combat, so a
+  new deploy runs without anyone at the keyboard. It's switched on in game only.
+  **It can't work on Forever:** a reload from a timer is blocked there
+  ([platform-forever.md](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)),
+  so each round costs the maintainer one typed `/reload`.
+  **Rules:** the steps are a fixed vocabulary (`slash`, `click`, `wait`, `shot`, `dump`,
+  `pages`, `hide`). `Request.lua` is itself Lua, trusted like any file in `AddOns/`, but
+  no step is evaluated. A step runs only `/ledger`, and clicks or hides only under the
+  book or the gossip window, by a button's exact text (a list row has none of its own,
+  so its label's); anything else is refused and logged. It never clicks a button
+  labelled "Sign" (the composer's commit; a spec ties this to `SignFlow`'s label), and
+  in the gossip window it clicks only the AddOn's own buttons, by a fixed list of their
+  texts (a spec ties the voices in it to `Data/Phrases.lua`). A step that fails or
+  raises is logged and the run goes on or ends cleanly (the screenshot quality restored,
+  the results saved). The AddOn itself has no dev hooks. Nothing sends keystrokes to the
+  game window (decisions.md, 2026-10-10). `spec/devclient_spec.lua` runs ILDev over a
+  fake frame tree and `read.lua` over a saved run.
 - **Refreshing the AddOn in the client after a merge:** the installed
   `Interface/AddOns/InnkeepersLedger` is a plain copy, not a link. Copy `Libs`, `Data`,
-  `UI`, every top-level `*.lua` and the TOC from `dev` over it (what `install.sh` does,
-  without touching the probe), then `diff -rq` it against the repo. Changed files load
+  `UI`, every top-level `*.lua` and the TOC from `dev` over it, then compare it with the
+  repo. `scripts/devclient/deploy.sh` does both (and leaves the probe alone). Changed files load
   on `/reload`; a new file in the TOC needs a full client restart. The game never reads
   GitHub, so `dev` code is testable in the beta without a release.
 - **CI:** every check runs on every push and PR, and each has a local command

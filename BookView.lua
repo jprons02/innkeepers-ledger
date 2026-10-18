@@ -35,7 +35,7 @@ local OWN_MAX = type(Collection) == "table" and type(Collection.LIMITS) == "tabl
 local LIMITS = {
   listRows = 16, innRows = 6, barRows = 6, stampCells = 12, quillRows = 6, sealRows = 7,
   ownReadMax = 1000, foreignReadMax = 600, aliasesMax = 8, innsReadMax = 20000,
-  nameBytes = 64,
+  nameBytes = 64, rowNameChars = 40,
   tMin = T_MIN, tMax = T_MAX, cosmeticIdMax = ID_MAX, ownMax = OWN_MAX,
 }
 local SIZE_KEYS = { "listRows", "innRows", "barRows", "stampCells", "quillRows", "sealRows" }
@@ -47,15 +47,16 @@ local DAY = 86400
 
 -- DRAFT: every player-facing line is the maintainer's to decide (spec 3.10). The tab names
 -- are settled. Our own constants only: no `|`, no `%`, no site, product, service or URL.
--- Lines are joined by concatenation, never format. Three glyphs aren't ASCII: the page
--- turns (U+2039, U+203A) and the middle dot (U+00B7), written as UTF-8 bytes.
+-- Lines are joined by concatenation, never format. One glyph isn't ASCII: the middle dot
+-- (U+00B7), written as UTF-8 bytes. The page turns are `<` and `>`: U+2039 and U+203A
+-- came out 4 px wide on Forever, too thin to see on a button (#12).
 local TEXT = {
   tabInns = "Inns",
   tabCollection = "Collection",
   tabCosmetics = "Cosmetics",
   tabShare = "Share",
-  prev = "\226\128\185",
-  next = "\226\128\186",
+  prev = "<",
+  next = ">",
   close = "Close",
   titleOf = "The ledger of ",
   titleNoName = "Your ledger",
@@ -181,7 +182,7 @@ end
 
 local B_PIPE = 124
 
-local function plain(s, maxBytes, fallback)
+local function plain(s, maxBytes, fallback, maxChars)
   if type(s) ~= "string" or #s == 0 then
     return fallback
   end
@@ -193,8 +194,11 @@ local function plain(s, maxBytes, fallback)
   if not isInt(maxBytes, 1, PAGE_MAX) then
     maxBytes = LIMITS.nameBytes
   end
+  if not isInt(maxChars, 1, PAGE_MAX) then
+    maxChars = PAGE_MAX -- no cap on characters
+  end
   -- cleanText proved the structure: each lead byte gives its character's length.
-  local n, i, cut = #s, 1, 0
+  local n, i, cut, count = #s, 1, 0, 0
   while i <= n do
     local b = byte(s, i)
     local len
@@ -210,12 +214,13 @@ local function plain(s, maxBytes, fallback)
       len = 4
     end
     local last = i + len - 1
-    if last <= maxBytes then
+    count = count + 1
+    if last <= maxBytes and count <= maxChars then
       cut = last
     end
     i = last + 1
   end
-  if n > maxBytes then
+  if n > maxBytes or count > maxChars then
     return sub(s, 1, cut) .. "..."
   end
   return s
@@ -246,8 +251,8 @@ local function dateText(t, offset)
 end
 
 -- plain in pcall: an error gives the fallback.
-local function plainOr(s, maxBytes, fallback)
-  local ok, res = pcall(plain, s, maxBytes, fallback)
+local function plainOr(s, maxBytes, fallback, maxChars)
+  local ok, res = pcall(plain, s, maxBytes, fallback, maxChars)
   if ok then
     return res
   end
@@ -933,7 +938,8 @@ function BookView.new(deps)
         if r.kind == "own" then
           row.flourish = flourish
         else
-          row.name = plainOr(r.item.name, LIMITS.nameBytes, TEXT.aTraveler)
+          row.name = plainOr(r.item.name, LIMITS.nameBytes, TEXT.aTraveler,
+            LIMITS.rowNameChars)
         end
         out[#out + 1] = row
       end

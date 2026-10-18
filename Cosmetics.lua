@@ -14,10 +14,12 @@ local Collection = ns.Collection
 assert(type(Collection) == "table",
   "Cosmetics needs ns.Collection; Collection.lua comes first in the TOC")
 
+local validName = Collection.validName
+assert(type(validName) == "function", "Cosmetics needs Collection.validName")
+
 local Cosmetics = {}
 ns.Cosmetics = Cosmetics
 
-local byte, find = string.byte, string.find
 local tsort = table.sort
 
 -- Constants (spec 3.5, 3.8). The locals are what the code uses; RANGES is exported as a copy.
@@ -53,38 +55,8 @@ local function isInt(x, lo, hi)
 end
 
 -- ---------------------------------------------------------------------------
--- Record rules (spec 3.5). Names follow Collection's rule 5 (spec 3.2), at 32 bytes.
-
-local B_SPACE = 32
-local ALLOWED = {} -- byte -> true: A-Z a-z 0-9, space and ' , . -
-for b = 65, 90 do
-  ALLOWED[b] = true
-end
-for b = 97, 122 do
-  ALLOWED[b] = true
-end
-for b = 48, 57 do
-  ALLOWED[b] = true
-end
-for _, b in ipairs({ 32, 39, 44, 46, 45 }) do
-  ALLOWED[b] = true
-end
-
-local function validName(s, maxBytes)
-  if type(s) ~= "string" or #s < 1 or #s > maxBytes then
-    return false
-  end
-  local first = byte(s, 1)
-  if first < 65 or first > 90 or byte(s, -1) == B_SPACE or find(s, "  ", 1, true) then
-    return false
-  end
-  for i = 1, #s do
-    if not ALLOWED[byte(s, i)] then
-      return false
-    end
-  end
-  return true
-end
+-- Record rules (spec 3.5). Names follow Collection's rule 5 (spec 3.2), at 32 bytes:
+-- Collection.validName is the one copy of that rule.
 
 local RECORD_FIELDS = { kind = true, name = true, rule = true }
 -- Catalog kinds and their ID ranges. Zone seals never come from the catalog.

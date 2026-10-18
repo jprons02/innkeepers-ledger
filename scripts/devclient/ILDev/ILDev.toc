@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: ILDev (dev only)
+## Notes: Innkeeper's Ledger dev harness: screenshots and layout dumps for agents. Never packaged.
+## OptionalDeps: InnkeepersLedger
+## SavedVariables: ILDevDB
+
+Request.lua
+ILDev.lua

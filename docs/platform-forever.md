@@ -171,7 +171,10 @@ in the sections above. **Partly** means the rest of the item is still open.
       seals are numbered 101, 102, … in the order zones are added
       ([specs/collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
       The probe logs every NPC talked to, so this fills in during normal play.
-      **Partly** ✅: 1 inn so far (Calmbreeze Inn, Zephras Isle; zone seal 101)
+      **Partly** ✅: 1 inn so far (Calmbreeze Inn, Zephras Isle; zone seal 101). The
+      probe's log read on 2026-10-13: 14 NPCs, all on Zephras Isle (Thendal Village,
+      Thendal Grove, Shen'dar Village), and Coriella Calmbreeze is the only one whose
+      gossip offers *Make this inn your home.*
 - [ ] Map IDs readable at each inn (`C_Map.GetBestMapForUnit("player")`, then the
       `C_Map.GetMapInfo(id).parentMapID` chain up to the first *Zone*- and
       *Continent*-type maps, or a *World* map if it comes first); a capital city is its
@@ -207,7 +210,17 @@ in the sections above. **Partly** means the rest of the item is still open.
         scrolls them** (`EnableMouseWheel` / `OnMouseWheel` are unverified on Forever);
         the "First line" / "Second line" tabs switch lines and line 2 shows the
         conjunction strip; long voice and conjunction names fit their buttons; nothing
-        overlaps in the ~600-pixel frame. A screenshot of each line for the maintainer
+        overlaps in the ~600-pixel frame. A screenshot of each line for the maintainer.
+        **2026-10-11 (the harness's composer tour):** both strips, the three lists, the
+        gold mark, the line tabs, the seal row and the preview render on both lines ✅;
+        `>` pages the template list ✅; line 2 shows the conjunction strip, 3 wider
+        buttons a row with its own `<` `>` (#143) ✅; the six conjunctions shown are 30
+        to 67.5 wide in 124-wide buttons ✅; no text is truncated on either line ✅. The
+        client's gossip frame is 338 × 496, and the 420 × 600 composer stands at its
+        right edge with the Sign and Read buttons under it ✅. **2026-10-12 (the tour
+        again, #148):** every voice's conjunction strip, 30 labels, 30 to 95.8 wide in
+        124-wide buttons; the longest ("Then, LOUDER...") fits ✅. Still open: clicking
+        a row by hand and **the mouse wheel**
   - [ ] closing the gossip mid-compose hides the composer; talking to another NPC with it
         open closes it; *I would like to buy from you.* closes it too (`GOSSIP_CLOSED`)
   - [ ] after the next weekly reset (Tuesday 2026-10-06 16:00 UTC): the seal row offers Zephras
@@ -220,23 +233,56 @@ in the sections above. **Partly** means the rest of the item is still open.
       `/ledger debug` on and Lua errors shown; screenshots go to the maintainer (the
       look is a DRAFT):
   - [ ] opening: `/ledger` opens the book mid-screen and closes it; `/ledger version`
-        prints the version; no Lua error
+        prints the version; no Lua error. **2026-10-12 (the harness's book tour):**
+        `/ledger` opens it in the middle of the screen (976 × 560 at 578.7, 320 of
+        2133 × 1200) with no Lua error ✅. Still open: `/ledger` again closes it;
+        `/ledger version`
   - [ ] the look: the dark frame, two parchment pages and the spine render; for each
         texture candidate (`UI-DialogBox-Background-Dark`, `Spellbook-Page-1` / `-2`,
         `QuestBG`, `StationeryTest1`), whether it loads (not blank, not green) and looks
-        right; the chosen files' coordinates. A screenshot of each tab
+        right; the chosen files' coordinates. A screenshot of each tab.
+        **2026-10-09, first look (4 tabs; the installed copy predated #102/#110, but
+        `UI/Book.lua` was current):** `UI-DialogBox-Background-Dark` ✅.
+        `Spellbook-Page-1` loads as a full page, but its outer ~12% is a blue cover and
+        a teal ribbon that hid the first letters of every line. `Spellbook-Page-2` loads
+        as different, smaller art, stretched into a blur. **Fix (#135):** both pages
+        use `Spellbook-Page-1` (the right one mirrored, `SetTexCoord(1, 0, 0, 1)`), and
+        each texture reaches 56 past the writing area on its outer side; the book is
+        972 wide. **Second look, same day (current `dev` installed):** no text on a
+        cover ✅, the mirrored right page looks right ✅, "1 of 1+" and "Zones
+        completed: 0 of 1" show the #110 rule ✅. A signed stamp had no bottom side and
+        a stray red line sat above the book: the bottom side was placed `h - 2` above
+        the stamp (fixed, #136). Still to read: the page label (`1 / 1`, bottom center
+        of a paged page) didn't show in the screenshots. **The maintainer's call on the
+        look:** the covers on the outer edges and the black gap between the pages read
+        wrong, because a book's crease is in the middle. The covers now meet in the
+        middle as the spine, with no gap (#137). **2026-10-11:** seen in the
+        harness's screenshots, the covers meet in the middle ✅ (one ribbon or two is
+        still the maintainer's call)
   - [ ] fonts and glyphs: titles in the Morpheus face (`QuestTitleFont` exists), body
         text in the game font, the ink readable on the parchment; `‹` `›` and `·` render
-        (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `)
+        (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `).
+        **2026-10-09:** Morpheus titles ✅, game-font body ✅, `·` ✅ ("Sign 10 inns ·
+        1 of 10"), ink readable on `Spellbook-Page-1` ✅. **2026-10-11 (the harness's
+        dump):** `‹` `›` are 4.2 wide in the button font, so the page buttons looked
+        blank ❌; they are now `<` `>`. The page label (`1 / 1`) was there but in ink on
+        the page file's dark bottom edge ❌; it is now parchment-colored. Re-checked the
+        same day (#146): `1 / 1` and both arrows read on both pages ✅
   - [ ] Escape closes the book; with the Share box focused, the first Escape clears focus
         and the second closes; Escape in combat closes it too, with no "blocked" or
         taint message
-  - [ ] page turns: ‹ and › enabled and disabled correctly on the list and on
+  - [ ] page turns: `<` and `>` enabled and disabled correctly on the list and on
         Calmbreeze's page; later, with more travelers or inns, a second page turns and
-        repeats its heading
+        repeats its heading. **2026-10-12 (the harness's dumps), every page at
+        `1 / 1`:** on the list `<` is enabled (it turns back to the title page) and `>`
+        disabled; on Calmbreeze's page, Collection and Cosmetics both are disabled ✅.
+        Still open: a second page
   - [ ] the Read button: at Coriella Calmbreeze, "Read the guestbook" sits beside "Sign
         the guestbook" without overlapping; it opens the book on Calmbreeze Inn's page;
-        both buttons hide when the gossip closes and the book stays open
+        both buttons hide when the gossip closes and the book stays open.
+        **2026-10-12 (the composer tour):** the two buttons are 160 wide, 6 apart, on
+        one line under the gossip frame ✅; Read opens the book on Calmbreeze Inn's
+        page ✅. Still open: both hide when the gossip closes while the book stays
   - [ ] Share: `/ledger share` shows the string preselected and the box unticked; Ctrl+C
         then a paste outside the game gives the whole string (its length equals the
         debug line's `book: share <n> bytes`); ticking rebuilds it longer when travelers
@@ -254,6 +300,30 @@ in the sections above. **Partly** means the rest of the item is still open.
   - [ ] first open on a fresh character: the title page with the two-part name and the
         help page; nothing else is written to SavedVariables until a share or a quill
         choice
+- [x] The dev harness (#139, [testing.md](testing.md#testing-posture)), **first run
+      2026-10-11:**
+  - an AddOn's `Screenshot()` call writes a file (`Screenshots/WoWScrnShot_*.jpg`, the
+    whole screen) and the tour moves on after each ✅ (7 of 7 shots, 0 Lua errors);
+  - a Button's `:Click()` from an AddOn runs the book's tab and page handlers ✅;
+  - **a reload from a timer is blocked** ❌: `C_UI.Reload()` (or `ReloadUI()`) from
+    ILDev's timer did nothing, and the results were on disk only after a typed
+    `/reload`. So every run needs one typed `/reload`, and **watch mode can't work on
+    Forever** (its reload is the same call; the idle-logout question no longer matters);
+  - measured in the dump: a line of `GameFontNormal` is 11.7 high, `GameFontNormalSmall`
+    10, `QuestTitleFont` 18.3; text is 0.43 to 0.60 em a character (40 strings; the
+    layout checks assume 0.6, [testing.md](testing.md#testing-posture));
+  - the screen was 2133 × 1200 UI units (2560 × 1440 px), so the 976-wide book fits with
+    room; the player frame (moved by the player to the bottom center) and the beta's
+    Issue Reporter button drew over the tabs under the book, although the tabs are on
+    `HIGH`.
+- [x] The composer tour (`/ildev run composer` at an innkeeper), **2026-10-11:** it
+      runs only while the gossip window is open (a first try without it was skipped,
+      as designed), clicks the AddOn's own buttons and ends on the inn's page through
+      Read ✅. **The inn page (#143) in the client:** the title, place and count hang 8
+      apart; the rows' tops are 118, 148, 212 and 242 below the page's top (a heading,
+      a signature, a heading, a note), exactly the layout checks' numbers ✅. The long
+      cases (three phrase lines, a wrapped traveler line, a two-line inn name) aren't
+      in this ledger: they rest on the layout checks
 
 ## Sources
 

@@ -10,6 +10,135 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-10-12 — The conjunction buttons stay 124 wide: measured
+
+The composer tour dumped every voice's conjunction strip in the client (#148). The 30
+labels are 30 to 95.8 wide (0.42 to 0.55 em a character, under the checks' 0.6). Three
+don't fit a 92-wide button, which holds about 84: "Then, LOUDER..." 95.8, "One must
+add..." 92.5, "Huzzah, and..." 84.2. So the entry of 2026-10-11 stands as built: 124
+wide, 3 a row.
+
+**Rejected:** *back to 92 wide, 4 a row* (the follow-up that asked for this
+measurement): three labels would be cut. Still the maintainer's: 6 buttons with
+Hearthside paging (as built) or three rows of three.
+
+### 2026-10-11 (later) — What the harness's first runs settled
+
+The dev harness (the entry of 2026-10-10) ran in the client and showed three things that
+change how we work or what ships ([platform-forever.md](platform-forever.md), the
+harness items; #146).
+- **Every harness round costs the maintainer two typed `/reload`s** (one to load a
+  deploy, one to save the results). The client blocks a reload that no key press or
+  click started, so ILDev's own reload does nothing and **watch mode can't work on
+  Forever**. Its code stays (it's harmless, and launch may differ). Nothing types into
+  the game for the maintainer: the 2026-10-10 rejection of input automation stands,
+  re-asked and re-answered today.
+- **The page buttons read `<` and `>`.** `‹` `›` were 4 px wide in the button font. This
+  is the fallback book.md §8 named, so it needed no new wording decision.
+- **The page label is parchment-colored,** because it sits on the page file's dark
+  bottom edge with the buttons. **Rejected:** *cropping the file's empty bottom*
+  (`SetTexCoord`) to bring parchment under the label: it stretches the page art and
+  moves every row's background for one small label.
+- **The layout checks keep 0.6 em.** Measured text is 0.43 to 0.60 em, so 0.6 is the
+  upper bound it was meant to be. **Rejected:** *lowering it to the average* (0.5): the
+  checks would pass text that doesn't fit when it's capitals or digits.
+
+### 2026-10-11 — The inn page sizes to its text; the conjunction strip gets wider buttons
+
+The layout checks (#140) found four texts too long for their boxes; #143 fixed them with
+size and spacing only, no wording changed. All widths are the checks' estimate (0.6 em),
+to be re-checked against the client's measured widths.
+- **Inn rows are as high as their kind** (a heading 30, any other row 64) and are placed
+  as the page is drawn. A row's phrase hangs under its name line and its flourish under
+  the phrase, by anchors, so the longest phrase (three lines) and a wrapped name line
+  fit, and a short phrase keeps its flourish close. Six rows a page stay: every page
+  starts with a heading, so the worst page is 30 + 5 × 64, exactly the room there is.
+- **A traveler's name on a row is cut to 40 characters** (`BookView.LIMITS.rowNameChars`),
+  so name, date and seal never need a third line. A real name (12 letters, a space and a
+  realm) is well under 40.
+- **The inn page's header lines hang under the title,** which may take two lines.
+- **The conjunction strip shows 6 buttons, 3 a row, 124 wide** (a voice's stay 92, 4 a
+  row). Hearthside's 7 conjunctions page; the other voices' fit.
+
+**Rejected:** *five rows a page with room for three lines each* (a signature fewer on
+every page, and wide gaps under the usual one-line phrase); *measuring the text*
+(`GetStringHeight`) to pack rows (a client call the stub would have to imitate, and a
+full page could still run off the bottom); *a byte cap for the row's name* (40 bytes is
+20 Cyrillic letters: real names would be cut); *four wider conjunction buttons a row*
+(a composer about 520 wide); *three rows of conjunctions* (no paging, but 22 more of
+height and everything under the strip moves; the maintainer can still pick it);
+*a smaller label font* (15 characters at 10 pt are still wider than a 92 button, and
+it needs button-font calls unverified on Forever); *shorter conjunctions* (wording is
+the maintainer's).
+
+### 2026-10-10 — Agents see the UI through a dev harness in the client
+
+Every look fix so far waited on the maintainer's screenshots, and one batch showed a
+3-day-stale copy. The maintainer chose (2026-10-09 discussion): **first** a dev-only
+AddOn, `ILDev` (#139, [testing.md](testing.md#testing-posture)), that tours the UI,
+calls `Screenshot()` and dumps the real layout, with scripts to deploy it and read the
+results; **then** layout checks in busted, which resolve anchors in the stub (#140) and
+keep working after the beta ends 2026-10-21. An offline renderer (the stub's frames drawn
+in a browser with the client's textures) waits until the gap between the beta and launch
+shows whether it's needed. ILDev lives in `scripts/devclient/`, on `dev`, not on the
+probe's spike branch: it's a lasting tool that has to follow the AddOn, and `scripts/` is
+already outside the package and `check-apis.sh`. The AddOn gets no dev hooks; the harness
+drives it like a player (slash command, named frame, button clicks). Watch mode (a timed
+reload) is switched on in game and runs only while resting and AFK. **Rejected:**
+*sending keystrokes to the game window* to press `/reload` (third-party input
+automation is against the ToS; not worth the beta account); *extending the probe*
+(never merged, so it drifts from `dev`, as it had by 2026-10-10); *dev hooks in the
+AddOn* (shipped code for a dev tool, and a wider surface for other AddOns).
+
+### 2026-10-09 (later) — The pages' covers meet in the middle as the spine
+
+Supersedes the layout half of the entry below (the file choice stands). The maintainer
+looked at the result and wanted the crease in the middle. With covers on the outer
+edges and a 20-wide black gap between the pages, the book read as two separate pages.
+Now the left page is mirrored instead of the right, so both covers and ribbons meet in
+the middle. There's no gap and no spine shadow, and each texture reaches 56 past the
+writing area on the spine side and 12 on the outer side (its ornate border). The book is
+976 × 560 (#137). **Rejected:** *cropping the right page's cover for one ribbon in the
+middle* (it depends on a measured crop point, ~12.3%, that a mockup can't confirm; it's
+kept as a fallback if two ribbons look wrong in the client).
+
+### 2026-10-09 — Both book pages use `Spellbook-Page-1`, clear of its cover
+
+The first in-client screenshots (#12) showed two things. `Spellbook-Page-2` is smaller
+art on Forever and stretched into a blur. `Spellbook-Page-1`'s outer ~12% is a cover and
+ribbon that hid the start of every line. Now the right page is the left page's file,
+mirrored, and each page texture reaches 56 past the unchanged 404 × 500 writing area on
+its outer side; the book is 972 × 560 (#135, [specs/book.md
+§3.11.1](specs/book.md#3111-frames-and-the-look-draft)). The look stays DRAFT. **Rejected:**
+*cropping the cover off with `SetTexCoord`* (it would lose the book's edge, and the
+spread reads as a book because of it); *more padding inside the 404 writing area* (it
+would narrow every panel and break the 3-column stamp grid); *`QuestBG` or
+`StationeryTest1`* (untried; Page-1 already looks right).
+
+### 2026-10-08 — One copy of the place-name rule; `isInt` stays per module
+
+`Cosmetics` had its own copy of `Collection`'s rule 5 (the byte allow-list, a capital
+first letter, no trailing or double space). `Collection.validName(s, maxBytes)` is now
+exported, and `Cosmetics` uses it for catalog names (32 bytes) and zone-seal names (48)
+(#132; [specs/collection-cosmetics.md §3.8](specs/collection-cosmetics.md#38-api)).
+Behavior is unchanged. A bad limit gives `false`, never an error. **`isInt` stays a local
+in each module:** it's one line, and sharing it would make every module (`Ledger`
+included) load after a helper. That adds a load-order dependency to validation code and
+changes nothing it does. **Rejected:** *a shared `Util.lua`* (the load-order cost); *merging `Phrase`'s
+allow-list* (a different rule: it allows `!` and `?`).
+
+### 2026-10-08 — CI jobs have timeouts, and apt retries a stalled mirror
+
+On 2026-10-07 `apt-get update` stalled mid-fetch on three CI runs and sat until GitHub's
+6-hour default cancelled them (#126). Every job in `ci`, `policy-guard` and `release` now
+sets `timeout-minutes` well above its usual run time (coverage 30, luacheck and busted 15,
+`package` 10, `publish` 20, script-only jobs 5), and the toolchain jobs install through
+`scripts/ci-apt-install.sh`: apt's network timeouts and retries, `timeout` on each
+command, three attempts. The toolchain sources and versions are unchanged. **Rejected:**
+*caching the toolchain* (`actions/cache` is one more action and a cache to trust, for
+about a minute saved per job); *a Lua setup action from the marketplace* (a new
+third-party action, which checklist item 12 rules out).
+
 ### 2026-10-07 — Names with hidden characters or malformed UTF-8 are rejected
 
 The maintainer chose to tighten (#119, [specs/sync-ledger.md

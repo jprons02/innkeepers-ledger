@@ -57,7 +57,7 @@ The orchestrator writes them into [decisions.md](../decisions.md) as one entry,
    n of m" per zone, a filled mark for signed inns, unsigned inns listed by name, faded.
    Selecting one shows its page on the right: name, "Zone, Continent", a stamp dated by
    the first signature, count and last date, your signatures (date, phrase, seal), then
-   travelers' (name, date, phrase, seal). Page turns (‹ ›), **no scrolling**; the list
+   travelers' (name, date, phrase, seal). Page turns (`<` `>`), **no scrolling**; the list
    pages too.
 3. **Collection:** "N of M inns signed", a bar per continent, zones completed, total
    signatures (weekly returns counted), travelers met (a count); the right page is a
@@ -202,7 +202,7 @@ unknown); `quill` and `shared` the saved record's fields ([§3.7](#37-the-share-
 | `BookView.nudge(stored, current)` | the nudge line or `nil` ([§3.7](#37-the-share-tab-and-the-saved-record)) |
 | `BookView.readPrefs(rec)` | `{ quill, shared, writable }` ([§3.7](#37-the-share-tab-and-the-saved-record)) |
 | `BookView.prefsRecord(quill, shared)` | a fresh v1 record ([§4.1](#41-savedvariables-the-books-record)) |
-| `BookView.plain(s, maxBytes, fallback)` | safe display text ([§3.8](#38-text-safety-and-dates)) |
+| `BookView.plain(s, maxBytes, fallback, maxChars)` | safe display text ([§3.8](#38-text-safety-and-dates)) |
 | `BookView.dateText(t, offset)` | `"5 October 2026"`, or `nil` ([§3.8](#38-text-safety-and-dates)) |
 | `BookView.TEXT`, `BookView.LIMITS`, `BookView.FLOURISHES` | copies of the constants ([§3.9](#39-bounds-and-readiness), [§3.10](#310-text-draft), [§3.6](#36-the-cosmetics-tab)) |
 
@@ -230,7 +230,7 @@ quillPage, sealPage }`. `build` normalizes it and returns the result as `model.n
 **The model:** `{ tab, nav, notice?, left = <page>, right = <page> }`. `notice` is
 `TEXT.noLedger` when `s.ledger` isn't a table, `TEXT.readOnly` when the ledger is
 read-only, else absent. Each page is a table with a `kind` and, when it pages,
-`page` and `pages` (the glue enables ‹ when `page` is above the first page and › when
+`page` and `pages` (the glue enables `<` when `page` is above the first page and `>` when
 it is below `pages`). Every string in a model is our own constant, our allow-listed data,
 a number, a date from `dateText`, or a peer name that passed `plain`.
 
@@ -255,7 +255,7 @@ the notice differs.
 **`title`** (list page 0): `{ kind = "title", title, steps = { s1, s2, s3 }, hint, page =
 0, pages = <list pages> }`. `title` = `TEXT.titleOf .. name` when `plain(s.name, 64)`
 gives a name, else `TEXT.titleNoName`. The title page is always the list's first page,
-so › turns to the list and ‹ on list page 1 turns back to it; it opens by default only
+so `>` turns to the list and `<` on list page 1 turns back to it; it opens by default only
 when there are no own entries.
 
 **`help`** (right, no inn selected): `{ kind = "help", travelersTitle, travelersText,
@@ -315,7 +315,9 @@ Per row:
   `info.name .. TEXT.zoneSealSuffix` ("Zephras Isle seal"), any other seal `info.name`
   ("Wayfarer's seal"), and an unknown ID `TEXT.aSeal`. The line reads `TEXT.sealedWith ..
   <label>`.
-- `name` (foreign): `plain(rec.name, LIMITS.nameBytes, TEXT.aTraveler)`.
+- `name` (foreign): `plain(rec.name, LIMITS.nameBytes, TEXT.aTraveler,
+  LIMITS.rowNameChars)`: at most 40 characters and `"..."`, so the row's name, date and
+  seal fit two lines (#143, [§3.11.1](#3111-frames-and-the-look-draft)).
 - `flourish` (own): `FLOURISHES` entry for the effective quill ([§3.6](#36-the-cosmetics-tab)),
   absent for the plain quill.
 
@@ -489,6 +491,11 @@ points lives in
    byte loop needs only each lead byte's length (`< 0x80` 1, `< 0xE0` 2, `< 0xF0` 3,
    else 4) and step 3's `|` test; drop the failure branches step 2 makes unreachable
    rather than leave them uncovered.
+   **Amended 2026-10-11 (#143):** an optional `maxChars` (an integer of 1 or more;
+   anything else is no cap) also cuts after that many **characters**, whichever cut
+   comes first, with the same `"..."`. A row's width holds characters, not bytes: 40
+   Cyrillic letters are 80 bytes, and a byte cap small enough for a row would cut real
+   names in half. Steps 1–3 still run on the whole input first.
 5. Else `s` unchanged.
 
 Checks use `string.byte` and plain comparisons only (no patterns over the data, never
@@ -531,6 +538,7 @@ glue measures `offset` ([§3.11.2](#3112-client-reads)); the module never reads 
 | `aliasesMax` | 8 | NPC IDs per inn group |
 | `innsReadMax` | 20 000 | `Data/Inns` keys read at `new` |
 | `nameBytes` | 64 | display bytes of a name |
+| `rowNameChars` | 40 | display characters of a traveler's name on an inn row (#143) |
 
 - **Work per build** is bounded by these and by what `Collection` and `Cosmetics`
   already bound (`progress` reads at most `ownMax` entries; `unlocked` at most the
@@ -552,14 +560,16 @@ glue measures `offset` ([§3.11.2](#3112-client-reads)); the module never reads 
 
 **Every line is the maintainer's to decide.** One table, `BookView.TEXT`, our constants
 only: no `|`, no `%`, no site, product, service or URL. Lines are joined by
-concatenation. Three glyphs are outside ASCII and need the in-client check
-([§8](#8-in-client-checks-for-12) item 3): `‹` `›` (U+2039, U+203A) and `·` (U+00B7),
-written as UTF-8 byte escapes in the source.
+concatenation. One glyph is outside ASCII: `·` (U+00B7), written as UTF-8 byte escapes
+in the source; it renders on Forever (2026-10-09). **Amended 2026-10-11 (#12):** the page
+turns were `‹` `›` (U+2039, U+203A); in the client they came out 4 px wide, too thin
+to see on a button, so they are `<` `>`, the fallback
+[§8](#8-in-client-checks-for-12) item 3 named.
 
 | Key | Text (DRAFT) |
 |---|---|
 | `tabInns`, `tabCollection`, `tabCosmetics`, `tabShare` | `Inns`, `Collection`, `Cosmetics`, `Share` (settled) |
-| `prev`, `next`, `close` | `‹`, `›`, `Close` |
+| `prev`, `next`, `close` | `<`, `>`, `Close` |
 | `titleOf`, `titleNoName` | `The ledger of `, `Your ledger` |
 | `step1` | `1. Find an innkeeper, the one who keeps your hearthstone, and talk to them.` |
 | `step2` | `2. Rest at the inn and choose Sign the guestbook.` |
@@ -615,12 +625,16 @@ backdrop template, no tab or check box templates, no dropdowns, menus, scroll fr
 `ScrollBox`. Everything is built once, on the first open, and hidden or filled after
 that.
 
-- **The book:** `CreateFrame("Frame", "InnkeepersLedgerBook", UIParent)`, about 860 × 560,
+- **The book:** `CreateFrame("Frame", "InnkeepersLedgerBook", UIParent)`, 976 × 560,
   `CENTER` of `UIParent`, strata `HIGH`, mouse enabled, clamped to the screen, not
   movable. **Its global name is the AddOn's only global** (UISpecialFrames needs a name,
   §3.11.4). Hidden by default.
-- **Layers:** the dark frame (a texture over the whole book); two pages inset 16 px,
-  each about 404 × 500, with a parchment texture; a narrow spine shadow between them;
+- **Layers:** the dark frame (a texture over the whole book); two pages, each a
+  404 × 500 writing area, with a parchment texture 472 × 500 that reaches 56 past the
+  writing area on the spine side and 12 on the outer side. The page file's cover and
+  ribbon sit on the spine side, so the two pages' covers meet in the middle as the
+  book's spine, with no gap and no spine shadow (amended twice on 2026-10-09, #135 and
+  #137); 16 of dark frame outside the textures;
   four border lines of `STAMP`-tinted color texture around each page are optional
   (DRAFT).
 - **Tabs:** four `UIPanelButtonTemplate` buttons, about 120 × 24, in a row under the
@@ -628,18 +642,56 @@ that.
   `Disable()`d to mark it (no tab template).
 - **Close:** a small `UIPanelButtonTemplate` button labeled `TEXT.close` at the book's
   top right.
-- **Page turns:** each page has a ‹ and a › `UIPanelButtonTemplate` button (26 × 22) at
+- **Page turns:** each page has a `<` and a `>` `UIPanelButtonTemplate` button (26 × 22) at
   its bottom corners and a centered page label (`n / m`, numbers only), each enabled
-  from the model ([§3.3](#33-navigation-and-the-model)).
+  from the model ([§3.3](#33-navigation-and-the-model)). **The page file's bottom is
+  dark** (measured in the client, 2026-10-11): its last 16 of 500 are empty (black), and
+  the parchment darkens into the page's edge from about 50 above the bottom (40 on the
+  spine side, 30 on the outer side). The buttons and the label sit on that edge, so the
+  label is `PARCHMENT`-colored like the notice, not `INK` (in ink it couldn't be seen).
+  Rows of ink end 34 above the bottom at the lowest (the inn page's sixth row).
 - **Rows:** each page kind owns a fixed set of widgets at fixed positions (a hidden row
-  leaves a gap; no relayout): the list's `listRows` rows (a plain `Button`, a font
+  leaves a gap; no relayout; the inn page aside, below): the list's `listRows` rows (a plain `Button`, a font
   string, a 10 × 10 mark texture filled with `INK` for signed inns, and a `HIGHLIGHT`
   layer texture at low alpha); the inn page's header strings, a stamp box and `innRows`
-  row boxes (meta line: name or date and seal; phrase text, word-wrapped to 2 lines;
-  flourish line); the summary's lines and `barRows` bars (a background texture and a
+  row boxes (below); the summary's lines and `barRows` bars (a background texture and a
   fill texture whose width is `fraction` × the bar width); a 3 × 4 grid of stamp cells
   (a `Button` each); quill and seal rows (a quill row's **Use** button enabled from
   `canUse`).
+- **The inn page sizes to its text (amended 2026-10-11, #143).** The one page that isn't
+  at fixed positions, because its texts vary most. Widths are the layout checks'
+  estimate ([testing.md](../testing.md#testing-posture)), not yet measured in the client.
+  - **Header:** the title (240 wide, beside the stamp) may take two lines: a
+    24-character inn name is wider than one. The place, the count and the last date
+    each hang 8 under the line above (`TOPLEFT` to its `BOTTOMLEFT`), so a second title
+    line moves them down 18, still ending above the rows.
+  - **Rows:** placed as the page is drawn, each under the one before, from 118 below
+    the page's top. A heading row takes 30, any other row 64. Every page starts with a
+    heading ([§3.3](#33-navigation-and-the-model)), so six rows reach at most
+    30 + 5 × 64 = 350 down: the top of the page buttons.
+  - **An entry row:** the meta line (a traveler's name, the date, the seal) at the top;
+    the phrase hangs 4 under it, with no set height; the flourish hangs 2 under the
+    phrase. The longest phrase (127 characters) is three lines. **Your own** meta line
+    (date and seal) doesn't wrap: the client cuts a line that's too long. **A
+    traveler's** wraps to a second line, and the name is cut to 40 characters
+    ([§3.9](#39-bounds-and-readiness), `rowNameChars`) so it never needs a third with a
+    zone name of up to 20 characters. Worst cases, both inside the row's 62: one meta
+    line, three phrase lines and a flourish (10 + 4 + 36 + 2 + 10); two meta lines and
+    three phrase lines (20 + 4 + 36).
+  - **A note row** ("You haven't signed this guestbook yet.") starts 4 under its row's
+    top.
+  - **What the room rests on** (the #143 review; check these when `Data/Inns` fills,
+    #12). There's no spare room, so each is a limit on our own data, by the estimate:
+    - an inn name of about 40 characters (two title lines of 22), **with** a place line
+      (zone, comma, continent) of up to 40 characters (one line). A two-line title over
+      a two-line place puts the last date 4 over the first row's heading;
+    - a zone name of up to 22 characters, or another seal's name of up to 27, on your
+      own meta line (59 characters with the longest date); a longer one is cut by the
+      client;
+    - a zone name of up to 20 characters on a traveler's meta line: two lines whatever
+      the name;
+    - a line as high as its font's size. A taller line in the client spills an entry
+      row with three phrase lines by the difference.
 - **Stamps:** a signed stamp is a box whose four sides are solid `STAMP` lines with the
   inn's name and date inside in `STAMP`; an unsigned one has **dashed** sides (each side
   six short color-texture dashes with gaps) and its name in faded `INK`.
@@ -648,7 +700,8 @@ that.
 
 **Textures, every one unverified on Forever** (each has a solid-color fallback; the
 in-client check decides which stay, [§8](#8-in-client-checks-for-12) item 2). A table
-`LOOK` in `Book.lua` holds, per surface, `{ file = <path or nil>, color = { r, g, b, a } }`.
+`LOOK` in `Book.lua` holds, per surface, `{ file = <path or nil>, color = { r, g, b, a } }`
+and, for the left page, `mirror = true` (`SetTexCoord(1, 0, 0, 1)` after painting).
 The glue always calls `SetColorTexture(color)` first; if `file` is set it then calls
 `SetTexture(file)`, and if that returns exactly `false` it re-applies the color. A file
 that loads as a blank or green square without returning `false` is caught by the
@@ -657,13 +710,13 @@ in-client check and its `file` set to `nil` (a one-line change).
 | Surface | Candidate files (try in order, keep the first that looks right) | Fallback color |
 |---|---|---|
 | dark frame | `Interface\DialogFrame\UI-DialogBox-Background-Dark`; `Interface\Tooltips\UI-Tooltip-Background` tinted dark | `0.10, 0.07, 0.05, 0.95` (dark leather) |
-| left page | `Interface\Spellbook\Spellbook-Page-1` (the old spellbook's left page); `Interface\QuestFrame\QuestBG` (quest-log parchment); `Interface\Stationery\StationeryTest1` (mail stationery) | `0.87, 0.80, 0.64, 1` (parchment) |
-| right page | `Interface\Spellbook\Spellbook-Page-2`; the left page's choice | `0.87, 0.80, 0.64, 1` |
-| spine shadow | none | `0, 0, 0, 0.25` |
+| left page | `Interface\Spellbook\Spellbook-Page-1` (the old spellbook's left page), mirrored (`SetTexCoord(1, 0, 0, 1)`) so its cover edge is on the spine side; `Interface\QuestFrame\QuestBG` (quest-log parchment); `Interface\Stationery\StationeryTest1` (mail stationery) | `0.87, 0.80, 0.64, 1` (parchment) |
+| right page | the left page's file, not mirrored. `Spellbook-Page-2` was tried first; on Forever it's smaller art that stretched into a blur (2026-10-09, #135) | `0.87, 0.80, 0.64, 1` |
 | bars, marks, stamp lines, seal dots | none (color only) | `INK`, `STAMP` |
 
-Texture coordinates for the page files (`SetTexCoord`) are tuned in the client; until
-then the files are stretched.
+`Spellbook-Page-1` is shown whole (no cropping). About 12% of its width on one side is the
+cover and ribbon (the 56 of reach), and the other side is an ornate border (the 12).
+Other coordinates are tuned in the client if needed.
 
 #### 3.11.2 Client reads
 
@@ -711,7 +764,7 @@ template (`GameFontNormal`) in place. Text color always from §3.10.
 - **`draw()`**: `model = view.build(read(), nav)`; `nav = model.nav`; fill the widgets of
   `model.left.kind` and `model.right.kind`, hide every other kind's; the notice line
   (if any) shows above the pages. `model.error` → both pages show `TEXT.pageError`.
-  Clicks (tab, ‹ ›, inn row, stamp, Use) change `nav` and call `draw()`.
+  Clicks (tab, `<` `>`, inn row, stamp, Use) change `nav` and call `draw()`.
 - **ESC:** at creation, if `UISpecialFrames` is a table, `table.insert(UISpecialFrames,
   "InnkeepersLedgerBook")`, so the client's own Escape handling hides the book (the
   standard way for plain frames; the frame isn't protected, so it works in combat). If
@@ -1033,7 +1086,10 @@ book ignores any kind but quill and seal.
   fallback; `nil`, `7`, `""`, `{}`, both stand-ins → fallback, no throw; a 70-byte
   ASCII name at 64 → its first 64 bytes + `"..."`; a name whose 64th–65th bytes are one
   two-byte character → its first 63 bytes + `"..."` (the cut backs off); never returns
-  `|`.
+  `|`. With `maxChars = 40` (#143): 41 letters → the first 40 + `"..."`, 40 → unchanged;
+  45 two-byte letters → 40 of them + `"..."` at 200 bytes, 32 at 64 bytes (the byte cut
+  comes first); a hidden character past both cuts → fallback; a `maxChars` that isn't an
+  integer of 1 or more → no character cap.
 - **`plain`, hidden characters (amended 2026-10-07, #119):** → fallback for an RLO
   (`E2 80 AE`), a ZWJ (`E2 80 8D`), an NBSP (`C2 A0`), an ideographic space (`E3 80 80`)
   and a Hangul filler (`E3 85 A4`), each at the start, the middle and the end of
@@ -1144,7 +1200,7 @@ Logged in as `spec/core_spec.lua` does, the faction `"Alliance"`, the real data
   `UISpecialFrames`; with `UISpecialFrames = nil` the book still opens, no error.
   `/ledger version` prints `version dev`; `/ledger debug` still toggles the log.
 - **First open, empty ledger:** the title page (`The ledger of Traveler`, the three
-  steps, the hint) and the help page with the README's words; › turns to list page 1
+  steps, the hint) and the help page with the README's words; `>` turns to list page 1
   listing Zephras Isle, `signed 0 of 1`, Calmbreeze Inn faded.
 - **After a signature** (`addOwn` at `254089`): the list's default page is 1;
   `signed 1 of 1`, the inn's mark shown; clicking its row → the right page reads
@@ -1152,8 +1208,8 @@ Logged in as `spec/core_spec.lua` does, the faction `"Alliance"`, the real data
   with the rendered phrase.
 - **Page turns:** 8 travelers' entries at `254089` (`addForeign`, spread over weeks) →
   two inn pages (heading, note, heading and 3 entries, then the repeated heading and 5;
-  a ninth entry would open a third page); ‹ disabled on page 1, › enabled; › → page 2 shows the rest with the
-  repeated heading, › disabled; the page label reads `2 / 2`.
+  a ninth entry would open a third page); `<` disabled on page 1, `>` enabled; `>` → page 2 shows the rest with the
+  repeated heading, `>` disabled; the page label reads `2 / 2`.
 - **Read button:** `GOSSIP_SHOW` at Calmbreeze → two buttons under `GossipFrame` labeled
   `Sign the guestbook` and `Read the guestbook`; at a vendor → both hidden; Read → the
   book shown on the Inns tab with Calmbreeze's page; `GOSSIP_CLOSED` → both buttons
@@ -1249,12 +1305,13 @@ With `/ledger debug` on; screenshots go to the maintainer (the DRAFT look):
    texture candidate of §3.11.1, whether it loads (not blank, not green) and looks right;
    the chosen files' coordinates. A screenshot of each tab.
 3. **Fonts and glyphs:** titles in the Morpheus face (`QuestTitleFont` exists), body text
-   in the game font, ink colors readable on the parchment; the `‹` `›` and `·` glyphs
-   render (else `TEXT.prev` / `TEXT.next` become `<` / `>` and `TEXT.dot` ` - `).
+   in the game font, ink colors readable on the parchment; the `·` glyph renders (else
+   `TEXT.dot` becomes ` - `). `‹` `›` didn't read on the page buttons, so `TEXT.prev` /
+   `TEXT.next` are `<` / `>` (2026-10-11).
 4. **ESC:** Escape closes the book; with the Share box focused, the first Escape clears
    focus and the second closes; Escape in combat closes it too, with no "blocked" or
    taint message.
-5. **Page turns:** ‹ and › enabled and disabled correctly on the list and on Calmbreeze's
+5. **Page turns:** `<` and `>` enabled and disabled correctly on the list and on Calmbreeze's
    page; with more travelers or inns later, a second page turns and shows the repeated
    heading.
 6. **The Read button:** at Coriella Calmbreeze, "Read the guestbook" sits beside "Sign the
@@ -1284,7 +1341,7 @@ With `/ledger debug` on; screenshots go to the maintainer (the DRAFT look):
 - **Newest first:** your signatures and travelers' are listed newest first on an inn's
   page, so the latest crossing is on the first page.
 - **The title page is the book's first page** and opens by default only while you have no
-  signatures; › turns to the inn list, ‹ from list page 1 turns back to it.
+  signatures; `>` turns to the inn list, `<` from list page 1 turns back to it.
 - **The book keeps your place** (tab, inn, pages) for the session; it isn't saved.
 - **"Since you last shared" means since the share string was last built and shown** (the
   AddOn can't tell whether it was copied without reading keys).

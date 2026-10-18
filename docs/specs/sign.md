@@ -271,7 +271,14 @@ functional draft.** It uses only pieces the beta has shown or that are core fram
      toggle "Add a second line" / "Remove the second line" → `setSecond`;
   3. **voice strip** (when `voiceRow`): a window of 8 buttons, 4 per row, over the edited
      line's voice field (`v1` or `v2`); the chosen voice is disabled; a click → `pick`;
-  4. **conjunction strip** (line 2 only): the same, over `c`;
+  4. **conjunction strip** (line 2 only): the same over `c`, but a window of 6 buttons, 3
+     per row, each 124 wide where a voice's is 92 (amended 2026-10-11, #143). A
+     conjunction runs to 15 characters ("Then, LOUDER..."), about 108 px by the layout
+     checks' estimate, more than a 92-wide button holds. Measured in the client
+     (2026-10-12, #148): the 30 labels are 30 to 95.8 wide, and three are too wide for
+     a 92 button ("Then, LOUDER..." 95.8, "One must add..." 92.5, "Huzzah, and..."
+     84.2), so 124 stays. Hearthside has 7 conjunctions, so its strip pages (`<` `>`);
+     every other voice's fit;
   5. **template list:** 8 rows over `t1` or `t2`;
   6. **category list** (left, 9 rows over `cat1` / `cat2`) and **word list** (right, 9 rows
      over `w1` / `w2`), shown when the edited line's template has a slot (`word1` /
@@ -630,7 +637,9 @@ Calmbreeze's GUID (`254089`, the real data) unless a case says otherwise.
   (`OnMouseWheel` with `-1`) moves one row, and both stop at the ends; a list that fits
   hides its page buttons; a slotless template hides the category and word lists; the
   word list follows the category clicked; the selection texture sits on the chosen row
-  only; the first line's tab is disabled while editing it.
+  only; the first line's tab is disabled while editing it. **(#143)** The conjunction
+  strip has 6 buttons, 124 wide, 3 a row; Hearthside's 7 conjunctions page (`>` shows the
+  seventh and then stops), and a voice with 6 or fewer hides the page buttons.
 - **Faction hidden or raising** → signing still works (counted as `nil`).
 - **Errors:** `ns.Sync.WindowChanged` raising → the entry is kept, the `added` line still
   prints, no error escapes; after `"added"`, `ns.Book.Changed` is called once (spy) and a

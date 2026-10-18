@@ -123,16 +123,18 @@ end
 local COMPOSER_W, COMPOSER_H = 420, 600
 local LABEL_W = 320
 local ROW_H = 17                -- a list row
-local STRIP_W, STRIP_H = 92, 20 -- a voice or conjunction button, 4 per row
+local STRIP_H = 20              -- a voice or conjunction button
 local PAGE_W, PAGE_H = 24, 20   -- a list's < and > buttons
 local SELECTED = { 1, 0.82, 0, 0.25 } -- the faint gold behind a list's chosen row
 
 -- The lists (spec 3.7), at fixed positions: a hidden one leaves a gap. `strip` lists are
 -- rows of buttons (the chosen one disabled); the others are rows of text with a mark.
 -- x, y: the list's top left in the composer; w: its width; n: how many items it shows.
+-- A strip has `cols` buttons a row, each `bw` wide: a conjunction is longer than a voice's
+-- name, so its strip has 3 wider buttons a row where the voices have 4.
 local LISTS = {
-  voice = { strip = true, x = 12, y = -76, n = 8 },
-  conj = { strip = true, x = 12, y = -124, n = 8 },
+  voice = { strip = true, x = 12, y = -76, n = 8, cols = 4, bw = 92 },
+  conj = { strip = true, x = 12, y = -124, n = 6, cols = 3, bw = 124 },
   template = { x = 12, y = -174, w = 364, n = 8 },
   cat = { x = 12, y = -318, w = 140, n = 9 },
   word = { x = 182, y = -318, w = 194, n = 9 },
@@ -223,8 +225,9 @@ local function newList(parent, key, spec)
   local list = { rows = {} }
   local n = spec.n
   local strip = spec.strip
-  local width = strip and 4 * (STRIP_W + 2) - 2 or spec.w
-  local height = strip and 2 * (STRIP_H + 2) - 2 or n * ROW_H
+  local cols, bw = spec.cols, spec.bw
+  local width = strip and cols * (bw + 2) - 2 or spec.w
+  local height = strip and (floor((n - 1) / cols) + 1) * (STRIP_H + 2) - 2 or n * ROW_H
   local f = CreateFrame("Frame", nil, parent)
   f:SetSize(width, height)
   f:SetPoint("TOPLEFT", parent, "TOPLEFT", spec.x, spec.y)
@@ -235,9 +238,9 @@ local function newList(parent, key, spec)
     local row = {}
     local b
     if strip then
-      local col, r = (i - 1) % 4, floor((i - 1) / 4)
-      b = newButton(f, "", STRIP_W, STRIP_H)
-      b:SetPoint("TOPLEFT", f, "TOPLEFT", col * (STRIP_W + 2), -r * (STRIP_H + 2))
+      local col, r = (i - 1) % cols, floor((i - 1) / cols)
+      b = newButton(f, "", bw, STRIP_H)
+      b:SetPoint("TOPLEFT", f, "TOPLEFT", col * (bw + 2), -r * (STRIP_H + 2))
     else
       b = CreateFrame("Button", nil, f)
       b:SetSize(width, ROW_H)

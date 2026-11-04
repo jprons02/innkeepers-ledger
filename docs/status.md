@@ -82,7 +82,8 @@ and Wago projects, their page text and the `release` environment's tokens are al
 
 - **No ticket is open for agents.** #12 is the maintainer's walk; pick from Follow-ups
   (check each against decisions.md first), or take the next answer the maintainer gives
-  to an open question. `main` is current (Releasing, above).
+  to an open question. `main` is current (Releasing, above). **#157** (noting unknown
+  innkeepers) is blocked until the first tag (decisions.md 2026-11-04).
 - **The harness loop** (agent): `sh scripts/devclient/deploy.sh -t book,composer`, ask
   the maintainer for the steps below, then `sh scripts/devclient/results.sh <scratch dir>`
   (Lua on PATH) and read the cropped PNGs, the trees, the warnings and the list of

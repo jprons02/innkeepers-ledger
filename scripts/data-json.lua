@@ -248,7 +248,7 @@ local function cosmetics(Data, Cos, zones)
     local rec = out[z.seal]
     if rec == nil or rec.rule.kind ~= "zone" or rec.rule.zone ~= k then
       fail("cosmetics: zone " .. number(k, "zones") .. " has no zone seal "
-        .. number(z.seal, "zones"))
+        .. tostring(z.seal))
     end
   end
   if zoneSeals ~= nZones then

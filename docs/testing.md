@@ -163,7 +163,9 @@ Proportional, not ceremonial:
 - **The in-client probe (#12):** a throwaway AddOn, `!ILProbe`, on branch
   `spike/12-probe`, never merged. `sh spike/probe/install.sh "<client folder>"` copies
   it, plus the working-tree AddOn with the TOC's interface number, into the client's
-  `Interface/AddOns`. A new AddOn folder needs a full client restart. In game, `/ilp`
+  `Interface/AddOns`. **Run from the spike branch, that AddOn copy is the branch's old
+  one:** install the AddOn from `dev` afterwards (`git archive origin/dev`, the TOC's
+  files, the interface line set), as was done for the live client on 2026-11-04. A new AddOn folder needs a full client restart. In game, `/ilp`
   runs every automatic check; talking to any NPC records its GUID, gossip and map chain;
   every addon message, rest-state change and Lua error is logged too. `/reload` or
   logging out writes the log to

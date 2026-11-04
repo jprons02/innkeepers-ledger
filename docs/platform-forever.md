@@ -54,6 +54,12 @@ unverified · ❓ unknown
 In-client results below come from a throwaway probe AddOn (branch `spike/12-probe`, never
 merged) run in the Forever beta, build **1.60.1.70124** (2026-09-29), on 2026-09-30.
 
+**The live client (2026-11-04):** installed in its own folder, `_forever_` (product
+`wowf`), build **1.60.1.70755**. ❓ Nothing has been checked in it yet: the interface
+number (`16001` assumed, the same 1.60.1 as the beta), and whether the beta's NPC and map
+IDs carry over. The beta's IDs (`Data/Inns`) count as unverified in live until the probe
+logs them there.
+
 - ✅ **The modern (retail/Midnight) API, not the Classic one.** The install folder and
   product are `_classic_beta_` / `wow_classic_beta`, but `WOW_PROJECT_ID` is `1`
   (`WOW_PROJECT_MAINLINE`), with 5 988 global functions and 271 `C_` namespaces,

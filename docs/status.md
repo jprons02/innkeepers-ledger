@@ -5,172 +5,116 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-10-18 (released to `main` (#153) with the first changelog notes
-(#152); a go-live audit, now Path to launch; the leftover agent worktree is gone)
+**Updated:** 2026-11-04, launch day (`Data/*` published as JSON (#156); #157 filed for
+after launch; the probe is in the live client; October's decisions archived)
 
 ## Current state
 
-- **Phase 1 of [kickoff.md](kickoff.md) is done:** every pure module and the sync glue,
-  tested and security-reviewed. **Phase 2 (#12) is under way in the Forever beta**
-  ([platform-forever.md](platform-forever.md)). `Data/Inns` holds one inn: Calmbreeze Inn
-  (NPC `254089`), Zephras Isle (zone 2521, seal 101, Azeroth 947).
-- **Agents see the UI through the dev harness, and it works in the client** (#139,
-  [testing.md](testing.md#testing-posture); first runs 2026-10-11): `deploy.sh` installs
-  the working tree's AddOn and a tour, the client screenshots each step and dumps the
-  real layout, `results.sh <out>` reports the run and crops the images. **A reload from a
-  timer is blocked on Forever,** so each run needs the maintainer to type `/reload`
-  (once to load a deploy, once more to save the results), and watch mode can't work.
-  Nothing types into the game for him (decisions.md 2026-10-10).
-  **A clean run reports clean (#148, done):** the round of 2026-10-12 ran both tours
-  with no failed step, no Lua errors, 0 layout warnings and the 7 expected frames
-  hanging outside their root; one round keeps both tours' results.
-- **Layout checks in busted (#140)** resolve anchors in the stub and check the book and
-  the composer. Their text width (0.6 em) is now measured against the client: 0.43 to
-  0.60 em over 40 strings, so it stays as the upper bound.
-- **Seen in the client on 2026-10-11:**
-  - the spine (#137): the covers meet in the middle;
-  - #143's fixes (#145, decisions.md 2026-10-11,
-    [book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft)): the inn page's rows
-    and header sit exactly where the layout checks put them, and the conjunction strip
-    has 6 wider buttons, 3 a row;
-  - the composer's lists (#102), both lines;
-  - the page label and the `<` `>` page buttons (#146): the label was ink on the page
-    file's dark bottom edge and the old arrows were 4 px wide; both read now.
-  The long cases (a three-line phrase, a wrapped traveler line, a two-line inn name)
-  exist only in the layout checks: the maintainer's ledger has one short signature.
-- **Seen in the client on 2026-10-12 (#148's round):** every tab of the book and
-  Calmbreeze Inn's page (opened through its row, and through Read at the innkeeper); the
-  composer on both lines; every voice's conjunction strip. **The conjunction labels are
-  30 to 95.8 wide** (0.42 to 0.55 em), so the 124-wide buttons stay: three labels are
-  too wide for the old 92 (decisions.md 2026-10-12).
-- **Signing works in the client** (#96, [sign.md](specs/sign.md)), with 8 phrase voices
-  (#100). The book (`UI/Book`, #106, [book.md](specs/book.md)) and the composer are
-  DRAFT looks.
-- **No inks (#105):** one ink for every signature; IDs 1100..1199 reserved.
-- **Place rules wait for completeness marks (#110,
-  [collection-cosmetics.md §3.11](specs/collection-cosmetics.md#311-completeness-marks-amended-2026-10-07-110)):**
-  only places `Data/Inns` marks `complete` count toward zone, continent and `all` rules.
-  Nothing is marked, so the book shows "1 of 1+". **Fails closed (#118).**
-- **Names** reject malformed UTF-8 and hidden characters (#119,
-  [sync-ledger.md §5.2a](specs/sync-ledger.md#52a-hidden-characters-in-names-amended-2026-10-07-119)).
-- **Releasing:** last released to `main` on 2026-10-18 (#153, security review in the PR:
-  no defects). `main` and `dev` hold the same content. `CHANGELOG.md` has the first
+- **The code is ready for v1.** Phase 1 of [kickoff.md](kickoff.md) is done (every pure
+  module and the sync glue, tested and security-reviewed); signing (#96), 8 phrase voices
+  (#100), the book (#106) and the composer work in the client, the last two as DRAFT
+  looks. Seen in the client on 2026-10-11 and 10-12: every tab, the inn page, the
+  composer on both lines, every voice's conjunction strip (decisions.md 2026-10-11,
+  2026-10-12, now in the October archive).
+- **`Data/Inns` holds one inn:** Calmbreeze Inn (NPC `254089`), Zephras Isle (zone 2521,
+  seal 101, Azeroth 947), read in the beta. **The walk (#12) didn't happen before the
+  beta closed (2026-10-21);** it moves to the live client (decisions.md 2026-11-04,
+  later). Nothing is marked `complete`, so place rules stay locked and the book shows
+  "1 of 1+" (fails closed, #110/#118).
+- **`Data/*` is published as JSON (#156, on `dev`):** `docs/data/forever.json`, written
+  by `scripts/data-json.lua`; CI fails when it's stale
+  ([specs/data-json.md](specs/data-json.md)). **Regenerate and commit it with every
+  `Data/*` change.**
+- **The dev harness** (#139, [testing.md](testing.md#testing-posture)) screenshots and
+  measures the UI in the client; each round needs the maintainer's `/reload`s. Its last
+  round (2026-10-12) ran clean. Layout checks in busted (#140) use a measured 0.6 em
+  text width.
+- **Releasing:** last released to `main` on 2026-10-18 (#153). **`dev` is ahead by #156**
+  (docs, a script and CI only; nothing that ships). `CHANGELOG.md` holds the first
   release's notes under `## Unreleased` (#152). No tags yet (maintainer gate). **CI:**
   eight required checks on `ubuntu-24.04`, green.
 
 ## Path to launch
 
-Audited 2026-10-18 against [kickoff.md](kickoff.md) Phases 2–3. The code is ready; what's
-left is in-client data and checks, the maintainer's answers, and the tag. The CurseForge
-and Wago projects, their page text and the `release` environment's tokens are all done
-(decisions.md 2026-10-01).
-1. **Before the beta ends 2026-10-21 (maintainer, client):** the innkeepers for
-   `Data/Inns`, which holds one inn, so the AddOn does nothing at any other innkeeper;
-   and one session with a second character in a party. Sync between two players is
-   untested (the party, guild and instance items in Waiting on the maintainer).
+The code is ready; what's left is in-client data and checks, the maintainer's answers,
+and the tag. The CurseForge and Wago projects, page text and `release` tokens are done.
+1. **The walk (maintainer, live client):** talk to every innkeeper you pass (the probe
+   logs each), and note per zone whether you've seen every inn in it. Visit Calmbreeze
+   Inn early: it shows whether live kept the beta's IDs. One session with a second
+   character in a party: sync between two players is untested.
 2. **Answers (maintainer):** #62 and #63 before the first tag (their IDs freeze), and
    which zones to mark complete. The other open questions can ship as DRAFTs.
-3. **Agent, once inns arrive:** fill `Data/Inns`, mark the chosen zones, run a release
-   PR, rename `CHANGELOG.md`'s `## Unreleased` to the tag's `## vX.Y.Z`, and update the
-   notes if `dev` changed.
+3. **Agent, as inns arrive:** read the probe's log from disk, fill `Data/Inns`,
+   regenerate the JSON, mark the chosen zones, check names against the inn page's limits
+   ([book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft)); then a release PR
+   with its security review, and rename `CHANGELOG.md`'s `## Unreleased` to the tag's
+   `## vX.Y.Z` (the notes don't need #156: nothing in it ships).
 4. **Tag and publish (maintainer):** see
    [CONTRIBUTING.md → Releasing](../CONTRIBUTING.md#releasing). Interface `16001` →
-   Forever on CurseForge and Wago is unverified until that first upload. Then the
-   screenshots, and posts in the launch window.
+   Forever on CurseForge and Wago is unverified until that first upload.
 
 ## Next step
 
-- **No ticket is open for agents.** #12 is the maintainer's walk; pick from Follow-ups
-  (check each against decisions.md first), or take the next answer the maintainer gives
-  to an open question. `main` is current (Releasing, above). **#157** (noting unknown
-  innkeepers) is blocked until the first tag (decisions.md 2026-11-04).
-- **The harness loop** (agent): `sh scripts/devclient/deploy.sh -t book,composer`, ask
-  the maintainer for the steps below, then `sh scripts/devclient/results.sh <scratch dir>`
-  (Lua on PATH) and read the cropped PNGs, the trees, the warnings and the list of
-  hanging frames. Results name the character: keep them out of the repo. The book
-  tour's results are in `<scratch dir>/earlier`. **Don't deploy while a round is under
-  way:** a new request runs the book tour at the next `/reload` and replaces the
-  results. The raw screenshots (`Screenshots/` in the client folder) are readable
-  before the saving reload, and show whether a round has started. **A request runs once:**
-  after a round that went wrong, deploy again before the next `/reload`
-  ([testing.md](testing.md#testing-posture), the two traps).
-- **A harness round (maintainer), when an agent asks for one:**
-  1. `/reload`. The book tour runs about 4 s later and closes the book when done
-     (about 15 s; leave the book alone until then).
-  2. Talk to an innkeeper, leave the gossip window open, `/ildev run composer` (about
-     20 s: it steps through every voice on line 2; it never clicks Sign; it ends on the
-     inn's page).
-  3. `/reload` again, then tell the agent.
-- **What #12 still needs can't be read from disk.** The probe's log (read 2026-10-13)
-  holds no innkeeper but Coriella Calmbreeze: every NPC talked to so far is on Zephras
-  Isle. The checklist items the harness's dumps prove are ticked as far as they go.
-- **In the client (maintainer), before the beta ends 2026-10-21.** Still by eye, on the
-  [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04):
-  the mouse wheel on the composer lists; talk to every innkeeper you pass and **note per
-  zone whether you've seen every inn in it**.
+- **No agent ticket is ready.** #12 waits on the walk; **#157** (noting unknown
+  innkeepers in the export) is blocked until the first tag (decisions.md 2026-11-04).
+  Otherwise pick from Follow-ups, checking decisions.md first.
+- **When the maintainer reports a walk:** read `WTF/Account/<account>/SavedVariables/!ILProbe.lua`
+  under the live client folder (an innkeeper is the NPC whose gossip options include
+  *Make this inn your home.*, icon 132052), then Path to launch step 3. The log names the
+  character: summarize into the docs, never commit it.
+- **The harness in live:** `deploy.sh` and `results.sh` default to the beta folder; pass
+  the live client's folder (or set `ILDEV_CLIENT`). ILDev isn't installed there yet;
+  `deploy.sh` installs it. The maintainer's steps per round: `/reload` (the book tour,
+  ~15 s); at an innkeeper with gossip open, `/ildev run composer` (~20 s); `/reload`
+  again. Don't deploy mid-round; a request runs once (testing.md, the two traps).
 
 ## Client access
 
-In the beta until **2026-10-21**; launch **2026-11-04**. Beta client
-`World of Warcraft\_classic_beta_`, with the probe, ILDev as of #148 and `dev`'s AddOn as
-of #146 installed (deployed 2026-10-12; that request has run, so nothing runs at the
-next `/reload`).
+**Live since 2026-11-04.** Client `World of Warcraft\_forever_` (build 1.60.1.70755),
+with the probe and `dev`'s AddOn (as of `d2e0f6d`; no shipped file has changed since)
+installed on 2026-11-04 ([platform-forever.md](platform-forever.md)). The beta client
+(`_classic_beta_`) is closed.
 
 ## Open questions (maintainer to decide)
 
 None block work; DRAFTs ship until answered.
-- **Which zones to mark complete:** your call from the walk (#12). An unmarked zone's
-  seal stays locked. The `"+"` wording is DRAFT.
+- **Which zones to mark complete:** your call from the walk. The `"+"` wording is DRAFT.
 - **The book** ([book.md → Open questions](specs/book.md#open-questions-maintainer)) and
   **the composer** ([sign.md → Open questions](specs/sign.md#open-questions-maintainer)):
-  wording and look.
-  - **Where the tabs go (new, 2026-10-11):** they hang under the book, and in the client
-    the player frame (moved to the bottom center) and the beta's Issue Reporter button
-    drew over them: "Inns" half covered, "Share" almost hidden. Keep them there, or put
-    them inside the book (for example along its top, beside Close)?
-  - **The spine:** two ribbons (#137, as built and now seen) or one? For one, crop the
-    right page's cover with `SetTexCoord(~0.123, 1, 0, 1)`; decisions.md 2026-10-09
-    (later).
-  - **Inner padding:** are the right-hand numbers and the Use buttons too close to the
-    page's border?
-  - **Small screens:** the book is 976 wide; at UI scale 1 a 5:4 screen gives 960, so
-    it would be clamped against the edges. Shrink it, scale it, or accept it?
-  - **The conjunction strip (#143):** 6 buttons, 3 a row, so Hearthside's 7 conjunctions
-    page. Keep it, or three rows of three (no paging; the composer grows 22 taller)?
-    Back to 4 a row is out: the labels are measured (decisions.md 2026-10-12).
-  - **The inn page (#143):** a heading row is now 30 high and the others 64 (they were
-    all 54). Fine, or tighter?
-- **An offline renderer** (the stub's frames drawn in a browser with the client's
-  textures, for the gap from 2026-10-21 to launch): decide once the gap is near
-  (decisions.md 2026-10-10).
+  - **Tabs:** under the book (the player frame and the Issue Reporter covered them in the
+    beta) or inside it, e.g. along the top beside Close?
+  - **Spine:** two ribbons (as built) or one (`SetTexCoord(~0.123, 1, 0, 1)` on the right
+    cover)?
+  - **Inner padding:** right-hand numbers and Use buttons too close to the border?
+  - **Small screens:** the book is 976 wide (a 5:4 screen at scale 1 gives 960). Shrink,
+    scale or accept?
+  - **Conjunction strip:** 6 buttons, 3 a row, Hearthside's 7 page; or three rows of
+    three (22 taller)? 4 a row is out (labels measured).
+  - **Inn page rows:** headings 30 high, others 64. Fine, or tighter?
 - **Phrase wording (#62)**, **cosmetic catalog (#63)**, **export (#64)**: as in each
   spec's Open questions.
 
 ## Waiting on the maintainer
 
-**In the client** (#12): the unticked items of the platform-forever checklist (more
-innkeepers and which zones are fully walked; the rest of the signing checks; a second
+**In the client** (#12): the walk; the unticked
+[platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)
+items (the mouse wheel on the composer lists; the rest of the signing checks; a second
 character in a party for round-trips, `UnitFullName("partyN")` and cross-realm names,
 #119/#128; a guild round-trip and one dungeon run).
 
 ## Follow-ups
 
-- **When `Data/Inns` fills (#12):** check the names against the inn page's limits
-  ([book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft), "What the room
-  rests on").
-- **DRAFT wording:** the `continent` rule's "0 of 1" fallback has no "+". **Book redraws
-  aren't coalesced** (2–6 ms per ENTRIES on a capped ledger); watch in #12. A timer is
-  ruled out (decisions.md, the book entry); any fix waits for a client measurement.
+- **Book redraws aren't coalesced** (2–6 ms per ENTRIES on a capped ledger); a timer is
+  ruled out, so any fix waits for a client measurement. DRAFT wording: the `continent`
+  rule's "0 of 1" fallback has no "+".
 - **CI runners:** pinned to `ubuntu-24.04` (#117); move on purpose before GitHub retires
-  it. Job timeouts and the apt retry: decisions.md 2026-10-08. If coverage nears its
-  30 min, raise it. If GraphQL fails, use `gh api` (REST)
+  it. If coverage nears its 30 min timeout, raise it. If GraphQL fails, use `gh api`
   ([CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-pull-requests)).
-- **Revisit once in groups (#12):** server-clock jumps; other AddOns' traffic; group-map
-  rescan budget; a dropped `C_Timer.After`; export build time. Weekly reset rows for live
-  regions after launch.
+- **Revisit once in groups:** server-clock jumps; other AddOns' traffic; group-map rescan
+  budget; a dropped `C_Timer.After`; export build time; weekly reset rows for live regions.
 - **Name hardening, if wanted (low, #119 review):** stacked combining marks, strong RTL
-  letters and blank-rendering symbols (U+1D159) still pass (sync-ledger.md §5.2a, Out of
-  scope).
+  letters and blank-rendering symbols (U+1D159) still pass (sync-ledger.md §5.2a).
 - **Code tidy (low):** `Phrase`'s load-time asserts; `Ledger`'s quadratic load-time cap
-  pass on a tampered file; `Sign.lua`'s `listField` builds a full `view()` per click.
+  pass on a tampered file; `Sign.lua`'s `listField` builds a full `view()` per click;
+  `scripts/data-json.lua`'s "not in the TOC" error has no test (#156 review).
 - Delete GitHub's default labels (maintainer call). Archive [kickoff.md](kickoff.md) at v1.

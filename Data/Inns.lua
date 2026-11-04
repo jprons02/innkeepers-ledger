@@ -32,7 +32,7 @@ local _, ns = ...
 
 ns.Data = ns.Data or {}
 ns.Data.Inns = {
-  [254089] = { name = "Brightwater Inn", zone = 2521 }, -- Coriella Calmbreeze, Shen'dar Village
+  [254089] = { name = "Calmbreeze Inn", zone = 2521 }, -- Coriella Calmbreeze, Shen'dar Village
 }
 
 ns.Data.Zones = {

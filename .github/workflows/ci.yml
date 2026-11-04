@@ -52,6 +52,9 @@ jobs:
           grep -q 'lua5\.1' "$(command -v busted)"
           busted --version
           busted
+      # docs/data/forever.json must match Data/* (docs/specs/data-json.md).
+      - name: Data JSON is current
+        run: lua5.1 scripts/data-json.lua --check
 
   coverage:
     runs-on: ubuntu-24.04

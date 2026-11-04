@@ -10,6 +10,38 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-11-04 — Data tables published as generated JSON; noting unknown innkeepers waits
+
+The maintainer's call today, on launch day: **publish `Data/*` as a generated JSON file
+before the first tag** (#156), so an export consumer can render inn, zone, seal,
+cosmetic and phrase text without reading Lua (the promise in
+[export-format.md → Notes](export-format.md#notes)). **Noting innkeepers the AddOn
+doesn't know, and carrying the notes in the export (#157), ships in the first release
+after launch**, not before the first tag: a launch-week scope guard.
+
+How the JSON is built ([specs/data-json.md](specs/data-json.md)):
+- **One file, `docs/data/forever.json`,** written by `scripts/data-json.lua` and
+  committed; CI's `busted` job runs `--check` and fails when it differs from the Lua. It
+  sits under `docs`, which never ships, and names no consumer (like the export string).
+- **Only the records the AddOn keeps,** read through `Collection`, `Cosmetics` and
+  `Phrase` after they bind the data: effective `complete` marks, zone seals listed in
+  `cosmetics`. A rejected record fails the build rather than dropping out quietly.
+- **Versioned by `schema` alone** (1). Fields are only added; a change of meaning or type
+  bumps it. No AddOn version, date or hash in the file, so the same data gives the same
+  bytes.
+- **Integer keys become decimal-string keys, no arrays;** keys sorted (numbers
+  numerically, strings by byte); one record per line; `\"`, `\\` and `\u00xx` the only
+  escapes; malformed UTF-8 fails the build.
+
+**Rejected:** *a top-level `data/` folder* (on Windows and macOS it's the shipped
+`Data/`); *`Data/forever.json` with its own ignore line* (one forgotten line ships it);
+*the raw `ns.Data` tables* (records the AddOn rejects, raw marks, no zone seals);
+*skipping rejected records*; *JSON arrays for categories and voices* (0- against 1-based);
+*`null` or `"neutral"` for absent fields*; *a version or date in the file* (the check
+would always fail); *a JSON library* (a new dependency for about 100 lines); *a new CI
+job* (a new required check for one step); *`git diff --exit-code` after regenerating*
+(mutates the checkout).
+
 ### 2026-10-12 — The conjunction buttons stay 124 wide: measured
 
 The composer tour dumped every voice's conjunction strip in the client (#148). The 30

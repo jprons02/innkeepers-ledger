@@ -69,6 +69,10 @@ end
 
 files["spec/"] = { std = "lua51+busted" }
 
+-- The data JSON generator (docs/specs/data-json.md): a dev tool, plain Lua 5.1, never
+-- packaged (scripts/ is ignored). No WoW globals.
+files["scripts/data-json.lua"] = { std = "lua51" }
+
 -- The dev harness (#139): a separate AddOn that's never packaged (scripts/ is ignored),
 -- plus the local scripts that read its results. It sets its own globals.
 local devWow = {

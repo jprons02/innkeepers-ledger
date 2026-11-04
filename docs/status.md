@@ -172,5 +172,4 @@ character in a party for round-trips, `UnitFullName("partyN")` and cross-realm n
   scope).
 - **Code tidy (low):** `Phrase`'s load-time asserts; `Ledger`'s quadratic load-time cap
   pass on a tampered file; `Sign.lua`'s `listField` builds a full `view()` per click.
-  Publish `Data/*` for export consumers once inns exist.
 - Delete GitHub's default labels (maintainer call). Archive [kickoff.md](kickoff.md) at v1.

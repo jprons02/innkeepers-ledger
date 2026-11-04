@@ -4,3 +4,7 @@ Libs/** -text
 
 # The check script must keep LF endings to run on Linux CI.
 *.sh text eol=lf
+
+# The data JSON (docs/specs/data-json.md) is generated with LF only, on every OS, and
+# --check compares it byte for byte: keep it LF in every checkout.
+docs/data/*.json text eol=lf

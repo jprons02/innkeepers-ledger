@@ -53,6 +53,7 @@ them are required:
 | Forbidden APIs | `sh scripts/check-apis.sh` |
 | Vendored libraries | `sh scripts/check-libs.sh` |
 | Doc links and context map | `sh scripts/check-links.sh` |
+| Data JSON (after editing `Data/*`) | `lua scripts/data-json.lua`, check with `--check` ([docs/specs/data-json.md](docs/specs/data-json.md); CI runs the check with `lua5.1`) |
 | Release checks (self-tests) | `sh scripts/check-release.sh --self-test`, `sh scripts/check-package.sh --self-test` (seconds on Linux, a few minutes in Git Bash) |
 
 The packager's dry run itself (`package` in `.github/workflows/release.yml`) runs only in

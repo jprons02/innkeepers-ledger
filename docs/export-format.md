@@ -123,8 +123,11 @@ is the result of `Collection.progress` minus `inns`, `unknown` and `truncated`;
 `cosmetics` is `Cosmetics.unlocked` as is (shapes, ID ranges and how each time is
 derived: [specs/collection-cosmetics.md](specs/collection-cosmetics.md) §3.3–§3.6 and
 §4). v1 has no separate badge kind; a consumer may present any earned cosmetic as a
-badge. A future version of this doc should publish those tables (or a generated
-JSON of them) so consumers can render text without reading Lua. To turn a phrase ID
+badge. Those tables are published as JSON in [data/forever.json](data/forever.json),
+generated from the records the AddOn keeps, so a consumer can render text without
+reading Lua. Its keys are the IDs as decimal strings; its schema, versioning and encoding
+are in [specs/data-json.md §3.2](specs/data-json.md#32-schema-v1), and its IDs follow the
+data specs' stability rules (the newest file renders any export). To turn a phrase ID
 array into text, follow the rendering rules in
 [specs/phrase.md §3.4](specs/phrase.md#34-rendering); an ID a consumer doesn't know
 means a newer AddOn wrote it.

@@ -133,18 +133,23 @@ newer than the file wrote the export.
 {
   "atlasComplete": false,
   "continents": {
-    "947": {"complete": false, "name": "Azeroth"}
+    "947": {"complete": false, "name": "Azeroth"},
+    "1415": {"complete": false, "name": "Eastern Kingdoms"}
   },
   "cosmetics": {
     "1": {"kind": "seal", "name": "Wayfarer's seal", "rule": {"kind": "inns", "n": 5}},
     "2": {"kind": "seal", "name": "Innkeeper's seal", "rule": {"kind": "all"}},
     "101": {"kind": "seal", "name": "Zephras Isle", "rule": {"kind": "zone", "zone": 2521}},
+    "102": {"kind": "seal", "name": "Elwynn Forest", "rule": {"kind": "zone", "zone": 1429}},
+    "103": {"kind": "seal", "name": "Stormwind City", "rule": {"kind": "zone", "zone": 1453}},
     "1001": {"kind": "quill", "name": "Traveler's quill", "rule": {"kind": "inns", "n": 10}},
     "1002": {"kind": "quill", "name": "Owl-feather quill", "rule": {"kind": "inns", "n": 20}},
     "1003": {"kind": "quill", "name": "Cartographer's quill", "rule": {"kind": "continent"}}
   },
   "flavor": "forever",
   "inns": {
+    "295": {"faction": "Alliance", "name": "Lion's Pride Inn", "zone": 1429},
+    "6740": {"faction": "Alliance", "name": "The Gilded Rose", "zone": 1453},
     "254089": {"name": "Calmbreeze Inn", "zone": 2521}
   },
   "phraseCategories": {
@@ -167,6 +172,8 @@ newer than the file wrote the export.
   },
   "schema": 1,
   "zones": {
+    "1429": {"complete": false, "continent": 1415, "name": "Elwynn Forest", "seal": 102},
+    "1453": {"complete": false, "continent": 1415, "name": "Stormwind City", "seal": 103},
     "2521": {"complete": false, "continent": 947, "name": "Zephras Isle", "seal": 101}
   }
 }

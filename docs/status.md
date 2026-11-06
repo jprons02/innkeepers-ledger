@@ -16,11 +16,16 @@ after launch; the probe is in the live client; October's decisions archived)
   looks. Seen in the client on 2026-10-11 and 10-12: every tab, the inn page, the
   composer on both lines, every voice's conjunction strip (decisions.md 2026-10-11,
   2026-10-12, now in the October archive).
-- **`Data/Inns` holds one inn:** Calmbreeze Inn (NPC `254089`), Zephras Isle (zone 2521,
-  seal 101, Azeroth 947), read in the beta. **The walk (#12) didn't happen before the
-  beta closed (2026-10-21);** it moves to the live client (decisions.md 2026-11-04,
-  later). Nothing is marked `complete`, so place rules stay locked and the book shows
-  "1 of 1+" (fails closed, #110/#118).
+- **`Data/Inns` holds three inns:** Calmbreeze Inn (NPC `254089`), Zephras Isle (zone
+  2521, seal 101, Azeroth 947), read in the beta; and from the live walk's first sessions
+  (2026-11-04/05), Lion's Pride Inn (Innkeeper Farley `295`, Elwynn Forest 1429, seal 102)
+  and The Gilded Rose (Innkeeper Allison `6740`, Stormwind City 1453, seal 103), both
+  Alliance only, on Eastern Kingdoms (1415). The client named Lion's Pride Inn (its
+  minimap text); "The Gilded Rose" is the inn's known name, not read from the client.
+  **The walk (#12) continues in the live client** (decisions.md 2026-11-04, later).
+  Nothing is marked `complete`, so place rules stay locked and the book shows "1 of 3+"
+  (fails closed, #110/#118). Specs that read the shipped data count three inns now, and
+  the layout fixture's generated seals start at 201, clear of shipped ones.
 - **`Data/*` is published as JSON (#156, on `dev`):** `docs/data/forever.json`, written
   by `scripts/data-json.lua`; CI fails when it's stale
   ([specs/data-json.md](specs/data-json.md)). **Regenerate and commit it with every

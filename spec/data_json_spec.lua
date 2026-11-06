@@ -570,7 +570,9 @@ describe("data-json and the real data", function()
   it("holds the spec's example lines as shown", function()
     for _, line in ipairs({
       '  "atlasComplete": false,',
-      '    "947": {"complete": false, "name": "Azeroth"}',
+      '    "947": {"complete": false, "name": "Azeroth"},',
+      '    "1415": {"complete": false, "name": "Eastern Kingdoms"}',
+      '    "295": {"faction": "Alliance", "name": "Lion\'s Pride Inn", "zone": 1429},',
       '    "101": {"kind": "seal", "name": "Zephras Isle", "rule": {"kind": "zone", '
         .. '"zone": 2521}},',
       '    "254089": {"name": "Calmbreeze Inn", "zone": 2521}',

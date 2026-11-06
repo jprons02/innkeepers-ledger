@@ -983,7 +983,8 @@ describe("Core recording unlocks at login", function()
 
   it("fills earned for a saved signature once its places are marked complete", function()
     login({ db = db(ledgerData(1)), setup = markedFlow })
-    assert.same({ [2] = T, [101] = T, [1003] = T }, saved().earned)
+    -- Zephras Isle's seal and Azeroth's quill; not "every inn" (2), with more inns shipped.
+    assert.same({ [101] = T, [1003] = T }, saved().earned)
   end)
 
   it("writes nothing to a read-only ledger", function()

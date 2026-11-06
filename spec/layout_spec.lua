@@ -51,7 +51,7 @@ local UTC = {
 -- zone 20.
 local function addPlaces(ns, long)
   local D = ns.Data
-  local npc, seal = 300000, 101
+  local npc, seal = 300000, 200 -- seals 201.., clear of the shipped zones' seals
   local innName = long and "The Wandering Wyvern %03d" or "Wandering Wyvern %03d"
   local zoneName = long and "Thistlewood Hills %d%d" or "Thistle Hills %d%d"
   for c = 1, 7 do
@@ -188,7 +188,7 @@ local function fill(ns, opts)
   opts = opts or {}
   local ledger = ns.ledger
   local ids = { 1, 2, 1001, 1002, 1003 }
-  for id = 102, 115 do
+  for id = 201, 214 do
     ids[#ids + 1] = id
   end
   for id = 1004, 1010 do
@@ -200,7 +200,7 @@ local function fill(ns, opts)
   local phrase = opts.phrase or TYPICAL
   for i = 1, 10 do
     assert.equal("added", ledger:addOwn({ inn = CALM, t = SEPT + i * WEEK, phrase = phrase,
-      seal = i % 2 == 0 and 2 or 102 }))
+      seal = i % 2 == 0 and 2 or 201 }))
   end
   local n = 0
   for id in pairs(ns.Data.Inns) do
@@ -557,7 +557,7 @@ describe("Layout: the book", function()
     -- longest traveler names and a seal on every traveler's signature.
     it("keeps every page of the " .. tab .. " tab in order, longest inputs", function()
       local ns = login({ full = true, long = true, db = fullDb() })
-      fill(ns, { phrase = longestPhrase(ns.Phrase), name = longName, travelerSeal = 102 })
+      fill(ns, { phrase = longestPhrase(ns.Phrase), name = longName, travelerSeal = 201 })
       wow.slash("/ledger")
       local out = visitTab(ns, tab, {})
       assert.same({}, unique(out))
@@ -945,7 +945,7 @@ describe("Layout: the longest inputs fit (#143)", function()
   -- never need a third line.
   it("a traveler row's name, date and seal take two lines above its phrase", function()
     local ns = login({ full = true, db = fullDb() })
-    fill(ns, { phrase = longestPhrase(ns.Phrase), travelerSeal = 102,
+    fill(ns, { phrase = longestPhrase(ns.Phrase), travelerSeal = 201,
       name = function(i) return i % 2 == 0 and longName(1) or longName(3) end })
     ns.Book:OpenInn(CALM)
     local ui = ns.Book.ui

@@ -1239,13 +1239,18 @@ describe("Data/Inns (the shipped places)", function()
     end)
 
   it("ships no marks yet: a signature at Calmbreeze completes nothing (#110)", function()
-    -- Until the walk knows Zephras Isle and Azeroth in full, they stay unmarked.
+    -- Until the walk knows each zone and continent in full, they stay unmarked.
     assert.is_false(Collection.complete())
-    assert.is_false(Collection.zone(2521).complete)
+    for _, zone in ipairs({ 2521, 1429, 1453 }) do
+      assert.is_false(Collection.zone(zone).complete, zone)
+    end
     assert.is_false(Collection.continent(947).complete)
+    assert.is_false(Collection.continent(1415).complete)
     local p = Collection.progress({ { inn = 254089, t = T, phrase = { 1 } } }, "Alliance")
     assert.equal(1, p.signed)
-    assert.equal(1, p.total)
+    assert.equal(3, p.total)
+    -- Goldshire's and Stormwind's inns are Alliance only: a Horde total leaves them out.
+    assert.equal(1, Collection.progress({}, "Horde").total)
     assert.is_nil(p.done)
     assert.is_nil(p.byZone[2521].done)
     assert.is_nil(p.byContinent[947].done)

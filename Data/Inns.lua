@@ -33,14 +33,21 @@ local _, ns = ...
 ns.Data = ns.Data or {}
 ns.Data.Inns = {
   [254089] = { name = "Calmbreeze Inn", zone = 2521 }, -- Coriella Calmbreeze, Shen'dar Village
+  -- Innkeeper Farley, Goldshire
+  [295] = { name = "Lion's Pride Inn", zone = 1429, faction = "Alliance" },
+  -- Innkeeper Allison, Trade District
+  [6740] = { name = "The Gilded Rose", zone = 1453, faction = "Alliance" },
 }
 
 ns.Data.Zones = {
   [2521] = { name = "Zephras Isle", continent = 947, seal = 101 },
+  [1429] = { name = "Elwynn Forest", continent = 1415, seal = 102 },
+  [1453] = { name = "Stormwind City", continent = 1415, seal = 103 },
 }
 
 ns.Data.Continents = {
   [947] = { name = "Azeroth" },
+  [1415] = { name = "Eastern Kingdoms" },
 }
 
 -- True once every continent with an inn is in Continents and marked (spec 3.11).

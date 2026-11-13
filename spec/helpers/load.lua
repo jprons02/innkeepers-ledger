@@ -12,6 +12,7 @@ M.PURE = {
   { path = "Phrase.lua", name = "Phrase" },
   { path = "Collection.lua", name = "Collection" },
   { path = "Cosmetics.lua", name = "Cosmetics" },
+  { path = "InnNotes.lua", name = "InnNotes" },
   { path = "SyncProtocol.lua", name = "SyncProtocol" },
   { path = "SyncSchedule.lua", name = "SyncSchedule" },
   { path = "Export.lua", name = "Export" },
@@ -26,6 +27,7 @@ M.DATA = {
 M.GLUE = {
   { path = "Core.lua", name = "Core" },
   { path = "Sign.lua", name = "Sign" },
+  { path = "Notes.lua", name = "Notes" },
   { path = "Sync.lua", name = "Sync" },
   { path = "UI/Book.lua", name = "Book" },
 }

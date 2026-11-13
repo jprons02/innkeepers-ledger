@@ -17,6 +17,7 @@ Ledger.lua
 Phrase.lua
 Collection.lua
 Cosmetics.lua
+InnNotes.lua
 SyncProtocol.lua
 SyncSchedule.lua
 Export.lua
@@ -25,5 +26,6 @@ BookView.lua
 
 Core.lua
 Sign.lua
+Notes.lua
 Sync.lua
 UI\Book.lua

@@ -75,6 +75,8 @@ present with a `nil` value. No key outside this table appears in v1.
 | `travelers` | array, optional | present only when opted in (may be empty); `met` descending, then `guid` byte order; `guid` unique, never `me.guid` | travelers whose signatures you hold | `ledger:travelers()` |
 | `travelers[i]` | table | `{ guid, name, met = time, entries }`; `guid`/`name` as `me.guid`/`me.name` (`name` required); `entries` 1..40 entries, `(t, inn)` ascending, `(inn, t)` unique | one traveler and **their own** signatures | `ledger:signerEntries(guid)` |
 | entry | table | `{ inn = 1..9 999 999, t = time, phrase = { 1..5 IDs, each 1..9 999 }, seal = 1..999 (optional) }` | one signature | |
+| `notes` | array, optional | **present only when at least one note exists**; 1..200 items; `(t, npc)` ascending; `npc` unique | innkeepers the player talked to whose NPC ID wasn't in the exporting AddOn's `Data/Inns` (added 2026-11, #157; the format stays v1) | `Notes:List()` |
+| `notes[i]` | table | `{ npc = 1..9 999 999, t = time, zone = 1..999 999, continent = 1..999 999, faction? }`; `zone ~= continent`; `faction` `"Alliance"` / `"Horde"`, optional | one note: the innkeeper's NPC ID, when it was first noted, the zone and continent map IDs where the player stood (the same rule and kind of key as `Data/Inns`'s `Zones` / `Continents` and `collection.byZone` / `byContinent`), and the faction the client reported for the innkeeper, absent when it reported none (a neutral NPC) or it couldn't be read | |
 
 ### Names and GUIDs
 
@@ -114,7 +116,25 @@ bytes, not characters.
 - `collection`, `cosmetics` and `entries` are always present (possibly empty).
 - The AddOn refuses to export (rather than truncate) a ledger past these limits: more
   than 10 000 own entries, 1 200 cosmetics, 1 000 zones or continents, 3 000 travelers,
-  3 000 traveler entries in all, or 40 entries for one traveler.
+  3 000 traveler entries in all, 40 entries for one traveler, or 200 notes.
+- **Notes** (`notes`, added 2026-11, #157;
+  [specs/inn-notes.md](specs/inn-notes.md)): the AddOn notes an innkeeper (an NPC whose
+  gossip shows the bind-here option) only when its NPC ID isn't in the AddOn's own
+  `Data/Inns`, so a consumer can learn of inns the data doesn't hold yet. Reading them:
+  - **A note is an unsigned claim** by whoever made the string, which can be edited or
+    forged. It proves nothing on its own: count how many independent players report the
+    same `npc` in the same `zone`, and check against the game before adding an inn.
+  - **A note never names an inn already in the data the exporting AddOn had.** A
+    consumer whose data is newer will see notes for innkeepers it already knows; ignore
+    those (match on `npc`).
+  - **An `npc` may be an alias** (a second innkeeper of a known inn) or a whole new inn;
+    the note can't tell which.
+  - `faction` is the innkeeper's own faction as the client reported it, a hint about
+    who can use the inn, not proof; absent means neutral **or** unreadable.
+  - A `t` after `exported` (beyond a few minutes' clock skew) means the string was
+    edited.
+  - Notes carry no text, so nothing in them needs escaping to display; render only what
+    your own data names.
 
 Phrase and inn IDs refer to the tables shipped in the AddOn (`Data/Phrases`,
 `Data/Inns`); zone and continent keys (the client's map IDs) to `Data/Inns`'s `Zones` and
@@ -164,7 +184,8 @@ continents, 160 cosmetics. The tests hold each row under its ceiling.
 | L, default | 41 448 B | 11 773 chars | 0.02 s | 16 KiB | 32 KiB |
 | L + travelers, 75 × 40 entries (the caps) | 272 420 B | 84 893 chars | 0.14 s | 112 KiB | 512 KiB |
 | L + travelers, 3 000 × 1 entry (worst at the caps) | 517 391 B | 164 749 chars | 0.22 s | 208 KiB | 512 KiB |
-| Every limit at once, longest fields | 2 142 045 B | not encoded | 0.19 s (build + serialize) | 2 624 KiB serialized | 4 MiB serialized |
+| L + 200 notes (default, no travelers; measured 2026-11-13, #157) | 57 158 B | 16 933 chars | 0.04 s | 32 KiB | 32 KiB |
+| Every limit at once, longest fields (with 200 notes since 2026-11-13) | 2 159 948 B | not encoded | 0.26 s (build + serialize) | 2 624 KiB serialized | 4 MiB serialized |
 
 Default exports are small; opted-in exports near the foreign cap are the large case.
 Build time and edit-box limits in the client are unverified
@@ -181,7 +202,8 @@ Build time and edit-box limits in the client are unverified
 
 ## Privacy
 
-- By default the export contains only **your own** signatures and collection.
+- By default the export contains only **your own** signatures, collection and notes
+  on innkeepers you met.
 - `travelers` includes other players' character names and is **opt-in** per export.
 - Opting in is per export; nothing remembers it. Without it, no other player's GUID or
   name appears anywhere in the string.
@@ -197,4 +219,5 @@ An export is produced by open-source code on the player's machine, so **it can b
 edited or forged.** Consumers must treat it as user-supplied input: validate it, cap
 sizes before decompressing ([Decoding](#decoding)), and never assume it proves anything.
 The format carries no key or signature on purpose; see [decisions.md](decisions.md)
-(2026-09-27, profile site trust).
+(2026-09-27, profile site trust). `notes` are claims, not proof: trust an innkeeper only
+when many independent exports agree and the game confirms it ([Notes](#notes)).

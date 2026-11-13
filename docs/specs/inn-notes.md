@@ -740,6 +740,23 @@ a `/reload` (it names the character: an agent summarizes it, never commits it):
 8. **After a data update that adds a noted innkeeper:** the next login's file no longer
    holds that note.
 
+## Implementation notes (2026-11-13, #157)
+
+Choices the spec left open, made in the build:
+- **Failure values** (each API body runs in `pcall`): `isInnkeeper` and `validNote` →
+  `false`; `place` → `nil`; `observe` → `nil, "error"`; `read` → `{ items = {}, writable
+  = false, dropped = 0 }` (fail closed: nothing is written); `add` → `"invalid", nil`;
+  `record` → `nil` (the glue writes only a table); `list` → `{}`.
+- **`record` and `add` keep at most 200 valid items, first per `npc`,** so the written
+  shape always holds the record's invariants whatever the caller passes; `add` copies
+  only its input's valid items.
+- **A damaged `notes` table** (not a table) also logs `notes: read-only` at an unknown
+  NPC, like a damaged or newer record; it is never overwritten either way.
+- **Measured** ([§4.3](#43-size)): L + 200 notes is 16 933 chars (57 158 B serialized,
+  about 78 B a note); every `build` limit with 200 notes is 2 159 948 B serialized, under
+  the 2 624 KiB test ceiling. The Share page's DRAFT text wraps to 5 lines (60 high at
+  the layout checks' 0.6 em) inside the 500-high page; `spec/layout_spec.lua` passes.
+
 ## Assumptions (listed for the maintainer)
 
 - **Notes are silent:** no chat line, no book page; only the debug log shows them.

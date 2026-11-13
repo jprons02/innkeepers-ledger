@@ -304,9 +304,38 @@ local function travelersOk(list, ownerGUID)
   return true
 end
 
+-- Notes (docs/specs/inn-notes.md 4.2): 1..200 items, (t, npc) strictly ascending, npc
+-- unique, zone ~= continent, faction Alliance or Horde when present.
+local NOTE = { npc = true, t = true, zone = true, continent = true, faction = false }
+
+local function notesOk(list)
+  local n = arrayLen(list)
+  if n == nil or n < 1 or n > 200 then
+    return false
+  end
+  local npcs = {}
+  for i = 1, n do
+    local note = list[i]
+    if not fieldsOk(note, NOTE) or not isInt(note.npc, 1, 9999999) or not isTime(note.t)
+      or not isInt(note.zone, 1, 999999) or not isInt(note.continent, 1, 999999)
+      or note.zone == note.continent or npcs[note.npc] then
+      return false
+    end
+    if note.faction ~= nil and note.faction ~= "Alliance" and note.faction ~= "Horde" then
+      return false
+    end
+    npcs[note.npc] = true
+    local prev = list[i - 1]
+    if prev and not (prev.t < note.t or (prev.t == note.t and prev.npc < note.npc)) then
+      return false
+    end
+  end
+  return true
+end
+
 local TOP = {
   v = true, flavor = true, exported = true, addon = true, me = true, collection = true,
-  cosmetics = true, entries = true, travelers = false,
+  cosmetics = true, entries = true, travelers = false, notes = false,
 }
 local ME = { guid = true, name = false }
 
@@ -332,6 +361,8 @@ function M.schemaOk(data)
     return false, "entries"
   elseif data.travelers ~= nil and not travelersOk(data.travelers, data.me.guid) then
     return false, "travelers"
+  elseif data.notes ~= nil and not notesOk(data.notes) then
+    return false, "notes"
   end
   return true
 end

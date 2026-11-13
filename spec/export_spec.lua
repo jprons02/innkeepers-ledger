@@ -10,13 +10,14 @@ local dec = require("helpers.export_decode")
 
 local T = fx.T
 
--- A fresh ns: Ledger, Collection, Cosmetics, Export, as in the TOC (no Data: the tests
--- bind the fixture places and catalog themselves).
+-- A fresh ns: Ledger, Collection, Cosmetics, InnNotes, Export, as in the TOC (no Data: the
+-- tests bind the fixture places and catalog themselves).
 local function modules()
   local ns = {}
   load.file("Ledger.lua", ns, load.pure_env())
   load.file("Collection.lua", ns, load.pure_env())
   load.file("Cosmetics.lua", ns, load.pure_env())
+  load.file("InnNotes.lua", ns, load.pure_env())
   load.file("Export.lua", ns, load.pure_env())
   return ns
 end
@@ -33,7 +34,7 @@ local NEG_ZERO = -ZERO
 
 local REASONS = {
   input = true, flavor = true, exported = true, addon = true, me = true, collection = true,
-  entries = true, cosmetics = true, travelers = true, too_large = true,
+  entries = true, cosmetics = true, travelers = true, notes = true, too_large = true,
 }
 
 -- ---------------------------------------------------------------------------
@@ -232,6 +233,36 @@ local function EXPECTED_F_T()
   return expected
 end
 
+-- Notes N (docs/specs/inn-notes.md 6.4): three valid notes, out of order; EXPECTED_N is
+-- them sorted by (t, npc). F+N is F with `notes = N`.
+local function N()
+  return {
+    { npc = 3934, t = T + 300, zone = 1438, continent = 1414 },
+    { npc = 6929, t = T + 100, zone = 1454, continent = 1414, faction = "Alliance" },
+    { npc = 2352, t = T + 100, zone = 1424, continent = 1415, faction = "Horde" },
+  }
+end
+
+local function EXPECTED_N()
+  return {
+    { npc = 2352, t = T + 100, zone = 1424, continent = 1415, faction = "Horde" },
+    { npc = 6929, t = T + 100, zone = 1454, continent = 1414, faction = "Alliance" },
+    { npc = 3934, t = T + 300, zone = 1438, continent = 1414 },
+  }
+end
+
+local function FN()
+  local input = F()
+  input.notes = N()
+  return input
+end
+
+local function EXPECTED_F_N()
+  local expected = EXPECTED_F()
+  expected.notes = EXPECTED_N()
+  return expected
+end
+
 -- Export.string(F()) under Lua 5.1 with the vendored libraries (spec 6.3 golden). If this
 -- breaks after a library or interpreter change while decode(GOLDEN_F) still deep-equals
 -- EXPECTED_F, regenerate it and say so in the PR.
@@ -249,7 +280,7 @@ describe("Export module", function()
     assert.equal("!IL1!", Export.PREFIX)
     assert.same({ forever = true }, Export.FLAVORS)
     assert.same({ ownMax = 10000, cosmeticsMax = 1200, mapItemsMax = 1000, addonBytes = 32,
-      serializedMax = 4194304 }, Export.LIMITS)
+      serializedMax = 4194304, notesMax = 200 }, Export.LIMITS)
   end)
 
   it("changing the exported FLAVORS and LIMITS changes nothing inside", function()
@@ -263,13 +294,19 @@ describe("Export module", function()
     assert.same({ nil, "flavor" }, { ns.Export.build(input) })
   end)
 
-  it("raises at load without Ledger or Collection (packaging bugs)", function()
+  it("raises at load without Ledger, Collection or InnNotes (packaging bugs)", function()
     assert.has_error(function()
       load.file("Export.lua", {}, load.pure_env())
     end)
     assert.has_error(function()
       local ns = {}
       load.file("Ledger.lua", ns, load.pure_env())
+      load.file("Export.lua", ns, load.pure_env())
+    end)
+    assert.has_error(function()
+      local ns = {}
+      load.file("Ledger.lua", ns, load.pure_env())
+      load.file("Collection.lua", ns, load.pure_env())
       load.file("Export.lua", ns, load.pure_env())
     end)
   end)
@@ -957,6 +994,175 @@ describe("schemaOk", function()
 end)
 
 -- ---------------------------------------------------------------------------
+-- The `notes` field (docs/specs/inn-notes.md 4.2 and 6.4).
+
+describe("notes (inn-notes.md 6.4)", function()
+  local NOTES_MAX = Export.LIMITS.notesMax
+
+  -- n valid notes with distinct NPC IDs, in reverse time order.
+  local function manyNotes(n)
+    local list = {}
+    for i = 1, n do
+      list[i] = { npc = 100000 + i, t = T + (n - i), zone = 1400 + i % 50, continent = 1 }
+    end
+    return list
+  end
+
+  it("builds F+N with the notes sorted by (t, npc), in any input order", function()
+    assert.same(EXPECTED_F_N(), buildOk(FN()))
+    for seed = 1, 5 do
+      local input = F()
+      input.notes = fx.shuffled(N(), seed)
+      assert.same(EXPECTED_F_N(), buildOk(input))
+    end
+    local input = F()
+    input.notes = fx.reversed(N())
+    assert.same(EXPECTED_F_N(), buildOk(input))
+  end)
+
+  it("has no notes key for nil, an empty table or only invalid notes: EXPECTED_F", function()
+    for _, list in ipairs({ false, {}, { { npc = 0, t = T, zone = 1, continent = 2 } },
+      { "x", 7, { npc = 3934 } } }) do
+      local input = F()
+      input.notes = list or nil
+      local data = buildOk(input)
+      assert.is_nil(rawget(data, "notes"))
+      assert.same(EXPECTED_F(), data)
+    end
+  end)
+
+  it("refuses notes that aren't a table, after travelers in the spec's order", function()
+    for _, v in ipairs({ "x", 7, true, false, fx.hostileProxy() }) do
+      local input = F()
+      input.notes = v
+      assert.same({ nil, "notes" }, { build(input) })
+    end
+    local input = F()
+    input.travelers, input.notes = "x", "x"
+    assert.same({ nil, "travelers" }, { build(input) })
+  end)
+
+  it("keeps the first note of a repeated npc (by index, whatever its t)", function()
+    local input = F()
+    input.notes = {
+      { npc = 3934, t = T + 300, zone = 1438, continent = 1414 },
+      { npc = 3934, t = T, zone = 1, continent = 2, faction = "Horde" },
+      { npc = 2352, t = T + 100, zone = 1424, continent = 1415 },
+    }
+    assert.same({
+      { npc = 2352, t = T + 100, zone = 1424, continent = 1415 },
+      { npc = 3934, t = T + 300, zone = 1438, continent = 1414 },
+    }, buildOk(input).notes)
+  end)
+
+  it("leaves out each kind of invalid note, keeping its siblings", function()
+    local function note(changes)
+      local n = { npc = 4000, t = T + 50, zone = 10, continent = 20, faction = "Horde" }
+      for k, v in pairs(changes) do
+        n[k] = v
+      end
+      return n
+    end
+    local bad = {
+      note({ npc = 0 }), note({ npc = 10000000 }), note({ npc = 1.5 }), note({ npc = "4000" }),
+      note({ npc = 0 / 0 }), note({ npc = 1 / 0 }),
+      note({ t = LIMITS.tMin - 1 }), note({ t = LIMITS.tMax + 1 }), note({ t = T + 0.5 }),
+      note({ zone = 0 }), note({ zone = 1000000 }), note({ continent = 0 }),
+      note({ continent = 1000000 }), note({ zone = 20 }), note({ zone = "10" }),
+      note({ faction = "Neutral" }), note({ faction = "alliance" }), note({ faction = "" }),
+      note({ faction = 7 }), note({ extra = 1 }), note({ name = "Innkeeper" }),
+      note({ zone = false }), "note", 7, fx.hostileTable(), fx.hostileProxy(),
+      { npc = 4000, t = T + 50, zone = 10 },
+      setmetatable({ npc = 4000, t = T + 50, zone = 10 }, { __index = { continent = 20 } }),
+    }
+    for i, b in ipairs(bad) do
+      local input = F()
+      input.notes = { N()[1], b, N()[3] }
+      local got = buildOk(input).notes
+      assert.equal(2, #got, "case " .. i)
+      assert.same({ EXPECTED_N()[1], EXPECTED_N()[3] }, got, "case " .. i)
+    end
+  end)
+
+  it("passes 200 notes; 201 is too_large, counting invalid items too", function()
+    local input = F()
+    input.notes = manyNotes(NOTES_MAX)
+    assert.equal(NOTES_MAX, #buildOk(input).notes)
+    input.notes[NOTES_MAX + 1] = { npc = 1, t = T, zone = 1, continent = 2 }
+    assert.same({ nil, "too_large" }, { build(input) })
+    input.notes = {}
+    for i = 1, NOTES_MAX + 1 do
+      input.notes[i] = "junk"
+    end
+    assert.same({ nil, "too_large" }, { build(input) })
+    -- A hole stops the read: items past it don't count.
+    input.notes = manyNotes(NOTES_MAX + 5)
+    input.notes[3] = nil
+    assert.equal(2, #buildOk(input).notes)
+  end)
+
+  it("never runs a metamethod of the list or its items, and copies every note", function()
+    local mt = {}
+    for _, ev in ipairs(fx.HOSTILE_EVENTS) do
+      mt[ev] = function() error("metamethod ran") end
+    end
+    local list = {}
+    for i, n in ipairs(N()) do
+      list[i] = setmetatable(n, mt)
+    end
+    local input = F()
+    input.notes = setmetatable(list, mt)
+    local before = fx.snapshot(input, 6)
+    local data = buildOk(input)
+    assert.is_true(fx.sameSnapshot(before, fx.snapshot(input, 6)))
+    assert.same(EXPECTED_N(), data.notes)
+    local inputs = tablesOf(input)
+    for t in pairs(tablesOf(data)) do
+      assert.is_nil(inputs[t])
+    end
+    assert.is_true(noSharedTables(data))
+  end)
+
+  it("round-trips F+N through the real libraries", function()
+    local data = decode(exportOk(FN()))
+    assert.same(EXPECTED_F_N(), data)
+    assert.same(buildOk(FN()), data)
+  end)
+
+  it("schemaOk accepts notes and refuses each malformed shape", function()
+    assert.is_true(dec.schemaOk(EXPECTED_F_N()))
+    local function breaks(mutate)
+      local data = EXPECTED_F_N()
+      mutate(data)
+      return not dec.schemaOk(data)
+    end
+    assert.is_true(breaks(function(d) d.notes[1], d.notes[3] = d.notes[3], d.notes[1] end))
+    assert.is_true(breaks(function(d) d.notes[2].npc = d.notes[1].npc end))
+    assert.is_true(breaks(function(d)
+      d.notes[3] = { npc = 2352, t = T + 400, zone = 1, continent = 2 }
+    end))
+    assert.is_true(breaks(function(d) d.notes[1].extra = 1 end))
+    assert.is_true(breaks(function(d) d.notes[1].faction = "Neutral" end))
+    assert.is_true(breaks(function(d) d.notes[1].zone = d.notes[1].continent end))
+    assert.is_true(breaks(function(d) d.notes[1].continent = nil end))
+    assert.is_true(breaks(function(d) d.notes = {} end))
+    assert.is_true(breaks(function(d) d.notes = "x" end))
+    assert.is_true(breaks(function(d)
+      d.notes = {}
+      for i = 1, 201 do
+        d.notes[i] = { npc = i, t = T + i, zone = 1, continent = 2 }
+      end
+    end))
+    assert.is_false(breaks(function(d)
+      d.notes = {}
+      for i = 1, 200 do
+        d.notes[i] = { npc = i, t = T + i, zone = 1, continent = 2 }
+      end
+    end))
+  end)
+end)
+
+-- ---------------------------------------------------------------------------
 -- 6.3 Encode and round trip
 
 describe("Export.encode and Export.string (6.3)", function()
@@ -1158,10 +1364,13 @@ describe("privacy (6.4)", function()
     return ledger
   end
 
-  it("the default export holds no other player's GUID or name anywhere", function()
+  it("the default export holds no other player's GUID or name anywhere, notes too", function()
     local ledger = ledgerWithTravelers()
-    local data = decode(exportOk(glueInput(ledger, nil, "Alliance")))
+    local input = glueInput(ledger, nil, "Alliance")
+    input.notes = N() -- notes are in every export (inn-notes.md 6.4)
+    local data = decode(exportOk(input))
     assert.is_nil(rawget(data, "travelers"))
+    assert.same(EXPECTED_N(), data.notes)
     local players = 0
     for _, s in ipairs(stringsOf(data)) do
       for _, other in ipairs({ MIRA, ZOE, "Mira Ashvale", ZOE_NAME }) do
@@ -1296,6 +1505,20 @@ describe("size budget (6.5)", function()
     assert.equal(300, #decode(s).entries)
   end)
 
+  -- docs/specs/inn-notes.md 4.3: 200 notes (the cap) of realistic values, most with a
+  -- faction. Hard ceiling 32 KiB.
+  it("L + 200 notes, default", function()
+    local input = fixtureL()
+    input.notes = {}
+    for i = 1, 200 do
+      input.notes[i] = { npc = 1000 + (i * 7919) % 250000, t = T + i * 43200 + (i * 37) % 3600,
+        zone = 1400 + (i * 13) % 1200, continent = 1414 + i % 3,
+        faction = i % 4 == 0 and "Horde" or i % 4 ~= 1 and "Alliance" or nil }
+    end
+    local s = measure("L + 200 notes", input, 2 * KIB16)
+    assert.equal(200, #decode(s).notes)
+  end)
+
   it("L + travelers, 75 x 40 entries #sim", function()
     local input = fixtureL()
     input.travelers = {}
@@ -1346,8 +1569,15 @@ describe("size budget (6.5)", function()
       tr.entries[1] = deepcopy(input.own[i])
       input.travelers[i] = tr
     end
+    -- And 200 notes, each field at its longest (inn-notes.md 4.3).
+    input.notes = {}
+    for i = 1, Export.LIMITS.notesMax do
+      input.notes[i] = { npc = 9999999 - i, t = LIMITS.tMax - i, zone = 999999 - i,
+        continent = 999000 - i, faction = "Alliance" }
+    end
     local started = os.clock()
     local data = buildOk(input)
+    assert.equal(200, #data.notes)
     local serialized = LIBS.serializer:Serialize(data)
     print(string.format("\nexport size: every limit: serialized %d B, build + serialize %.2f s",
       #serialized, os.clock() - started))
@@ -1360,7 +1590,7 @@ end)
 -- 6.6 Hostile and tampered input
 
 describe("hostile and tampered input (6.6)", function()
-  it("survives 1 000 seeded mutations of F+T: a known reason or a valid table", function()
+  it("survives 1 000 seeded mutations of F+T+N: a known reason or a valid table", function()
     local seed = 64
     local function rand(n)
       seed = seed * 16807 % 2147483647
@@ -1386,6 +1616,7 @@ describe("hostile and tampered input (6.6)", function()
     local refused, built = 0, 0
     for iteration = 1, 1000 do
       local input = FT()
+      input.notes = N() -- the notes field is mutated too (inn-notes.md 6.4)
       local slots = {}
       local function collect(t)
         for k, v in next, t do

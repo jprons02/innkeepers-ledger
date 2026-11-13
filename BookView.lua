@@ -121,9 +121,10 @@ local TEXT = {
   newMany = " new signatures since you last shared.",
   changed = "Your ledger has changed since you last shared.",
   shareInfoTitle = "What the text holds",
-  shareInfoText = "Your signatures, the inns you've collected and the cosmetics you've "
-    .. "earned. Other travelers' signatures are theirs: they're left out unless you tick "
-    .. "the box.",
+  -- DRAFT (docs/specs/inn-notes.md 3.8): the maintainer's wording.
+  shareInfoText = "Your signatures, the inns you've collected, the cosmetics you've earned "
+    .. "and any innkeepers you've met that the ledger doesn't know yet. Other travelers' "
+    .. "signatures are theirs: they're left out unless you tick the box.",
   noLedger = "Your ledger isn't open yet. Try again in a moment.",
   readOnly = "This ledger is read-only (saved by a newer version, or damaged). You can read "
     .. "it, but nothing new is written.",

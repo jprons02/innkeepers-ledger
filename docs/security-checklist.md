@@ -50,9 +50,10 @@ lists.
 - **Hooks:** `hooksecurefunc`, `HookScript`, chat message filters, …
 - **Macros and bindings:** running or editing macros, secure action buttons, key
   bindings.
-- **Gossip and innkeeper actions:** selecting gossip options, `ConfirmBinder`. `Sign`
-  adds its own option but never picks one for the player, since that could reset their
-  hearthstone.
+- **Gossip and innkeeper actions:** selecting gossip options, `ConfirmBinder`, and
+  reading the hearthstone's bind location (`GetBindLocation`, added 2026-11-13 with inn
+  notes, #157). `Sign` adds its own option but never picks one for the player, since that
+  could reset their hearthstone; `Notes` only reads the options' icons.
 - **Account and group actions:** invites, group and guild membership, CVars,
   reload/logout, store, items, trade, turning other AddOns on or off.
 - **General-purpose decoders:** AceSerializer's `Deserialize` and LibDeflate's
@@ -183,8 +184,8 @@ launch the session does this on its own. A finding that needs a maintainer decis
    replacement.
 9. **Policy:** no new external references, links, paid or gated features; in-game
    wording follows [addon-policy.md](addon-policy.md).
-10. **Export:** the export string gained no data beyond the player's own ledger, and
-    `travelers` appears only when the player opts in;
+10. **Export:** the export string gained no data beyond the player's own ledger **and
+    own notes**, and `travelers` appears only when the player opts in;
     [export-format.md](export-format.md) matches the code.
 11. **Public repo hygiene:** no secrets, personal information, private notes or other
     projects in the diff, including docs and tickets.

@@ -8,6 +8,7 @@ return {
     "Ledger$",
     "Collection$",
     "Cosmetics$",
+    "InnNotes$",
     "SyncProtocol$",
     "SyncSchedule$",
     "Export$",

@@ -1030,4 +1030,61 @@ describe("Core:ExportString", function()
     assert.same({}, wow.errors)
     assert.same(before, _G.InnkeepersLedgerDB)
   end)
+
+  -- docs/specs/inn-notes.md 6.4: the player's notes are in every export.
+  describe("notes", function()
+    local NOTE = { npc = 3934, t = NOW, zone = 1437, continent = 1415, faction = "Horde" }
+
+    -- Talks to an innkeeper the data doesn't know (NPC 3934), so Notes records one note.
+    local function talkToUnknown()
+      _G.UnitGUID = function(unit)
+        if unit == "player" then
+          return GUID
+        elseif unit == "npc" then
+          return "Creature-0-4615-2991-62-3934-0000ABCDEF"
+        end
+      end
+      wow.gossipOptions = { { icon = 132060 }, { icon = 132052 } }
+      wow.npcFaction = "Horde"
+      wow.fire("GOSSIP_SHOW")
+    end
+
+    it("carries the one note after noting it, with the own entries", function()
+      local ns = withLedger()
+      talkToUnknown()
+      local data = decode(ns.Core:ExportString())
+      assert.same({ NOTE }, data.notes)
+      assert.same(OWN, data.entries)
+      assert.is_nil(data.travelers)
+      assert.same({ NOTE }, decode(ns.Core:ExportString(true)).notes)
+    end)
+
+    it("carries notes for a read-only ledger too", function()
+      local ns = login({ db = { global = {
+        ledgers = { [GUID] = { schema = 99, me = {}, own = deepcopy(OWN), travelers = {},
+          earned = {}, quarantine = {} } },
+        notes = { [GUID] = { v = 1, items = { deepcopy(NOTE) } } },
+      } } })
+      assert.is_true(ns.ledger.readOnly)
+      assert.same({ NOTE }, decode(ns.Core:ExportString()).notes)
+    end)
+
+    it("still exports, without notes, when Notes:List raises or isn't a table", function()
+      for _, list in ipairs({ function() error("raised on purpose") end,
+        function() return "x" end }) do
+        local ns = withLedger()
+        talkToUnknown()
+        ns.Notes.List = list
+        local data = decode(ns.Core:ExportString())
+        assert.is_nil(data.notes)
+        assert.same(OWN, data.entries)
+        wow.uninstall()
+      end
+    end)
+
+    it("has no notes key without notes", function()
+      local ns = withLedger()
+      assert.is_nil(rawget(decode(ns.Core:ExportString()), "notes"))
+    end)
+  end)
 end)

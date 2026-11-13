@@ -12,6 +12,9 @@
 
 **Status:** approved (self-approved 2026-09-28, ticket #64). No maintainer decision blocks
 it; two non-blocking questions are under [Open questions](#open-questions-maintainer).
+**Amended 2026-11 (#157):** the optional `notes` field is added to v1 (the player's own
+notes on innkeepers the data doesn't know), in every export; its rules are in §3.5,
+§3.6, §3.7, §3.10 and §4.1 below, and its design in [inn-notes.md](inn-notes.md).
 **Security-sensitive:** moderately. No peer bytes are parsed here and nothing is imported,
 but this slice draws the **privacy boundary** (other players' GUIDs and names leave the
 game only when the player opts in), makes the serializer and compressor reachable from
@@ -187,7 +190,8 @@ One uniform rule:
   `"me"`; `progress` not a table, or its `signed`/`total` not integers in
   0..`innMax` with `signed <= total`, or `faction`/`done` present and invalid →
   `"collection"`; `own` not a table → `"entries"`; `unlocked` not a table →
-  `"cosmetics"`; `travelers` present and not a table → `"travelers"`.
+  `"cosmetics"`; `travelers` present and not a table → `"travelers"`; `notes` present and
+  not a table → `"notes"` (#157).
 - **An array item or map item that fails its check is left out**, and the rest is kept.
   "Integer" everywhere means `type(x) == "number" and x == x and x % 1 == 0` plus the
   range, so `NaN`, `±inf` and fractions fail. Items:
@@ -202,14 +206,20 @@ One uniform rule:
   - traveler: kept if `guid` passes `validGUID` and isn't `me.guid`, `name` passes
     `validName`, `met` is a time, and at least one entry is kept (entries as for own
     entries, per traveler); a later traveler with a GUID already kept is left out.
+  - note (#157): kept if it passes `InnNotes.validNote` ([inn-notes.md §4.1](inn-notes.md#41-savedvariables-the-notes-record));
+    a later note with an `npc` already kept is left out. **No kept note → no `notes`
+    key** (nor for `notes == nil`). `build` doesn't check `npc` against `Data/Inns` (it
+    takes no data tables); `Notes:List()` already left known NPCs out.
 - **Limits → `nil, "too_large"`** (read one item past the limit to detect it; never a
   partial export): more than `LIMITS.ownMax` own items; more than `LIMITS.cosmeticsMax`
   cosmetic items; more than `LIMITS.mapItemsMax` items in `byContinent` or in `byZone`;
   more than `Ledger.CAPS.foreignTotal` traveler records or traveler entries in all; more
-  than `Ledger.CAPS.perSigner` entries in one traveler record. Counts are of items read,
-  valid or not, so the work is bounded whatever the items hold.
+  than `Ledger.CAPS.perSigner` entries in one traveler record; more than
+  `LIMITS.notesMax` notes (#157). Counts are of items read, valid or not, so the work is
+  bounded whatever the items hold.
 - **Orders are `build`'s, not the caller's:** own and traveler entries `(t, inn)`
-  ascending; cosmetics `(t, id)` ascending; travelers `met` descending, then `guid` in
+  ascending; cosmetics `(t, id)` ascending; notes `(t, npc)` ascending (#157); travelers
+  `met` descending, then `guid` in
   **byte order** (compared byte by byte, as `Ledger` does, never with Lua's string `<`).
   Deduplication keeps the first occurrence in input order, then the sort runs. So a
   shuffled input gives a deep-equal output.
@@ -225,7 +235,7 @@ their limits instead of repeating literals.
 | `Export.VERSION` | `1` (the format major: the envelope digit and `data.v`) |
 | `Export.PREFIX` | `"!IL1!"` (built from `VERSION`) |
 | `Export.FLAVORS` | `{ forever = true }` (a copy; v1's only flavor) |
-| `Export.LIMITS` | `{ ownMax = 10000, cosmeticsMax = 1200, mapItemsMax = 1000, addonBytes = 32, serializedMax = 4194304 }` (a copy). Traveler limits are `Ledger.CAPS.foreignTotal` (3 000) and `Ledger.CAPS.perSigner` (40); map keys use `Collection.LIMITS.mapKeyMax`; IDs and times use `Ledger.LIMITS` |
+| `Export.LIMITS` | `{ ownMax = 10000, cosmeticsMax = 1200, mapItemsMax = 1000, addonBytes = 32, serializedMax = 4194304, notesMax = 200 }` (a copy; `notesMax` is `InnNotes.LIMITS.max`, #157, and `Export.lua` asserts `ns.InnNotes` at load). Traveler limits are `Ledger.CAPS.foreignTotal` (3 000) and `Ledger.CAPS.perSigner` (40); map keys use `Collection.LIMITS.mapKeyMax`; IDs and times use `Ledger.LIMITS` |
 | `Export.build(input)` | data table (§4.1) or `nil, reason` (§3.5) |
 | `Export.encode(data, codec)` | the export string, or `nil, reason`: `"data"` (not a table), `"codec"` (not a table, or `serialize`/`compress` not functions), `"serialize"` (the call raised, or returned anything but a non-empty string), `"too_large"` (the serialized string is over `serializedMax`; `compress` is then never called), `"compress"` (raised, or not a non-empty string). Each codec call runs in `pcall`; only its first return is used |
 | `Export.string(input, codec)` | `encode(build(input), codec)`; `build`'s `nil, reason` passes through and the codec is never called |
@@ -243,6 +253,7 @@ their limits instead of repeating literals.
   progress  = <Collection.progress result>,
   unlocked  = <Cosmetics.unlocked result>,
   travelers = nil | <array of { guid, name, met, entries = <array of entries> }>,
+  notes     = nil | <array of notes>,      -- Notes:List() (#157)
 }
 ```
 
@@ -277,9 +288,12 @@ window and `/ledger share` (later) call only this. It runs its body in `pcall` (
 6. `travelers`: only if `rawequal(includeTravelers, true)`: for each `t` of
    `ledger:travelers()`, `{ guid = t.guid, name = t.name, met = t.met, entries =
    ledger:signerEntries(t.guid) }`.
+6a. `notes` (#157) = `ns.Notes:List()` inside its own `pcall`; an error or a non-table →
+   `nil` (the export still succeeds, without notes). Notes are **in every export, not
+   opt-in** (they hold no other player's data); a read-only ledger exports them too.
 7. `return ns.Export.string({ flavor = "forever", exported = now, addon = version(), me
    = { guid = ledger:ownerGUID(), name = ownerName() }, own = own, progress = progress,
-   unlocked = unlocked, travelers = travelers }, codec)`.
+   unlocked = unlocked, travelers = travelers, notes = notes }, codec)`.
 
 `flavor` is a literal in `Core` because the TOC targets only Forever in v1; if a build
 ever targets several flavors, #12's notes say how to detect it and the literal becomes a
@@ -351,9 +365,13 @@ sealed), `progress` with 150 zones on 5 continents, 160 cosmetics.
 | L + travelers, 75 × 40 entries (the caps) | ~450 KB | 100–170 KB | 512 KiB | 84 893 chars (272 420 B), 0.14 s; test ceiling 112 KiB |
 | L + travelers, 3 000 × 1 entry (worst at the caps) | ~600 KB | 150–250 KB | 512 KiB | 164 749 chars (517 391 B), 0.22 s; test ceiling 208 KiB |
 | Every `build` limit at once, longest fields | ≤ 2.2 MB | not encoded | `serializedMax` | 2 142 045 B serialized, 0.19 s build + serialize; test ceiling 2 624 KiB |
+| L + 200 notes (default, no travelers; #157) | ~57 KB | ~17 KB | 32 KiB | 16 933 chars (57 158 B), 0.04 s; test ceiling 32 KiB |
+| Every `build` limit at once, now with 200 notes (#157) | ≤ 2.2 MB | not encoded | `serializedMax` | 2 159 948 B serialized, 0.26 s build + serialize; test ceiling stays 2 624 KiB |
 
 Measured 2026-09-28 (#64) under busted, PUC Lua 5.1, with the vendored libraries; times
 are `os.clock` around `Export.string` on the implementer's machine, a first signal only.
+The two notes rows were measured 2026-11-13 (#157) the same way; 200 notes add about
+78 B each serialized (realistic values) and about 26 chars each to the string.
 
 - **Default exports are small** (a few KB for most players, ~15 KB for a heavy one).
   Opted-in exports near the foreign cap are the large case.
@@ -395,6 +413,8 @@ present with a `nil` value. No key outside this table appears in v1.
 | `travelers` | array, optional | present only when opted in (may be empty); `met` descending, then `guid` byte order; `guid` unique, never `me.guid` | travelers whose signatures you hold | `ledger:travelers()` |
 | `travelers[i]` | table | `{ guid, name, met = time, entries }`; `guid`/`name` as `me.guid`/`me.name` (`name` required); `entries` 1..40 entries, `(t, inn)` ascending, `(inn, t)` unique | one traveler and **their own** signatures | `ledger:signerEntries(guid)` |
 | entry | table | `{ inn = 1..9 999 999, t = time, phrase = { 1..5 IDs, each 1..9 999 }, seal = 1..999 (optional) }` | one signature | |
+| `notes` | array, optional | **present only when at least one note exists**; 1..200 items; `(t, npc)` ascending; `npc` unique | innkeepers the player talked to whose NPC ID wasn't in the exporting AddOn's `Data/Inns` (added 2026-11, #157) | `Notes:List()` |
+| `notes[i]` | table | `{ npc = 1..9 999 999, t = time, zone = 1..999 999, continent = 1..999 999, faction? }`; `zone ~= continent`; `faction` `"Alliance"` / `"Horde"`, optional | one note: the innkeeper's NPC ID, when it was first noted, the zone and continent map IDs where the player stood (the same rule and kind of key as `Data/Inns`'s `Zones` / `Continents` and `collection.byZone` / `byContinent`), and the faction the client reported for the innkeeper, absent when it reported none (a neutral NPC) or it couldn't be read | |
 
 - An entry's `inn` is an innkeeper NPC ID from `Data/Inns`, possibly an **alias** of the
   inn's primary record ([collection-cosmetics.md §3.1](collection-cosmetics.md#31-places-inns-zones-continents)).

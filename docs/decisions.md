@@ -10,6 +10,25 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-11-13 — An inn the client doesn't name is `<town> Inn` (DRAFT); read the probe's `npcs`
+
+The second read of the live probe found five more Alliance inns (`Data/Inns` now holds
+eight). The client names an inn only through its minimap or subzone text, and two of
+the five have none of their own: Innkeeper Heather's in Sentinel Hill and Innkeeper
+Shaussiy's in Auberdine read only as the town. **Such an inn is named `<town> Inn`**
+(*Sentinel Hill Inn*, *Auberdine Inn*), and an inn with a well-known name keeps it (*The
+Gilded Rose*, #160). This is a **DRAFT the maintainer may rename** before the first
+tag: names are display data keyed by NPC ID, so a rename costs nothing until then.
+**Rejected:** *the bare town name* (reads as a place, not an inn, in the book's list
+beside the zone); *waiting for the maintainer before adding them* (the walk's data is
+what launch is waiting on, and the name isn't frozen).
+
+**The probe's `log` rolls over at 3 000 entries** (about three days of play), so inns
+are read from its `npcs` table, which keeps every NPC talked to. Zone seals take the
+next free numbers (104..108) in the order the zones were added.
+
+---
+
 ### 2026-11-04 (later) — The walk moves to the live client; the offline renderer is dropped
 
 The beta closed on 2026-10-21 before the innkeeper walk (#12): the probe's log was last

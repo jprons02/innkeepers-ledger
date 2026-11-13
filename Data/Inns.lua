@@ -37,17 +37,33 @@ ns.Data.Inns = {
   [295] = { name = "Lion's Pride Inn", zone = 1429, faction = "Alliance" },
   -- Innkeeper Allison, Trade District
   [6740] = { name = "The Gilded Rose", zone = 1453, faction = "Alliance" },
+  -- Innkeeper Heather, Sentinel Hill
+  [8931] = { name = "Sentinel Hill Inn", zone = 1436, faction = "Alliance" },
+  -- Innkeeper Brianna, Lakeshire
+  [6727] = { name = "Lakeshire Inn", zone = 1433, faction = "Alliance" },
+  -- Innkeeper Hearthstove, Thelsamar
+  [6734] = { name = "Stoutlager Inn", zone = 1432, faction = "Alliance" },
+  -- Innkeeper Helbrek, Menethil Harbor
+  [1464] = { name = "Deepwater Tavern", zone = 1437, faction = "Alliance" },
+  -- Innkeeper Shaussiy, Auberdine
+  [6737] = { name = "Auberdine Inn", zone = 1439, faction = "Alliance" },
 }
 
 ns.Data.Zones = {
   [2521] = { name = "Zephras Isle", continent = 947, seal = 101 },
   [1429] = { name = "Elwynn Forest", continent = 1415, seal = 102 },
   [1453] = { name = "Stormwind City", continent = 1415, seal = 103 },
+  [1436] = { name = "Westfall", continent = 1415, seal = 104 },
+  [1433] = { name = "Redridge Mountains", continent = 1415, seal = 105 },
+  [1432] = { name = "Loch Modan", continent = 1415, seal = 106 },
+  [1437] = { name = "Wetlands", continent = 1415, seal = 107 },
+  [1439] = { name = "Darkshore", continent = 1414, seal = 108 },
 }
 
 ns.Data.Continents = {
   [947] = { name = "Azeroth" },
   [1415] = { name = "Eastern Kingdoms" },
+  [1414] = { name = "Kalimdor" },
 }
 
 -- True once every continent with an inn is in Continents and marked (spec 3.11).

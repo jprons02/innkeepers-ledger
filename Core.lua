@@ -1,7 +1,7 @@
 -- Core (glue): AceAddon setup, AceDB SavedVariables, opening the character's ledger at
 -- login, the /ledger command, the debug log and the export string's glue.
 -- Specs: docs/specs/sync-glue.md (sections 3.2 and 3.8), docs/specs/export.md (3.7),
--- docs/specs/sign.md (3.5), docs/specs/book.md (3.12).
+-- docs/specs/sign.md (3.5), docs/specs/book.md (3.12), docs/specs/inn-notes.md (3.6, 4.2).
 local ADDON_NAME, ns = ...
 
 local Core = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME, "AceConsole-3.0", "AceEvent-3.0")
@@ -172,6 +172,12 @@ function Core:OpenLedger(attempt)
         self:Debug("sign: error in login")
       end
     end
+    -- Notes the data now knows go from the notes record (docs/specs/inn-notes.md 3.6),
+    -- for a read-only ledger too: that record has its own version. Opening the ledger
+    -- and starting Sync never depend on it.
+    if not pcall(function() ns.Notes:Prune() end) then
+      self:Debug("notes: error in prune")
+    end
   else
     self.ledgerState = "open failed"
   end
@@ -317,6 +323,14 @@ local function exportString(includeTravelers)
     end
   end
 
+  -- The player's own notes on innkeepers the data doesn't know (docs/specs/inn-notes.md
+  -- 4.2): in every export. An error or a non-table leaves them out; the export goes on.
+  local notes
+  local notesOk, list = pcall(function() return ns.Notes:List() end)
+  if notesOk and type(list) == "table" then
+    notes = list
+  end
+
   return ns.Export.string({
     flavor = "forever", -- v1's TOC targets only Forever
     exported = now,
@@ -326,6 +340,7 @@ local function exportString(includeTravelers)
     progress = progress,
     unlocked = unlocked,
     travelers = travelers,
+    notes = notes,
   }, codec)
 end
 

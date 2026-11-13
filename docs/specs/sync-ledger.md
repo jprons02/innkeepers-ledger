@@ -374,6 +374,7 @@ or its indexes.
 | `Ledger.validName(s)` | boolean: the name rule (5.2), which includes `cleanText` (5.2a) |
 | `Ledger.cleanText(s)` | boolean: `s` is a string of well-formed UTF-8 with no hidden code point; never throws (5.2a; amended 2026-10-07, #119) |
 | `Ledger.innFromNpcGUID(guid, inns)` | NPC ID if `guid` is a creature GUID whose NPC ID is a key of `inns`, else `nil`; never throws (5.2) |
+| `Ledger.npcFromGUID(guid)` | NPC ID (1..7 digits, no leading zero) of any creature GUID, known or not, else `nil`; never throws. The one copy of the creature-GUID rule: `innFromNpcGUID` is `npcFromGUID` then the `inns` check, and `InnNotes` uses it to note innkeepers the data doesn't know (5.2; added 2026-11, #157, [inn-notes.md §3.9](inn-notes.md#39-ledgernpcfromguid)) |
 | `ledger:weekOf(t)` / `ledger:nextWeekStart(now)` | the signing-week number of `t` / the time of the first weekly reset after `now` (4.4) |
 | `ledger:canSign(inn, now)` | `false` if an own entry at `inn` falls in `weekOf(now)` (or the ledger is read-only, or `inn` / `now` isn't a valid integer), else `true` |
 | `ledger:addOwn(e)` | `"added"`, `"dup"`, `"too_soon"`, `"invalid"`, `"readonly"` |

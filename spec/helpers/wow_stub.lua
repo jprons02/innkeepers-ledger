@@ -219,8 +219,39 @@ local function defaults()
   api.UNKNOWNOBJECT = "Unknown"
   api.UnitClass = function() return "Warrior", "WARRIOR", 1 end
   api.UnitRace = function() return "Human", "Human", 1 end
-  api.UnitFactionGroup = function() return "Alliance", "Alliance" end
+  -- The player is Alliance. The NPC's faction is wow.npcFaction (default nil: a neutral
+  -- NPC returns nothing, as the live client did).
+  M.npcFaction = nil
+  api.UnitFactionGroup = function(unit)
+    if unit == "npc" then
+      return M.npcFaction, M.npcFaction
+    end
+    return "Alliance", "Alliance"
+  end
   api.GetNormalizedRealmName = function() return "Stubrealm" end
+
+  -- Gossip (inn-notes.md 6.3): GetOptions returns wow.gossipOptions; SelectOption is a
+  -- spy that records every call (nothing of ours may call it).
+  M.gossipOptions = {}
+  M.gossipSelected = {}
+  api.C_GossipInfo = {
+    GetOptions = function() return M.gossipOptions end,
+    SelectOption = function(...) M.gossipSelected[#M.gossipSelected + 1] = { ... } end,
+  }
+  -- Maps (inn-notes.md 6.3): the player stands in wow.bestMap; GetMapInfo reads wow.maps.
+  -- The default chain is live's Zone 1437 -> Continent 1415 -> World 947.
+  M.bestMap = 1437
+  M.maps = {
+    [1437] = { mapID = 1437, mapType = 3, parentMapID = 1415 },
+    [1415] = { mapID = 1415, mapType = 2, parentMapID = 947 },
+    [947] = { mapID = 947, mapType = 1, parentMapID = 0 },
+  }
+  api.C_Map = {
+    GetBestMapForUnit = function(unit)
+      if unit == "player" then return M.bestMap end
+    end,
+    GetMapInfo = function(id) return M.maps[id] end,
+  }
   -- Three days to the weekly reset.
   api.C_DateAndTime = {
     GetSecondsUntilWeeklyReset = function() return 259200 end,

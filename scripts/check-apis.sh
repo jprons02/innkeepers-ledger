@@ -38,6 +38,8 @@ files="$files${files:+$nl}Libs/embeds.xml"
 # "combat state" is only whether we're in combat, never combat data, and only in Sync.lua
 # (docs/decisions.md, 2026-09-27: "Sync may read combat state, and players are told").
 # The "combat data" rule stays closed everywhere.
+# "gossip and innkeeper actions" also bars reading the hearthstone's bind location: noting
+# innkeepers reads the gossip options only (docs/decisions.md, 2026-11-13: "Inn notes").
 # "general purpose decoders" keeps every deserializer, inflater and decoder of the vendored
 # libraries out of shipped code: nothing we ship reads an export string or any other
 # serialized or compressed data (docs/decisions.md, 2026-09-28: "Export v1: what the draft
@@ -53,7 +55,7 @@ combat state|Sync.lua|InCombatLockdown PLAYER_REGEN_DISABLED PLAYER_REGEN_ENABLE
 chat and social sending|-|SendChatMessage ChatEdit_SendText BNSendWhisper BNSendGameData BNSendFriendInvite C_BattleNet C_Club SendMail C_Mail C_FriendList AddFriend AddIgnore SendWho
 hooks|-|hooksecurefunc HookScript securecall issecurevariable ChatFrame_AddMessageEventFilter
 macros and bindings|-|RunMacro RunMacroText CreateMacro EditMacro DeleteMacro C_Macro SecureActionButtonTemplate macrotext SetBinding SetBindingClick SetBindingMacro SetBindingSpell SetBindingItem SetOverrideBinding SetOverrideBindingClick SaveBindings
-gossip and innkeeper actions|-|SelectGossipOption SelectOption SelectOptionByIndex ConfirmBinder
+gossip and innkeeper actions|-|SelectGossipOption SelectOption SelectOptionByIndex ConfirmBinder GetBindLocation
 account and group actions|-|InviteUnit UninviteUnit LeaveParty PromoteToLeader GuildInvite GuildUninvite GuildLeave GuildDisband GuildSetLeader GuildPromote GuildDemote GuildRosterSetPublicNote GuildRosterSetOfficerNote C_GuildInfo.Invite Uninvite RemoveFromGuild SetCVar SetCVarBitfield ReloadUI Logout Quit ForceQuit C_StorePublic C_WowTokenPublic DeleteCursorItem UseContainerItem BuyMerchantItem InitiateTrade AcceptTrade DisableAddOn EnableAddOn DisableAllAddOns EnableAllAddOns
 general purpose decoders|-|Deserialize DecompressDeflate DecompressDeflateWithDict DecompressZlib DecompressZlibWithDict DecodeForPrint DecodeForWoWAddonChannel DecodeForWoWChatChannel CreateCodec C_EncodingUtil DecompressString DecodeBase64 DeserializeCBOR DeserializeJSON
 addon messages and channels|Sync.lua Libs/embeds.xml|SendAddonMessage SendAddonMessageLogged RegisterAddonMessagePrefix CHAT_MSG_ADDON CHAT_MSG_ADDON_LOGGED BN_CHAT_MSG_ADDON ChatThrottleLib AceComm SendCommMessage RegisterComm JoinChannelByName JoinPermanentChannel JoinTemporaryChannel LeaveChannelByName'

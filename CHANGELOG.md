@@ -18,5 +18,8 @@
   through play.
 - **Share:** /ledger share gives you a copyable text string of your ledger. Including
   the travelers you've met is your choice, and it starts off.
+- **Innkeepers the ledger doesn't know yet:** when you talk to one, the AddOn quietly
+  notes its ID, where you met it and when (nothing is chosen for you, and your hearthstone is
+  untouched), and your share text carries those notes.
 - Your ledger is saved per character in your game's saved variables. The AddOn has no
   network access: sharing with other players happens only in-game.

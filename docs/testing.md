@@ -43,6 +43,17 @@ Proportional, not ceremonial:
   (`SetColorTexture` lands in `.color`). `GossipFrame` is a stub frame; set it to `nil`
   for a client without one. `wow.children(parent)` lists the frames made under a parent.
   `UnitGUID("npc")` is `nil` unless a case overrides `UnitGUID`.
+  **Gossip options and maps** (for `Notes`, [specs/inn-notes.md §6.3](specs/inn-notes.md#63-specnotes_speclua-the-glue-whole-addon-under-the-stub)):
+  `C_GossipInfo.GetOptions()` returns `wow.gossipOptions` (default `{}`) and
+  `C_GossipInfo.SelectOption` is a spy recording into `wow.gossipSelected` (nothing of
+  ours may call it); `C_Map.GetBestMapForUnit("player")` is `wow.bestMap` and
+  `C_Map.GetMapInfo(id)` reads `wow.maps` (default live's chain `1437 → 1415 → 947`,
+  types 3, 2, 1); `UnitFactionGroup("npc")` is `wow.npcFaction` (default `nil`, a neutral
+  NPC), apart from the player's `"Alliance"`.
+- **Notes** (`spec/inn_notes_spec.lua`, pure; `spec/notes_spec.lua`, the glue): the pure
+  cases run over the place fixtures' inns (`5001` and its alias `5003`); the glue cases
+  log in talking to NPC `3934` (unknown to the shipped data), Horde, with a Trade option
+  and the binder option (icon `132052`), and read `db.global.notes[guid]`.
 - **Sign** (`spec/sign_flow_spec.lua`, pure; `spec/sign_spec.lua`, the glue): the pure
   cases build flows over the place fixtures, the phrase fixture of
   [specs/phrase.md §6](specs/phrase.md#6-test-plan) and a real `Ledger`, plus the real

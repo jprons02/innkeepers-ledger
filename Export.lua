@@ -1,6 +1,7 @@
 -- Export (pure): builds the v1 export data table from plain values the glue gathers,
 -- encodes it with an injected serializer and compressor, and writes our own standard
--- base64. The string format is docs/export-format.md; the spec is docs/specs/export.md.
+-- base64. The string format is docs/export-format.md; the spec is docs/specs/export.md
+-- (the `notes` field: docs/specs/inn-notes.md 4.2).
 -- No WoW API here. Client values come in as arguments (docs/architecture.md -> Modules),
 -- and so do the libraries: this file never reaches for them itself.
 -- Every argument is read with rawget / raw next only, with bounded work, never written to,
@@ -14,6 +15,9 @@ assert(type(Ledger) == "table", "Export needs ns.Ledger; Ledger.lua comes first 
 local Collection = ns.Collection
 assert(type(Collection) == "table",
   "Export needs ns.Collection; Collection.lua comes first in the TOC")
+local InnNotes = ns.InnNotes
+assert(type(InnNotes) == "table",
+  "Export needs ns.InnNotes; InnNotes.lua comes first in the TOC")
 
 local Export = {}
 ns.Export = Export
@@ -38,6 +42,8 @@ local PHRASE_IDS_MAX = L.phraseIdsMax
 local COSMETIC_ID_MAX = L.cosmeticIdMax
 local FOREIGN_MAX, PER_SIGNER = Ledger.CAPS.foreignTotal, Ledger.CAPS.perSigner
 local MAP_KEY_MAX = Collection.LIMITS.mapKeyMax
+local NOTES_MAX = InnNotes.LIMITS.max
+local validNote = InnNotes.validNote
 local FACTIONS = { Alliance = true, Horde = true }
 local validGUID, validName, validEntry = Ledger.validGUID, Ledger.validName, Ledger.validEntry
 
@@ -50,6 +56,7 @@ Export.LIMITS = {
   mapItemsMax = MAP_ITEMS_MAX,
   addonBytes = ADDON_BYTES,
   serializedMax = SERIALIZED_MAX,
+  notesMax = NOTES_MAX,
 }
 
 -- An integer in lo..hi. NaN fails x == x; inf % 1 is NaN, so inf fails too.
@@ -338,6 +345,37 @@ local function travelers(list, ownerGUID)
   return out
 end
 
+local function noteLess(a, b)
+  if a.t ~= b.t then
+    return a.t < b.t
+  end
+  return a.npc < b.npc
+end
+
+-- The kept notes (docs/specs/inn-notes.md 4.2), sorted, or nil if there are too many:
+-- invalid ones and a later note of an NPC already kept are left out.
+local function notes(list)
+  local out, kept = {}, {}
+  for i = 1, NOTES_MAX + 1 do
+    local n = rawget(list, i)
+    if n == nil then
+      break
+    elseif i > NOTES_MAX then
+      return nil
+    end
+    if validNote(n) then
+      local npc = rawget(n, "npc")
+      if not kept[npc] then
+        kept[npc] = true
+        out[#out + 1] = { npc = npc, t = rawget(n, "t"), zone = rawget(n, "zone"),
+          continent = rawget(n, "continent"), faction = rawget(n, "faction") }
+      end
+    end
+  end
+  tsort(out, noteLess)
+  return out
+end
+
 -- Export.build(input) -> the v1 data table (spec 4.1), or nil, reason.
 function Export.build(input)
   if type(input) ~= "table" then
@@ -347,6 +385,7 @@ function Export.build(input)
   local addon, me = rawget(input, "addon"), rawget(input, "me")
   local progress, own = rawget(input, "progress"), rawget(input, "own")
   local unlocked, travelerList = rawget(input, "unlocked"), rawget(input, "travelers")
+  local noteList = rawget(input, "notes")
 
   -- Required top-level values, in a fixed order.
   if not (type(flavor) == "string" and FLAVORS[flavor] == true) then
@@ -365,6 +404,8 @@ function Export.build(input)
     return nil, "cosmetics"
   elseif travelerList ~= nil and type(travelerList) ~= "table" then
     return nil, "travelers"
+  elseif noteList ~= nil and type(noteList) ~= "table" then
+    return nil, "notes"
   end
 
   -- Items: bad ones are left out; past a limit the whole export is refused.
@@ -379,6 +420,17 @@ function Export.build(input)
   if cosOut == nil or (travelerList ~= nil and travOut == nil) then
     return nil, "too_large"
   end
+  -- Notes are in every export; with none kept there's no `notes` key.
+  local notesOut
+  if noteList ~= nil then
+    notesOut = notes(noteList)
+    if notesOut == nil then
+      return nil, "too_large"
+    end
+    if #notesOut == 0 then
+      notesOut = nil
+    end
+  end
 
   return {
     v = VERSION,
@@ -390,6 +442,7 @@ function Export.build(input)
     cosmetics = cosOut,
     entries = ownOut,
     travelers = travOut,
+    notes = notesOut,
   }
 end
 

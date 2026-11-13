@@ -1477,6 +1477,18 @@ describe("BookView: the Cosmetics tab", function()
 end)
 
 describe("BookView: the Share tab", function()
+  -- docs/specs/inn-notes.md 3.8 and 6.5 (DRAFT wording): the page says notes are exported.
+  it("describes what the text holds, notes included, in plain text", function()
+    assert.equal("Your signatures, the inns you've collected, the cosmetics you've earned "
+      .. "and any innkeepers you've met that the ledger doesn't know yet. Other travelers' "
+      .. "signatures are theirs: they're left out unless you tick the box.", TEXT.shareInfoText)
+    local m = newView().build(sit(ledgerE()), { tab = "share" })
+    assert.equal(TEXT.shareInfoText, m.right.text)
+    for _, bad in ipairs({ "|", "%", "http" }) do
+      assert.is_nil(m.right.text:find(bad, 1, true), bad)
+    end
+  end)
+
   it("builds the Share page and its nudge", function()
     local ledger = ledgerE()
     local view = newView()

@@ -100,6 +100,17 @@ logs them there.
   (`gossipOptionID` 137079, icon 132052, the binder icon) and *I would like to buy from
   you.* (icon 132060). The binder option is what marks an innkeeper in the probe's log;
   no other NPC logged so far has it.
+- ✅ **Innkeepers in live, for inn notes** (#157, [specs/inn-notes.md](specs/inn-notes.md);
+  re-read 2026-11-13 from the live probe's `npcs` table): of 109 NPCs talked to,
+  **exactly 7 had an option with icon `132052`**, all of them the innkeepers in
+  `Data/Inns` (`295`, `1464`, `6727`, `6734`, `6737`, `6740`, `8931`). **The binder
+  option's `gossipOptionID` differs per innkeeper** (`95566`, `96506`, `96527`, `98485`
+  in live; `137079` in the beta) and its place in the list varies (first, second or
+  third), so it is recognized by its icon alone. At all 7, `GetBestMapForUnit("player")`
+  was the Zone map itself (chain types 3, 2, 1), and `UnitFactionGroup("npc")` returned
+  `"Alliance", "Alliance"` (readable). ❓ The raw Lua type of an option's `icon` (the
+  probe stored strings; inn notes accept only the number) and a Horde innkeeper's
+  faction: the checklist's inn notes item.
 - ✅ **Sitting detection: no query API.** Only actions exist (`ToggleSit`,
   `SitStandOrDescendStart`); nothing reports the stand state.
 - ✅ **Addon messages on custom channels are allowed** (retail behavior): `"CHANNEL"` to a
@@ -261,6 +272,24 @@ in the sections above. **Partly** means the rest of the item is still open.
         round-trip item above)
   - [ ] at any innkeeper whose rest area doesn't cover where you talk to them: the
         `not_resting` line
+- [ ] Inn notes (#157, [specs/inn-notes.md §8](specs/inn-notes.md#8-in-client-checks-for-the-maintainer)),
+      once the AddOn with notes is installed, with `/ledger debug` on, reading
+      `InnkeepersLedger.lua` from disk after a `/reload`:
+  - [ ] an unknown innkeeper (any Horde one, or a new Forever zone's) gives one
+        `notes: noted <id>` line and one note in `global.notes[<guid>].items` with that
+        NPC ID, a `zone` and `continent` matching the probe's chain, and `t` about the
+        time of the talk. No line where the probe logged the binder icon means the
+        option's `icon` isn't the number `132052`: tell an agent
+  - [ ] talking to it again (or reopening the gossip) adds nothing
+  - [ ] a known innkeeper, a vendor or a quest giver gives no `notes:` line and no note
+  - [ ] nothing else changes at an unknown innkeeper: no Sign or Read button, no chat
+        line, the hearthstone's bind location unchanged
+  - [ ] the faction: `"Alliance"` at an Alliance innkeeper, none at a neutral one, and
+        `"Horde"` at a Horde one (needs a Horde character)
+  - [ ] `/ledger share`'s string, decoded with the test-only decoder, holds the same
+        `notes`
+  - [ ] after a data update adds a noted innkeeper, the next login's file no longer
+        holds that note
 - [ ] The book ([specs/book.md §8](specs/book.md#8-in-client-checks-for-12)), with
       `/ledger debug` on and Lua errors shown; screenshots go to the maintainer (the
       look is a DRAFT):

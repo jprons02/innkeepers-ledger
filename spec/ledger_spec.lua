@@ -1413,3 +1413,51 @@ describe("Ledger.innFromNpcGUID", function()
     assert.is_nil(Ledger.innFromNpcGUID("Creature-0-3767-0-1-1234-0000ABCDEF", hostileTable()))
   end)
 end)
+
+-- docs/specs/inn-notes.md 3.9 and 6.1: the creature-GUID parse innFromNpcGUID reuses.
+describe("Ledger.npcFromGUID", function()
+  it("returns the NPC ID of any creature GUID, known or not", function()
+    assert.equal(254089, Ledger.npcFromGUID("Creature-0-4615-2991-62-254089-0000ABCDEF"))
+    assert.equal(295, Ledger.npcFromGUID("Creature-0-5250-0-3-295-000012ABCD"))
+    assert.equal(9999999, Ledger.npcFromGUID("Creature-0-1-2-3-9999999-00AB"))
+    assert.equal(4321, Ledger.npcFromGUID("Creature-0-3767-0-1-4321-0000ABCDEF"))
+  end)
+
+  it("returns nil for anything that isn't a creature GUID with a 1..7 digit ID", function()
+    for _, g in ipairs({
+      "Creature-0-3767-0-1-12345678-0000AB",   -- 8 digits
+      "Creature-0-3767-0-1-01234-0000AB",      -- leading zero
+      "Creature-0-3767-0-1-0-0000AB",
+      "Player-0-3767-0-1-1234-0000ABCDEF",
+      "Player-1-00000001",
+      "Pet-0-3767-0-1-1234-0000ABCDEF",
+      "GameObject-0-3767-0-1-1234-0000ABCDEF",
+      "Vehicle-0-3767-0-1-1234-0000ABCDEF",
+      "Creature-0-3767-0-1-1234",              -- no spawn part
+      "Creature-0-3767-0-1234-0000ABCDEF",     -- a field short
+      "Creature-0-3767-0-1-1234-0000ABCDEF-1",
+      "Creature-0-3767-0-1-1234-XYZ",          -- spawn part not hex
+      "",
+    }) do
+      assert.is_nil(Ledger.npcFromGUID(g), g)
+    end
+    assert.is_nil(Ledger.npcFromGUID(nil))
+    assert.is_nil(Ledger.npcFromGUID(1234))
+    assert.is_nil(Ledger.npcFromGUID({}))
+    assert.is_nil(Ledger.npcFromGUID(true))
+  end)
+
+  it("returns nil for the hidden-value stand-ins without throwing", function()
+    assert.is_nil(Ledger.npcFromGUID(hostileTable()))
+    assert.is_nil(Ledger.npcFromGUID(hostileProxy()))
+  end)
+
+  it("agrees with innFromNpcGUID wherever the ID is a key", function()
+    local inns = { [254089] = true, [295] = { alias = 254089 } }
+    for _, g in ipairs({ "Creature-0-4615-2991-62-254089-0000ABCDEF",
+      "Creature-0-5250-0-3-295-000012ABCD", "Creature-0-1-2-3-4321-00AB", "x" }) do
+      local id = Ledger.npcFromGUID(g)
+      assert.equal(id ~= nil and inns[id] ~= nil and id or nil, Ledger.innFromNpcGUID(g, inns))
+    end
+  end)
+end)

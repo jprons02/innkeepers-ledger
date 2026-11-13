@@ -25,7 +25,9 @@ local wow = {
   "C_AddOns",
   "C_ChatInfo",
   "C_DateAndTime",
+  "C_GossipInfo",
   "C_GuildInfo",
+  "C_Map",
   "C_Timer",
   "ChatThrottleLib",
   "CreateFrame",
@@ -63,7 +65,7 @@ local wow = {
 }
 
 -- Keep in sync with GLUE in spec/helpers/load.lua (a spec checks it against the TOC).
-for _, glue in ipairs({ "Core.lua", "Sign.lua", "Sync.lua", "UI/Book.lua" }) do
+for _, glue in ipairs({ "Core.lua", "Sign.lua", "Notes.lua", "Sync.lua", "UI/Book.lua" }) do
   files[glue] = { std = "lua51", read_globals = wow }
 end
 

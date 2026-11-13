@@ -37,6 +37,8 @@ vs **client glue** (events, frames, API calls).
 | `SyncProtocol` | pure | Own fixed-format message codec, digest comparison, **all validation** |
 | `SyncSchedule` | pure | What `Sync` sends and when: send budget, HELLO / WANT / reply gates, pending queues, combat hold state, the pump ([spec](specs/sync-glue.md#35-send-path-syncschedule)) |
 | `Sync` | glue | Addon-message transport (own receive handler, ChatThrottleLib to send), sender → GUID resolution, group/guild triggers, the pump that drives `SyncSchedule`, the combat hold ([spec](specs/sync-glue.md)) |
+| `InnNotes` | pure | Every rule of noting innkeepers the data doesn't know: recognizing one by the binder option's icon, the zone and continent from the map chain, the note rule, the saved record (read, normalize, add, dedupe, cap at 200, prune) and the list the export carries ([spec](specs/inn-notes.md)) |
+| `Notes` | glue | One `GOSSIP_SHOW` frame: the client reads (hidden-value checked; read only, nothing picked), writing a note in its own versioned record `db.global.notes[guid]`, the login prune, `Notes:List()` for the export ([spec](specs/inn-notes.md)) |
 | `Export` | pure | Builds the v1 export table, then serialize + compress + base64 per [export-format.md](export-format.md) ([spec](specs/export.md)) |
 | `BookView` | pure | Every decision of the book: page models, paging, ordering, text safety (`plain`), dates, the quill fallback, the share nudge, the book's saved record ([spec](specs/book.md)) |
 | `UI/Book` | glue | The parchment book: four tabs, inn pages with travelers' signatures, the stamp grid, quills as a local flourish, the Share page; draws `BookView` models; its own record in `db.global.book[guid]` ([spec](specs/book.md)) |
@@ -192,7 +194,9 @@ Share page shows the string preselected in a copyable edit box
 ([specs/book.md §3.11.6](specs/book.md#3116-the-share-page)). Exporting other travelers'
 entries is **opt-in** per export (only
 `includeTravelers == true`; they're other people's names), and the default exports only
-your own signatures and collection. **No decoder or import ships;** the forbidden-API
+your own signatures and collection. **Notes on unknown innkeepers are in every export**
+(the optional `notes` field, #157: the player's own observations, no other player's
+data; [specs/inn-notes.md](specs/inn-notes.md)). **No decoder or import ships;** the forbidden-API
 check enforces it ([security-checklist.md](security-checklist.md#the-forbidden-api-check)).
 
 ## Game flavors

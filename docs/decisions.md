@@ -10,6 +10,41 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-11-13 (later) — Inn notes: the binder icon, a separate record, first note wins, 200 and no eviction, `notes` in every export
+
+Building #157 ([specs/inn-notes.md](specs/inn-notes.md)): at an innkeeper whose NPC ID
+isn't a key of `Data/Inns`, the AddOn quietly notes what the client reports, and the
+export carries the notes as an optional field added to v1.
+- **An innkeeper is an NPC with a gossip option whose icon is the number `132052`**
+  (the binder option). In live, 7 of 109 NPCs had it, all innkeepers; its
+  `gossipOptionID` differs per innkeeper and its place in the list varies. Nothing is
+  ever picked.
+- **A separate, versioned record per character,** `db.global.notes[guid] = { v = 1,
+  items }`, beside the ledger (whose schema stays 1). Damaged and newer records are never
+  written.
+- **First note wins;** later visits change nothing. **At most 200 notes; at the cap new
+  ones are dropped, nothing is evicted.** Notes the data now knows are pruned at login
+  and never exported.
+- **Notes hold only integers and one token** (NPC ID, time, zone and continent map IDs,
+  `"Alliance"`/`"Horde"`), and **are in every export**, not opt-in: they hold no other
+  player's data. The Share page says so (DRAFT wording).
+- **The forbidden-API list narrows:** reading the hearthstone's bind location joins
+  *gossip and innkeeper actions* (allowed nowhere), so noting can't drift into bind
+  data. No allow-list widens.
+
+**Rejected:** *notes inside the ledger's table* (a schema bump and migration, and a bad
+note would make the ledger read-only); *recognizing by `gossipOptionID`, the option's
+text, its position or the NPC's name* (they vary or are localized); *storing the NPC's
+name, subzone or minimap text* (free client text in the export); *the player's
+coordinates* (more personal than a zone, not needed); *a note without a zone*;
+*updating a note on later visits*; *evicting the oldest at the cap*; *`notes` always
+present, even empty* (every export's bytes would change); *opt-in per export*; *syncing
+notes*; *a book page or a chat line per note* (wording is the maintainer's);
+*the glue inside `Sign.lua`*; *excluding NPCs `Collection.bind` rejected from "known"*;
+*`UnitReaction` as the faction* (the player's standing, not the inn's side).
+
+---
+
 ### 2026-11-13 — An inn the client doesn't name is `<town> Inn` (DRAFT); read the probe's `npcs`
 
 The second read of the live probe found five more Alliance inns (`Data/Inns` now holds

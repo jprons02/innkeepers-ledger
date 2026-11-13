@@ -260,19 +260,36 @@ function Ledger.validName(s)
   return first ~= nil and #first >= 2 and #first <= 48
 end
 
--- The NPC ID of an innkeeper's creature GUID if it's a key of `inns`, else nil (spec 5.2).
--- Runs in pcall, so a hidden value that errors when touched gives nil too.
-function Ledger.innFromNpcGUID(guid, inns)
+-- The NPC ID of a creature GUID (1..7 digits, no leading zero), else nil (spec 5.2;
+-- docs/specs/inn-notes.md 3.9). Runs in pcall, so a hidden value that errors when touched
+-- gives nil too. The one copy of the creature-GUID rule.
+local function npcFromGUID(guid)
   local ok, id = pcall(function()
-    if type(guid) ~= "string" or type(inns) ~= "table" then
+    if type(guid) ~= "string" then
       return nil
     end
     local digits = guid:match("^Creature%-%d+%-%d+%-%d+%-%d+%-(%d+)%-%x+$")
     if not digits or #digits > 7 or digits:sub(1, 1) == "0" then
       return nil
     end
-    local n = tonumber(digits)
-    if inns[n] == nil then
+    return tonumber(digits)
+  end)
+  if ok then
+    return id
+  end
+  return nil
+end
+Ledger.npcFromGUID = npcFromGUID
+
+-- The NPC ID of an innkeeper's creature GUID if it's a key of `inns`, else nil (spec 5.2).
+-- Runs in pcall, so a hidden value that errors when touched gives nil too.
+function Ledger.innFromNpcGUID(guid, inns)
+  local ok, id = pcall(function()
+    if type(inns) ~= "table" then
+      return nil
+    end
+    local n = npcFromGUID(guid)
+    if n == nil or inns[n] == nil then
       return nil
     end
     return n

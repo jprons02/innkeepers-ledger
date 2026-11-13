@@ -36,6 +36,14 @@ dungeon run's addon-message facts; the live client's AddOn updated so signing wo
   by `scripts/data-json.lua`; CI fails when it's stale
   ([specs/data-json.md](specs/data-json.md)). **Regenerate and commit it with every
   `Data/*` change.**
+- **Inn notes (#157) are built on `feat/157-inn-notes`**, not merged
+  ([specs/inn-notes.md](specs/inn-notes.md)): at an innkeeper `Data/Inns` doesn't know
+  (recognized by the binder option's icon, 132052), `Notes.lua` quietly saves the NPC ID,
+  zone, continent, time and faction in `db.global.notes[guid]` (200 at most, first note
+  wins, pruned at login once the data knows the NPC), and every export carries them as
+  the optional `notes` field (v1). `GetBindLocation` joined the forbidden-API list. **When
+  it merges is decided separately** (decisions.md 2026-11-04: the first release after
+  launch); its in-client checks are under Waiting on the maintainer.
 - **The dev harness** (#139, [testing.md](testing.md#testing-posture)) screenshots and
   measures the UI in the client; each round needs the maintainer's `/reload`s. Its last
   round (2026-10-12) ran clean. Layout checks in busted (#140) use a measured 0.6 em
@@ -68,7 +76,8 @@ and the tag. The CurseForge and Wago projects, page text and `release` tokens ar
 ## Next step
 
 - **No agent ticket is ready.** #12 waits on the walk; **#157** (noting unknown
-  innkeepers in the export) is blocked until the first tag (decisions.md 2026-11-04).
+  innkeepers in the export) is built on its branch (review pending), and merges after
+  the first tag (decisions.md 2026-11-04).
   Otherwise pick from Follow-ups, checking decisions.md first.
 - **When the maintainer reports a walk:** read the `npcs` table (not the `log`, which
   rolls over at 3 000 entries) of `WTF/Account/<account>/SavedVariables/!ILProbe.lua`
@@ -110,6 +119,11 @@ None block work; DRAFTs ship until answered.
   - **Inn page rows:** headings 30 high, others 64. Fine, or tighter?
 - **Inn names (DRAFT):** *Sentinel Hill Inn* and *Auberdine Inn* are `<town> Inn`
   because the client gives only the town (decisions.md 2026-11-13). Keep, or rename?
+- **Inn notes (#157, DRAFT):** the Share page now says the text holds "any innkeepers
+  you've met that the ledger doesn't know yet" (wording yours). Also: should the book
+  show your notes, should noting say anything in chat (it's silent), and should notes be
+  opt-in like travelers (they're in every export)?
+  ([inn-notes.md → Open questions](specs/inn-notes.md#open-questions-maintainer)).
 - **Phrase wording (#62)**, **cosmetic catalog (#63)**, **export (#64)**: as in each
   spec's Open questions.
 
@@ -120,7 +134,13 @@ any of the seven live inns first, then `/reload` and tell an agent: the first li
 [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)
 items (the mouse wheel on the composer lists; the rest of the signing checks; a second
 character in a party for round-trips, `UnitFullName("partyN")` and cross-realm names,
-#119/#128; a guild round-trip and one dungeon run).
+#119/#128; a guild round-trip and one dungeon run). **Once #157 is installed:** its
+in-client checks ([inn-notes.md §8](specs/inn-notes.md#8-in-client-checks-for-the-maintainer)):
+with `/ledger debug` on, an unknown innkeeper (any Horde one, or a new Forever zone's)
+gives one `notes: noted <id>` line and one saved note; again gives nothing; a known
+innkeeper or a vendor gives nothing; no button, chat line or bind change; the note's
+faction; the note in `/ledger share`'s string; the note gone after a data update learns
+the innkeeper.
 
 ## Follow-ups
 

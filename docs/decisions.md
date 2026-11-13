@@ -17,7 +17,7 @@ eight). The client names an inn only through its minimap or subzone text, and tw
 the five have none of their own: Innkeeper Heather's in Sentinel Hill and Innkeeper
 Shaussiy's in Auberdine read only as the town. **Such an inn is named `<town> Inn`**
 (*Sentinel Hill Inn*, *Auberdine Inn*), and an inn with a well-known name keeps it (*The
-Gilded Rose*, 2026-11-06). This is a **DRAFT the maintainer may rename** before the first
+Gilded Rose*, #160). This is a **DRAFT the maintainer may rename** before the first
 tag: names are display data keyed by NPC ID, so a rename costs nothing until then.
 **Rejected:** *the bare town name* (reads as a place, not an inn, in the book's list
 beside the zone); *waiting for the maintainer before adding them* (the walk's data is

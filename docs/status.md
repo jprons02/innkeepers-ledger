@@ -27,10 +27,10 @@ dungeon run's addon-message facts; the live client's AddOn updated so signing wo
   (#12) continues.** Nothing is marked `complete`, so place rules stay locked and the
   book shows "1 of 8+" (fails closed, #110/#118). The Inns tab's list now runs to two
   pages (16 rows each), and the seals list to two (7 each).
-- **The live ledger was empty until today:** the client's AddOn was installed on
+- **The live ledger was empty until 2026-11-13:** the client's AddOn was installed on
   2026-11-04 with only Calmbreeze in `Data/Inns`, so no innkeeper met in live showed
   *Sign the guestbook*. Its `Data/Inns.lua` (the only shipped file that differed) was
-  replaced with this one on 2026-11-13; signing works at all eight inns from the next
+  replaced with this one on 2026-11-13; signing works at the seven live inns from the next
   login.
 - **`Data/*` is published as JSON (#156, on `dev`):** `docs/data/forever.json`, written
   by `scripts/data-json.lua`; CI fails when it's stale
@@ -56,7 +56,7 @@ and the tag. The CurseForge and Wago projects, page text and `release` tokens ar
    character in a party: sync between two players is untested.
 2. **Answers (maintainer):** #62 and #63 before the first tag (their IDs freeze), and
    which zones to mark complete. The other open questions can ship as DRAFTs.
-3. **Agent, as inns arrive:** read the probe's log from disk, fill `Data/Inns`,
+3. **Agent, as inns arrive:** read the probe's `npcs` table from disk, fill `Data/Inns`,
    regenerate the JSON, mark the chosen zones, check names against the inn page's limits
    ([book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft)); then a release PR
    with its security review, and rename `CHANGELOG.md`'s `## Unreleased` to the tag's
@@ -108,13 +108,15 @@ None block work; DRAFTs ship until answered.
   - **Conjunction strip:** 6 buttons, 3 a row, Hearthside's 7 page; or three rows of
     three (22 taller)? 4 a row is out (labels measured).
   - **Inn page rows:** headings 30 high, others 64. Fine, or tighter?
+- **Inn names (DRAFT):** *Sentinel Hill Inn* and *Auberdine Inn* are `<town> Inn`
+  because the client gives only the town (decisions.md 2026-11-13). Keep, or rename?
 - **Phrase wording (#62)**, **cosmetic catalog (#63)**, **export (#64)**: as in each
   spec's Open questions.
 
 ## Waiting on the maintainer
 
 **In the client** (#12): the walk, now signing at each inn (sign at Lion's Pride Inn or
-any of the eight first, then `/reload` and tell an agent: the first live signature); the unticked
+any of the seven live inns first, then `/reload` and tell an agent: the first live signature); the unticked
 [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)
 items (the mouse wheel on the composer lists; the rest of the signing checks; a second
 character in a party for round-trips, `UnitFullName("partyN")` and cross-realm names,

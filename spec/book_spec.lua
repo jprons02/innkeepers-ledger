@@ -869,19 +869,19 @@ describe("Book: quills", function()
     assert.same({ "In use", false }, rows["Cartographer's quill"])
     assert.same({ "Always yours", true }, rows["Plain quill"])
     -- Seals: earned, with their dates.
-    -- Seals page by 7; collect every page's.
+    -- Seals page by 7: two pages, collected in order.
     local seals = {}
-    repeat
+    for page = 1, 2 do
       for _, row in ipairs(ns.Book.ui.seals.rows) do
         if shown(row.name) then
           seals[#seals + 1] = row.name:GetText()
         end
       end
-      local more = ns.Book.ui.right.next:IsEnabled()
-      if more then
+      assert.equal(page < 2, ns.Book.ui.right.next:IsEnabled())
+      if page < 2 then
         ns.Book.ui.right.next:Click()
       end
-    until not more
+    end
     assert.same({ "Wayfarer's seal", "Innkeeper's seal", "Zephras Isle seal",
       "Elwynn Forest seal", "Stormwind City seal", "Westfall seal", "Redridge Mountains seal",
       "Loch Modan seal", "Wetlands seal", "Darkshore seal" }, seals)

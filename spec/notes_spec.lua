@@ -372,6 +372,20 @@ describe("Notes: the saved record", function()
     end
   end)
 
+  it("logs nothing about a read-only record at an NPC that isn't an innkeeper", function()
+    for _, global in ipairs({ { notes = "x" }, { notes = { [GUID] = { v = 2, items = {} } } } }) do
+      login({ db = { global = global } })
+      state.npc = VENDOR_GUID
+      wow.gossipOptions = {
+        { icon = 132060, name = "Let me browse your goods.", gossipOptionID = 1 },
+      }
+      debugOn()
+      wow.fire("GOSSIP_SHOW")
+      assert.equal(0, lines("notes:"))
+      wow.uninstall()
+    end
+  end)
+
   it("never touches a newer record (v = 2)", function()
     local newer = { v = 2, items = { theNote({ t = NOW - 5 }) }, extra = { 1 } }
     login({ db = { global = { notes = { [GUID] = deepcopy(newer) } } } })

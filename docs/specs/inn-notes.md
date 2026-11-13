@@ -34,9 +34,9 @@ Builds on (changes none of their behavior, except as listed in §4):
 [book.md §4.1](book.md#41-savedvariables-the-books-record) (a separate, versioned
 per-character record beside the ledger).
 
-**Depends on client facts from the live walk (#12), recorded 2026-11-13 on the unmerged
-branch `feat/12-live-inns-2` (its `docs/platform-forever.md`) and re-read for this spec
-from the live probe's `npcs` table:**
+**Depends on client facts from the live walk (#12), now in
+[platform-forever.md](../platform-forever.md) (their home, on `dev` since #161), and re-read
+for this spec from the live probe's `npcs` table. As read when this spec was written:**
 - 109 NPCs talked to in live; **exactly 7 had an option with icon `132052`**, and all 7
   are the innkeepers now in that branch's `Data/Inns` (NPCs `295`, `1464`, `6727`,
   `6734`, `6737`, `6740`, `8931`). No other NPC showed that icon. The beta's Coriella
@@ -56,9 +56,6 @@ from the live probe's `npcs` table:**
   is not yet seen**; retail documents it as a number (a file ID). This spec accepts only
   the number ([§3.3](#33-recognizing-an-innkeeper)); [§8](#8-in-client-checks-for-the-maintainer)
   item 1 confirms it.
-
-The implementer copies these facts into `docs/platform-forever.md` once #12's branch is
-on `dev` (rebase first; the facts' home is that file, [§4.5](#45-docs-the-implementer-updates)).
 
 ---
 

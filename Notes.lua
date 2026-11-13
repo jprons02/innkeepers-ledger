@@ -192,16 +192,6 @@ local function seen()
   if not g then
     return
   end
-  local all = g.notes
-  if all ~= nil and type(all) ~= "table" then
-    debug("notes: read-only") -- a damaged notes table is never overwritten
-    return
-  end
-  local r = InnNotes.read(all and all[guid], data)
-  if r.writable ~= true then
-    debug("notes: read-only")
-    return
-  end
   local note, why = InnNotes.observe({
     npc = npc, now = readNow(), icons = readIcons(), chain = readChain(),
     faction = readFaction(),
@@ -210,6 +200,18 @@ local function seen()
     if why == "clock" or why == "place" then
       debug("notes: " .. why)
     end
+    return
+  end
+  -- The record is checked only after observe found an unknown innkeeper, so a read-only
+  -- record logs once per innkeeper, never at every vendor (spec 6.3).
+  local all = g.notes
+  if all ~= nil and type(all) ~= "table" then
+    debug("notes: read-only") -- a damaged notes table is never overwritten
+    return
+  end
+  local r = InnNotes.read(all and all[guid], data)
+  if r.writable ~= true then
+    debug("notes: read-only")
     return
   end
   local res, items = InnNotes.add(r.items, note)

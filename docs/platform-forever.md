@@ -76,11 +76,16 @@ logs them there.
 - ✅ **Hidden values outside combat: none seen.** `UnitGUID("player")`,
   `UnitGUID("npc")`, `UnitName("npc")`, `UnitFactionGroup("player")` and the
   `CHAT_MSG_ADDON` sender all read normally (`issecretvalue` false, `canaccessvalue`
-  true). ❓ Inside combat, instances and encounters: not tested yet.
+  true). **In combat and in a dungeon too** (live, 2026-11-10: 323 whispers and 7 party
+  messages received in combat, 68 of them inside The Deadmines, every sender readable;
+  all 109 NPC GUIDs read). Encounters lock addon messages; see the instance item in the
+  checklist.
   `C_ChatInfo.AreOutgoingAddonChatMessagesRestricted` and
   `C_ChatInfo.InChatMessagingLockdown` (false out of combat) exist to ask.
 - ✅ **NPC GUIDs are the retail form** `Creature-0-<server>-<instance>-<zoneUID>-<npcID>-<spawn>`;
   field 6 is the NPC ID (e.g. `251361`). Forever NPC IDs seen so far are 251 000–264 000.
+  **Live keeps the classic-era world's IDs** for its old-world NPCs (Innkeeper Farley is
+  `295`, Innkeeper Allison `6740`); new Forever NPCs still sit above 250 000 (`268511`).
 - ✅ **Gossip:** `GOSSIP_SHOW` fires; `C_GossipInfo.GetOptions()` / `GetText()` work;
   `GossipFrame` is the retail frame (`GossipFrame.GreetingPanel.ScrollBox`, 338×496).
   A `UIPanelButtonTemplate` button parented to `GossipFrame` and anchored under it shows
@@ -129,7 +134,16 @@ in the sections above. **Partly** means the rest of the item is still open.
 - [x] Embedded libraries (see [libraries.md](libraries.md)) load without errors ✅
 - [ ] Addon message PARTY / RAID / GUILD round-trip between two characters
 - [ ] Addon messages inside an instance / during an encounter, and which chat type
-      instance groups use (`PARTY`/`RAID` or `INSTANCE_CHAT`)
+      instance groups use (`PARTY`/`RAID` or `INSTANCE_CHAT`). **Partly** ✅ (live, one
+      Deadmines run in a party, 2026-11-10, 7 boss encounters): `PARTY` sends work inside
+      the dungeon, in combat too. **Encounters lock addon messages:** between
+      `ENCOUNTER_START` and `ENCOUNTER_END` a `WHISPER` returns `11`
+      (`AddOnMessageLockdown`) and a `PARTY` send returns `0` (Success) **but never
+      arrives** (0 of 7); the `PARTY` send at `ENCOUNTER_END` arrives. In all 7 the
+      player was in combat too, so `Sync`'s combat hold already covers it; the gap is a
+      player out of combat mid-encounter (dead, or not pulled), where sends drop
+      silently. `C_Map.GetBestMapForUnit("player")` is `nil` inside the dungeon. Still
+      open: `INSTANCE_CHAT` in a group-finder group, `RAID`
 - [ ] Addon message size limit and send rate limits (what ChatThrottleLib assumes).
       **Partly** ✅: 255 bytes, longer messages truncated silently; 30 whispers in one
       frame all arrived. Group and guild throttles untested
@@ -154,10 +168,13 @@ in the sections above. **Partly** means the rest of the item is still open.
       **Partly** ✅: the `CHAT_MSG_ADDON` sender is `"First Surname"` (a space, no realm
       suffix); `GetNormalizedRealmName()` is `ClassicBetaPvP`; `UnitGUID("player")` and
       the weekly-reset API are readable at `PLAYER_LOGIN`; `RegisterAddonMessagePrefix`
-      returns `0`; `LE_PARTY_CATEGORY_HOME` = 1 and `_INSTANCE` = 2 exist. Still open:
-      `GetGuildRosterInfo`'s 17th return, `GUILD_ROSTER_UPDATE` /
-      `C_GuildInfo.GuildRoster()`, `InCombatLockdown` and `PLAYER_REGEN_*`,
-      ChatThrottleLib's `didSend`, home-versus-instance group separation
+      returns `0`; `LE_PARTY_CATEGORY_HOME` = 1 and `_INSTANCE` = 2 exist. Live
+      (2026-11-09..12): `GetGuildRosterInfo` returns 17 values and the 17th is the
+      member's `Player-…` GUID; `GUILD_ROSTER_UPDATE` fires (often: ~1 300 in three
+      days); `PLAYER_REGEN_DISABLED`/`_ENABLED` fire in pairs (329 each), and
+      `C_ChatInfo.InChatMessagingLockdown()` reads `false` at `PLAYER_REGEN_DISABLED`.
+      Still open: `C_GuildInfo.GuildRoster()`, ChatThrottleLib's `didSend`,
+      home-versus-instance group separation
 - [ ] Group sender names (#54). **Partly** ✅: the sender is a bare `"First Surname"`
       with no `-Realm`; `UnitFullName("player")` returns the surname, not our realm;
       `UNKNOWNOBJECT` is `"Unknown"` (AceDB's profile key read it at load). Still open:
@@ -177,15 +194,24 @@ in the sections above. **Partly** means the rest of the item is still open.
       seals are numbered 101, 102, … in the order zones are added
       ([specs/collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
       The probe logs every NPC talked to, so this fills in during normal play.
-      **Partly** ✅: 1 inn so far (Calmbreeze Inn, Zephras Isle; zone seal 101). The
-      probe's log read on 2026-10-13: 14 NPCs, all on Zephras Isle (Thendal Village,
-      Thendal Grove, Shen'dar Village), and Coriella Calmbreeze is the only one whose
-      gossip offers *Make this inn your home.*
+      **Partly** ✅: 8 inns so far. Calmbreeze Inn (Zephras Isle, from the beta), and from
+      the live probe (read 2026-11-06 and 2026-11-13; 109 NPCs talked to), 7 Alliance
+      inns: Lion's Pride Inn (Elwynn), The Gilded Rose (Stormwind), Sentinel Hill Inn
+      (Westfall), Lakeshire Inn (Redridge), Stoutlager Inn (Loch Modan), Deepwater Tavern
+      (Wetlands), Auberdine Inn (Darkshore). The client names four inns (minimap or
+      subzone text): Lion's Pride Inn, Lakeshire Inn, Stoutlager Inn, Deepwater Tavern;
+      The Gilded Rose is the inn's known name, and Sentinel Hill Inn and Auberdine Inn
+      are `<town> Inn` (the client gives only the town). No alias seen yet. The probe's
+      `npcs` table keeps every NPC; its `log` rolls over at 3 000 entries (about three
+      days of play), so read `npcs` for inns
 - [ ] Map IDs readable at each inn (`C_Map.GetBestMapForUnit("player")`, then the
       `C_Map.GetMapInfo(id).parentMapID` chain up to the first *Zone*- and
       *Continent*-type maps, or a *World* map if it comes first); a capital city is its
       own zone. **Partly** ✅: the chain reads; Zephras Isle has **no Continent
-      ancestor** (Zone 2521 → World 947), so it's grouped under Azeroth (947) (#76). Still
+      ancestor** (Zone 2521 → World 947), so it's grouped under Azeroth (947) (#76). In
+      live, every inn's chain reads Zone → Continent → World 947: Eastern Kingdoms
+      (1415) for Elwynn 1429, Stormwind City 1453, Westfall 1436, Redridge 1433, Loch
+      Modan 1432 and Wetlands 1437; Kalimdor (1414) for Darkshore 1439. Still
       open: the chain for every other Forever zone, as the collection fills in
 - [x] The player's faction token ✅: `UnitFactionGroup("player")` returns `"Alliance"`
       (readable, English); `UnitFactionGroup("npc")` gives an NPC's faction (`"Horde"`,

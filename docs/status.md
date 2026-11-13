@@ -5,8 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-11-04, launch day (`Data/*` published as JSON (#156); #157 filed for
-after launch; the probe is in the live client; October's decisions archived)
+**Updated:** 2026-11-13 (the live probe's second read: five more inns, eight in all; a
+dungeon run's addon-message facts; the live client's AddOn updated so signing works)
 
 ## Current state
 
@@ -16,16 +16,22 @@ after launch; the probe is in the live client; October's decisions archived)
   looks. Seen in the client on 2026-10-11 and 10-12: every tab, the inn page, the
   composer on both lines, every voice's conjunction strip (decisions.md 2026-10-11,
   2026-10-12, now in the October archive).
-- **`Data/Inns` holds three inns:** Calmbreeze Inn (NPC `254089`), Zephras Isle (zone
-  2521, seal 101, Azeroth 947), read in the beta; and from the live walk's first sessions
-  (2026-11-04/05), Lion's Pride Inn (Innkeeper Farley `295`, Elwynn Forest 1429, seal 102)
-  and The Gilded Rose (Innkeeper Allison `6740`, Stormwind City 1453, seal 103), both
-  Alliance only, on Eastern Kingdoms (1415). The client named Lion's Pride Inn (its
-  minimap text); "The Gilded Rose" is the inn's known name, not read from the client.
-  **The walk (#12) continues in the live client** (decisions.md 2026-11-04, later).
-  Nothing is marked `complete`, so place rules stay locked and the book shows "1 of 3+"
-  (fails closed, #110/#118). Specs that read the shipped data count three inns now, and
-  the layout fixture's generated seals start at 201, clear of shipped ones.
+- **`Data/Inns` holds eight inns** (zone seals 101..108): Calmbreeze Inn (Zephras Isle,
+  from the beta) and seven Alliance-only inns from the live probe (read 2026-11-06 and
+  2026-11-13): Lion's Pride Inn (Elwynn), The Gilded Rose (Stormwind), Sentinel Hill Inn
+  (Westfall), Lakeshire Inn (Redridge), Stoutlager Inn (Loch Modan), Deepwater Tavern
+  (Wetlands) on Eastern Kingdoms (1415), and Auberdine Inn (Darkshore) on Kalimdor
+  (1414). IDs, map chains and how each name was got:
+  [platform-forever.md](platform-forever.md) (the Collect item). **Sentinel Hill Inn and
+  Auberdine Inn are DRAFT names** (`<town> Inn`, decisions.md 2026-11-13). **The walk
+  (#12) continues.** Nothing is marked `complete`, so place rules stay locked and the
+  book shows "1 of 8+" (fails closed, #110/#118). The Inns tab's list now runs to two
+  pages (16 rows each), and the seals list to two (7 each).
+- **The live ledger was empty until today:** the client's AddOn was installed on
+  2026-11-04 with only Calmbreeze in `Data/Inns`, so no innkeeper met in live showed
+  *Sign the guestbook*. Its `Data/Inns.lua` (the only shipped file that differed) was
+  replaced with this one on 2026-11-13; signing works at all eight inns from the next
+  login.
 - **`Data/*` is published as JSON (#156, on `dev`):** `docs/data/forever.json`, written
   by `scripts/data-json.lua`; CI fails when it's stale
   ([specs/data-json.md](specs/data-json.md)). **Regenerate and commit it with every
@@ -34,8 +40,9 @@ after launch; the probe is in the live client; October's decisions archived)
   measures the UI in the client; each round needs the maintainer's `/reload`s. Its last
   round (2026-10-12) ran clean. Layout checks in busted (#140) use a measured 0.6 em
   text width.
-- **Releasing:** last released to `main` on 2026-10-18 (#153). **`dev` is ahead by #156**
-  (docs, a script and CI only; nothing that ships). `CHANGELOG.md` holds the first
+- **Releasing:** last released to `main` on 2026-10-18 (#153). **`dev` is ahead by #156,
+  #160 and this session's inns:** `Data/Inns.lua` ships, so the first tag's notes
+  should mention the inns. `CHANGELOG.md` holds the first
   release's notes under `## Unreleased` (#152). No tags yet (maintainer gate). **CI:**
   eight required checks on `ubuntu-24.04`, green.
 
@@ -63,10 +70,14 @@ and the tag. The CurseForge and Wago projects, page text and `release` tokens ar
 - **No agent ticket is ready.** #12 waits on the walk; **#157** (noting unknown
   innkeepers in the export) is blocked until the first tag (decisions.md 2026-11-04).
   Otherwise pick from Follow-ups, checking decisions.md first.
-- **When the maintainer reports a walk:** read `WTF/Account/<account>/SavedVariables/!ILProbe.lua`
-  under the live client folder (an innkeeper is the NPC whose gossip options include
-  *Make this inn your home.*, icon 132052), then Path to launch step 3. The log names the
-  character: summarize into the docs, never commit it.
+- **When the maintainer reports a walk:** read the `npcs` table (not the `log`, which
+  rolls over at 3 000 entries) of `WTF/Account/<account>/SavedVariables/!ILProbe.lua`
+  under the live client folder; an innkeeper is the NPC whose gossip options include
+  *Make this inn your home.* (icon 132052). Then Path to launch step 3, and copy the new
+  `Data/Inns.lua` into the live client's `Interface/AddOns/InnkeepersLedger/Data/` so he
+  can sign there (WoW closed, or a `/reload`). Also read `InnkeepersLedger.lua` beside
+  the log: its `own` list shows what he signed. Both name the character: summarize into
+  the docs, never commit them.
 - **The harness in live:** `deploy.sh` and `results.sh` default to the beta folder; pass
   the live client's folder (or set `ILDEV_CLIENT`). ILDev isn't installed there yet;
   `deploy.sh` installs it. The maintainer's steps per round: `/reload` (the book tour,
@@ -76,8 +87,9 @@ and the tag. The CurseForge and Wago projects, page text and `release` tokens ar
 ## Client access
 
 **Live since 2026-11-04.** Client `World of Warcraft\_forever_` (build 1.60.1.70755),
-with the probe and `dev`'s AddOn (as of `d2e0f6d`; no shipped file has changed since)
-installed on 2026-11-04 ([platform-forever.md](platform-forever.md)). The beta client
+with the probe and `dev`'s AddOn installed on 2026-11-04; its `Data/Inns.lua` replaced on
+2026-11-13 (eight inns), so it matches `dev`'s shipped files
+([platform-forever.md](platform-forever.md)). The beta client
 (`_classic_beta_`) is closed.
 
 ## Open questions (maintainer to decide)
@@ -101,7 +113,8 @@ None block work; DRAFTs ship until answered.
 
 ## Waiting on the maintainer
 
-**In the client** (#12): the walk; the unticked
+**In the client** (#12): the walk, now signing at each inn (sign at Lion's Pride Inn or
+any of the eight first, then `/reload` and tell an agent: the first live signature); the unticked
 [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)
 items (the mouse wheel on the composer lists; the rest of the signing checks; a second
 character in a party for round-trips, `UnitFullName("partyN")` and cross-realm names,
@@ -109,6 +122,11 @@ character in a party for round-trips, `UnitFullName("partyN")` and cross-realm n
 
 ## Follow-ups
 
+- **Encounter lockdown (low):** mid-encounter, addon messages fail (`WHISPER` returns
+  `11`, `PARTY` returns `0` and is dropped; platform-forever.md, the instance item).
+  `Sync` holds sends in combat, which covered all 7 encounters seen; a player out of
+  combat mid-encounter (dead) would lose sends. If wanted: hold on `ENCOUNTER_START`
+  until `ENCOUNTER_END` too (a new event pair for the API allow-list).
 - **Book redraws aren't coalesced** (2–6 ms per ENTRIES on a capped ledger); a timer is
   ruled out, so any fix waits for a client measurement. DRAFT wording: the `continent`
   rule's "0 of 1" fallback has no "+".

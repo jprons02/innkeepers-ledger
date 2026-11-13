@@ -2,6 +2,7 @@
   "atlasComplete": false,
   "continents": {
     "947": {"complete": false, "name": "Azeroth"},
+    "1414": {"complete": false, "name": "Kalimdor"},
     "1415": {"complete": false, "name": "Eastern Kingdoms"}
   },
   "cosmetics": {
@@ -10,6 +11,11 @@
     "101": {"kind": "seal", "name": "Zephras Isle", "rule": {"kind": "zone", "zone": 2521}},
     "102": {"kind": "seal", "name": "Elwynn Forest", "rule": {"kind": "zone", "zone": 1429}},
     "103": {"kind": "seal", "name": "Stormwind City", "rule": {"kind": "zone", "zone": 1453}},
+    "104": {"kind": "seal", "name": "Westfall", "rule": {"kind": "zone", "zone": 1436}},
+    "105": {"kind": "seal", "name": "Redridge Mountains", "rule": {"kind": "zone", "zone": 1433}},
+    "106": {"kind": "seal", "name": "Loch Modan", "rule": {"kind": "zone", "zone": 1432}},
+    "107": {"kind": "seal", "name": "Wetlands", "rule": {"kind": "zone", "zone": 1437}},
+    "108": {"kind": "seal", "name": "Darkshore", "rule": {"kind": "zone", "zone": 1439}},
     "1001": {"kind": "quill", "name": "Traveler's quill", "rule": {"kind": "inns", "n": 10}},
     "1002": {"kind": "quill", "name": "Owl-feather quill", "rule": {"kind": "inns", "n": 20}},
     "1003": {"kind": "quill", "name": "Cartographer's quill", "rule": {"kind": "continent"}}
@@ -17,7 +23,12 @@
   "flavor": "forever",
   "inns": {
     "295": {"faction": "Alliance", "name": "Lion's Pride Inn", "zone": 1429},
+    "1464": {"faction": "Alliance", "name": "Deepwater Tavern", "zone": 1437},
+    "6727": {"faction": "Alliance", "name": "Lakeshire Inn", "zone": 1433},
+    "6734": {"faction": "Alliance", "name": "Stoutlager Inn", "zone": 1432},
+    "6737": {"faction": "Alliance", "name": "Auberdine Inn", "zone": 1439},
     "6740": {"faction": "Alliance", "name": "The Gilded Rose", "zone": 1453},
+    "8931": {"faction": "Alliance", "name": "Sentinel Hill Inn", "zone": 1436},
     "254089": {"name": "Calmbreeze Inn", "zone": 2521}
   },
   "phraseCategories": {
@@ -407,6 +418,11 @@
   "schema": 1,
   "zones": {
     "1429": {"complete": false, "continent": 1415, "name": "Elwynn Forest", "seal": 102},
+    "1432": {"complete": false, "continent": 1415, "name": "Loch Modan", "seal": 106},
+    "1433": {"complete": false, "continent": 1415, "name": "Redridge Mountains", "seal": 105},
+    "1436": {"complete": false, "continent": 1415, "name": "Westfall", "seal": 104},
+    "1437": {"complete": false, "continent": 1415, "name": "Wetlands", "seal": 107},
+    "1439": {"complete": false, "continent": 1414, "name": "Darkshore", "seal": 108},
     "1453": {"complete": false, "continent": 1415, "name": "Stormwind City", "seal": 103},
     "2521": {"complete": false, "continent": 947, "name": "Zephras Isle", "seal": 101}
   }

@@ -41,8 +41,8 @@ dungeon run's addon-message facts; the live client's AddOn updated so signing wo
   round (2026-10-12) ran clean. Layout checks in busted (#140) use a measured 0.6 em
   text width.
 - **Releasing:** last released to `main` on 2026-10-18 (#153). **`dev` is ahead by #156,
-  #160 and this session's inns:** `Data/Inns.lua` ships, so the first tag's notes
-  should mention the inns. `CHANGELOG.md` holds the first
+  #160 and #161:** `Data/Inns.lua` ships, so the first tag's notes should mention the
+  inns (written at release time: the count changes as the walk goes on). `CHANGELOG.md` holds the first
   release's notes under `## Unreleased` (#152). No tags yet (maintainer gate). **CI:**
   eight required checks on `ubuntu-24.04`, green.
 

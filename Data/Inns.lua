@@ -47,6 +47,8 @@ ns.Data.Inns = {
   [1464] = { name = "Deepwater Tavern", zone = 1437, faction = "Alliance" },
   -- Innkeeper Shaussiy, Auberdine
   [6737] = { name = "Auberdine Inn", zone = 1439, faction = "Alliance" },
+  -- Innkeeper Kimlya, Astranaar
+  [6738] = { name = "Astranaar Inn", zone = 1440, faction = "Alliance" },
 }
 
 ns.Data.Zones = {
@@ -58,6 +60,7 @@ ns.Data.Zones = {
   [1432] = { name = "Loch Modan", continent = 1415, seal = 106 },
   [1437] = { name = "Wetlands", continent = 1415, seal = 107 },
   [1439] = { name = "Darkshore", continent = 1414, seal = 108 },
+  [1440] = { name = "Ashenvale", continent = 1414, seal = 109 },
 }
 
 ns.Data.Continents = {

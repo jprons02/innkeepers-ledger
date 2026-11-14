@@ -5,8 +5,8 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-11-13 (the live probe's second read: five more inns, eight in all; a
-dungeon run's addon-message facts; the live client's AddOn updated so signing works)
+**Updated:** 2026-11-13, evening (the first live signature, at Auberdine Inn; the probe's
+third read adds Astranaar Inn, nine in all; the client is patched to build 70938)
 
 ## Current state
 
@@ -16,22 +16,23 @@ dungeon run's addon-message facts; the live client's AddOn updated so signing wo
   looks. Seen in the client on 2026-10-11 and 10-12: every tab, the inn page, the
   composer on both lines, every voice's conjunction strip (decisions.md 2026-10-11,
   2026-10-12, now in the October archive).
-- **`Data/Inns` holds eight inns** (zone seals 101..108): Calmbreeze Inn (Zephras Isle,
-  from the beta) and seven Alliance-only inns from the live probe (read 2026-11-06 and
-  2026-11-13): Lion's Pride Inn (Elwynn), The Gilded Rose (Stormwind), Sentinel Hill Inn
-  (Westfall), Lakeshire Inn (Redridge), Stoutlager Inn (Loch Modan), Deepwater Tavern
-  (Wetlands) on Eastern Kingdoms (1415), and Auberdine Inn (Darkshore) on Kalimdor
-  (1414). IDs, map chains and how each name was got:
-  [platform-forever.md](platform-forever.md) (the Collect item). **Sentinel Hill Inn and
-  Auberdine Inn are DRAFT names** (`<town> Inn`, decisions.md 2026-11-13). **The walk
-  (#12) continues.** Nothing is marked `complete`, so place rules stay locked and the
-  book shows "1 of 8+" (fails closed, #110/#118). The Inns tab's list now runs to two
-  pages (16 rows each), and the seals list to two (7 each).
-- **The live ledger was empty until 2026-11-13:** the client's AddOn was installed on
-  2026-11-04 with only Calmbreeze in `Data/Inns`, so no innkeeper met in live showed
-  *Sign the guestbook*. Its `Data/Inns.lua` (the only shipped file that differed) was
-  replaced with this one on 2026-11-13; signing works at the seven live inns from the next
-  login.
+- **`Data/Inns` holds nine inns** (zone seals 101..109): Calmbreeze Inn (Zephras Isle,
+  from the beta) and eight Alliance-only inns from the live probe (read 2026-11-06 and
+  twice on 2026-11-13): Lion's Pride Inn (Elwynn), The Gilded Rose (Stormwind), Sentinel
+  Hill Inn (Westfall), Lakeshire Inn (Redridge), Stoutlager Inn (Loch Modan), Deepwater
+  Tavern (Wetlands) on Eastern Kingdoms (1415), and Auberdine Inn (Darkshore) and
+  Astranaar Inn (Ashenvale) on Kalimdor (1414). IDs, map chains and how each name was
+  got: [platform-forever.md](platform-forever.md) (the Collect item). **Sentinel Hill
+  Inn, Auberdine Inn and Astranaar Inn are DRAFT names** (`<town> Inn`, decisions.md
+  2026-11-13). **The walk (#12) continues.** Nothing is marked `complete`, so place
+  rules stay locked and the book shows "1 of 9+" (fails closed, #110/#118). The Inns
+  tab's list runs to two pages (16 rows each), and the seals list to two (7 each).
+- **The first live signature (2026-11-13):** at Auberdine Inn, after the live client's
+  `Data/Inns.lua` was updated that afternoon. The saved entry, the two-part owner name
+  and the empty `earned` list are as designed
+  ([platform-forever.md](platform-forever.md), the signing item). The live client's
+  `Data/Inns.lua` was replaced again that evening (nine inns), so it matches `dev`'s
+  shipped files and Astranaar Inn can be signed from the next login.
 - **`Data/*` is published as JSON (#156, on `dev`):** `docs/data/forever.json`, written
   by `scripts/data-json.lua`; CI fails when it's stale
   ([specs/data-json.md](specs/data-json.md)). **Regenerate and commit it with every
@@ -41,7 +42,7 @@ dungeon run's addon-message facts; the live client's AddOn updated so signing wo
   round (2026-10-12) ran clean. Layout checks in busted (#140) use a measured 0.6 em
   text width.
 - **Releasing:** last released to `main` on 2026-10-18 (#153). **`dev` is ahead by #156,
-  #160 and #161:** `Data/Inns.lua` ships, so the first tag's notes should mention the
+  #160, #161 and #164:** `Data/Inns.lua` ships, so the first tag's notes should mention the
   inns (written at release time: the count changes as the walk goes on). `CHANGELOG.md` holds the first
   release's notes under `## Unreleased` (#152). No tags yet (maintainer gate). **CI:**
   eight required checks on `ubuntu-24.04`, green.
@@ -86,9 +87,10 @@ and the tag. The CurseForge and Wago projects, page text and `release` tokens ar
 
 ## Client access
 
-**Live since 2026-11-04.** Client `World of Warcraft\_forever_` (build 1.60.1.70755),
-with the probe and `dev`'s AddOn installed on 2026-11-04; its `Data/Inns.lua` replaced on
-2026-11-13 (eight inns), so it matches `dev`'s shipped files
+**Live since 2026-11-04.** Client `World of Warcraft\_forever_` (build 1.60.1.70755 at
+launch, 70938 by 2026-11-13), with the probe and `dev`'s AddOn installed on 2026-11-04;
+its `Data/Inns.lua` last replaced on 2026-11-13 (nine inns), so it matches `dev`'s
+shipped files
 ([platform-forever.md](platform-forever.md)). The beta client
 (`_classic_beta_`) is closed.
 
@@ -108,15 +110,16 @@ None block work; DRAFTs ship until answered.
   - **Conjunction strip:** 6 buttons, 3 a row, Hearthside's 7 page; or three rows of
     three (22 taller)? 4 a row is out (labels measured).
   - **Inn page rows:** headings 30 high, others 64. Fine, or tighter?
-- **Inn names (DRAFT):** *Sentinel Hill Inn* and *Auberdine Inn* are `<town> Inn`
-  because the client gives only the town (decisions.md 2026-11-13). Keep, or rename?
+- **Inn names (DRAFT):** *Sentinel Hill Inn*, *Auberdine Inn* and *Astranaar Inn* are
+  `<town> Inn` because the client gives only the town (decisions.md 2026-11-13). Keep, or rename?
 - **Phrase wording (#62)**, **cosmetic catalog (#63)**, **export (#64)**: as in each
   spec's Open questions.
 
 ## Waiting on the maintainer
 
-**In the client** (#12): the walk, now signing at each inn (sign at Lion's Pride Inn or
-any of the seven live inns first, then `/reload` and tell an agent: the first live signature); the unticked
+**In the client** (#12): the walk, signing at each inn as you pass (the first live
+signature is in; tell an agent after a session so the probe's `npcs` table is read for
+new innkeepers); the unticked
 [platform-forever.md checklist](platform-forever.md#verification-checklist-needs-a-forever-client-beta-until-2026-10-21-or-launch-2026-11-04)
 items (the mouse wheel on the composer lists; the rest of the signing checks; a second
 character in a party for round-trips, `UnitFullName("partyN")` and cross-realm names,

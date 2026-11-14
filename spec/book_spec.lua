@@ -391,8 +391,9 @@ describe("Book: the Inns tab", function()
     -- The list's 16 rows are full: Kalimdor starts the next page.
     ui.left.next:Click()
     assert.equal("2 / 2", ui.left.label:GetText())
-    assert.same({ "Kalimdor", "Darkshore", "Auberdine Inn" }, texts(1))
-    assert.equal("0 of 1+", rows[1].sub:GetText())
+    assert.same({ "Kalimdor", "Ashenvale", "Astranaar Inn", "Darkshore", "Auberdine Inn" },
+      texts(1))
+    assert.equal("0 of 2+", rows[1].sub:GetText())
     -- The label and the page buttons sit on the page file's dark bottom edge (#12): the
     -- label is parchment-colored, and the buttons read < and >.
     assert.same({ 0.87, 0.80, 0.64, 1 }, ui.left.label.textColor)
@@ -884,7 +885,7 @@ describe("Book: quills", function()
     end
     assert.same({ "Wayfarer's seal", "Innkeeper's seal", "Zephras Isle seal",
       "Elwynn Forest seal", "Stormwind City seal", "Westfall seal", "Redridge Mountains seal",
-      "Loch Modan seal", "Wetlands seal", "Darkshore seal" }, seals)
+      "Loch Modan seal", "Wetlands seal", "Darkshore seal", "Ashenvale seal" }, seals)
     assert.equal("Choose a seal when you sign a guestbook.", ns.Book.ui.seals.hint:GetText())
 
     ns.Book:OpenInn(CALM)
@@ -1002,8 +1003,8 @@ describe("Book: the Collection tab", function()
     ns.Book.ui.tabs.collection:Click()
     local ui = ns.Book.ui
     -- The shipped data marks no place complete: a + after each total, no zone completed.
-    assert.equal("1 of 8+ inns signed", ui.summary.signed:GetText())
-    assert.equal("Zones completed: 0 of 8", ui.summary.zones:GetText())
+    assert.equal("1 of 9+ inns signed", ui.summary.signed:GetText())
+    assert.equal("Zones completed: 0 of 9", ui.summary.zones:GetText())
     assert.equal("1 of 1+", ui.summary.bars[1].text:GetText())
     assert.equal("Signatures: 1", ui.summary.signatures:GetText())
     assert.equal("Travelers met: 1", ui.summary.travelers:GetText())
@@ -1012,7 +1013,7 @@ describe("Book: the Collection tab", function()
     assert.equal("Eastern Kingdoms", ui.summary.bars[2].name:GetText())
     assert.equal("0 of 6+", ui.summary.bars[2].text:GetText())
     assert.equal("Kalimdor", ui.summary.bars[3].name:GetText())
-    assert.equal("0 of 1+", ui.summary.bars[3].text:GetText())
+    assert.equal("0 of 2+", ui.summary.bars[3].text:GetText())
     assert.is_false(shown(ui.summary.bars[4].name))
     assert.equal("Azeroth", ui.stamps.title:GetText())
     local cell = ui.stamps.cells[1]

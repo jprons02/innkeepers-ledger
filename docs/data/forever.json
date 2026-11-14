@@ -16,6 +16,7 @@
     "106": {"kind": "seal", "name": "Loch Modan", "rule": {"kind": "zone", "zone": 1432}},
     "107": {"kind": "seal", "name": "Wetlands", "rule": {"kind": "zone", "zone": 1437}},
     "108": {"kind": "seal", "name": "Darkshore", "rule": {"kind": "zone", "zone": 1439}},
+    "109": {"kind": "seal", "name": "Ashenvale", "rule": {"kind": "zone", "zone": 1440}},
     "1001": {"kind": "quill", "name": "Traveler's quill", "rule": {"kind": "inns", "n": 10}},
     "1002": {"kind": "quill", "name": "Owl-feather quill", "rule": {"kind": "inns", "n": 20}},
     "1003": {"kind": "quill", "name": "Cartographer's quill", "rule": {"kind": "continent"}}
@@ -27,6 +28,7 @@
     "6727": {"faction": "Alliance", "name": "Lakeshire Inn", "zone": 1433},
     "6734": {"faction": "Alliance", "name": "Stoutlager Inn", "zone": 1432},
     "6737": {"faction": "Alliance", "name": "Auberdine Inn", "zone": 1439},
+    "6738": {"faction": "Alliance", "name": "Astranaar Inn", "zone": 1440},
     "6740": {"faction": "Alliance", "name": "The Gilded Rose", "zone": 1453},
     "8931": {"faction": "Alliance", "name": "Sentinel Hill Inn", "zone": 1436},
     "254089": {"name": "Calmbreeze Inn", "zone": 2521}
@@ -423,6 +425,7 @@
     "1436": {"complete": false, "continent": 1415, "name": "Westfall", "seal": 104},
     "1437": {"complete": false, "continent": 1415, "name": "Wetlands", "seal": 107},
     "1439": {"complete": false, "continent": 1414, "name": "Darkshore", "seal": 108},
+    "1440": {"complete": false, "continent": 1414, "name": "Ashenvale", "seal": 109},
     "1453": {"complete": false, "continent": 1415, "name": "Stormwind City", "seal": 103},
     "2521": {"complete": false, "continent": 947, "name": "Zephras Isle", "seal": 101}
   }

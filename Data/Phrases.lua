@@ -1,9 +1,9 @@
 -- Phrase templates, conjunctions and words, each with a stable numeric ID. Plain data, no
 -- WoW API. Shape, ID ranges, record rules and content rules: docs/specs/phrase.md.
 --
--- DRAFT: the wording is the maintainer's decision (docs/specs/phrase.md, section 9 and its
--- open questions). Before the first public release it can change freely. From then on an
--- ID is never reused and its meaning never changes; new phrases get new IDs.
+-- The wording was approved by the maintainer on 2026-11-14 (docs/decisions.md). From the
+-- first public release on, an ID is never reused and its meaning never changes; new
+-- phrases get new IDs.
 --
 -- One ID space, keyed directly by number (SyncProtocol looks every ID up here):
 --   templates 1..499: voice 1 slotted from 1 and slotless from 101; voice v >= 2 in a

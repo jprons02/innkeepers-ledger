@@ -11,10 +11,12 @@
 > `Data/Inns.lua` or `Data/Cosmetics.lua`; filling `Data/Inns` (#12); adding a zone or a
 > cosmetic; building `Sign`'s seal choice, the book's collection view or `Export`.
 
-**Status:** approved (self-approved 2026-09-27, ticket #63), **except the catalog**: the
-cosmetics, their names and their thresholds in [§9](#9-draft-catalog-draft) are a DRAFT
-and the maintainer decides them (a `CLAUDE.md` gate). They ship as written until then;
-the questions are tracked in [status.md](../status.md). Nothing else here waits on them.
+**Status:** approved (self-approved 2026-09-27, ticket #63). **The catalog in
+[§9](#9-draft-catalog-draft) and the Assumptions' per-faction totals and never-taken-away
+rule were approved by the maintainer on 2026-11-14** ([decisions.md](../decisions.md) →
+*The phrase set (#62) and the cosmetic catalog (#63) ship as drafted*). Thresholds may
+still be retuned before the first tag once the walk counts the inns; after it, IDs freeze
+and a threshold can only fall.
 Amended 2026-09-30 (#76): a zone with no Continent map above it is grouped under its
 World map ([§3.1](#31-places-inns-zones-continents)), and a map ID can't key both a zone
 and a continent ([§3.2](#32-record-rules) rule 6). Amended 2026-10-07 (#110,
@@ -847,9 +849,9 @@ ns.Data.Cosmetics).SEALS` on a fresh ledger: the `101` entry is stored too
 
 ## 9. Draft catalog (DRAFT)
 
-**The set, names and thresholds are the maintainer's decision** (open questions 1–3). Every
-record passes 3.5 and is earned by play only. Thresholds are placeholders to retune after
-#12 counts the inns: Classic had a few dozen inns open to each faction, and Forever adds
+**Approved by the maintainer on 2026-11-14** (the heading keeps "DRAFT" so links hold).
+Every record passes 3.5 and is earned by play only. Thresholds may be retuned before the
+first tag after #12 counts the inns (only downward after it): Classic had a few dozen inns open to each faction, and Forever adds
 zones. **There are no inks** (maintainer, 2026-10-06): every signature is written in one
 realistic ink, true to the game's times.
 
@@ -887,17 +889,17 @@ depth. No name refers to a faction, race or class.
 
 ## Open questions (maintainer)
 
-1. **The draft catalog** (§9): which cosmetics, their names, and the ladder (1 / 5 / 10 /
-   20 inns; 3 / 10 zones; a continent; everything). Ship as is, or redirect? The numbers
-   will be retuned once #12 knows how many inns there are. Doesn't block the build or the
-   merge; IDs change freely until the first release. Note for the retune (#76): a zone
-   with no Continent above it is grouped under its World map, which counts as a
-   continent for the `continent` rule. If many Forever zones hang straight off Azeroth,
-   that group nears "every inn"; a lone such zone makes the rule easy.
-2. **Per-faction totals** (Assumptions): agree that "every inn" means every inn your
-   faction can use?
-3. **Never taken away** (Assumptions): agree that a seal stays when Forever adds an inn to
-   a zone you'd completed? The alternative is losing it until you sign the new inn.
-4. **Later, not v1:** worth a follow-up for continent seals, a "home inn" reward for
-   re-signing the same inn over many weeks, or a distinct badge kind? None is in this
-   slice.
+All answered on 2026-11-14 ([decisions.md](../decisions.md) → *The phrase set (#62) and
+the cosmetic catalog (#63) ship as drafted*):
+
+1. ~~**The draft catalog**~~: ships as built in §9 (5 / 10 / 20 inns, a continent, a seal
+   per zone, every inn; the `zones` rule kind exists but no record uses it). Note for a
+   retune before the tag (#76): a zone with no Continent above it is grouped under its
+   World map, which counts as a continent for the `continent` rule. If many Forever zones
+   hang straight off Azeroth, that group nears "every inn"; a lone such zone makes the
+   rule easy.
+2. ~~**Per-faction totals**~~: yes, "every inn" is every inn your faction can use.
+3. ~~**Never taken away**~~: yes, a seal stays when Forever adds an inn to a completed
+   zone.
+4. ~~**Later, not v1**~~: continent seals, a "home inn" reward and a badge kind are
+   follow-ups ([status.md](../status.md) → Follow-ups).

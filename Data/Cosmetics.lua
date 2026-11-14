@@ -2,10 +2,9 @@
 -- ID and the rule that unlocks it. Plain data, no WoW API. Shape, ID ranges and rules:
 -- docs/specs/collection-cosmetics.md, sections 3.5 and 9.
 --
--- DRAFT: the set, the names and the thresholds are the maintainer's decision (the spec's
--- section 9 and its open questions). Before the first public release they can change
--- freely. From then on an ID is never reused and never changes meaning, and a threshold
--- never rises.
+-- The set and names were approved by the maintainer on 2026-11-14 (docs/decisions.md);
+-- thresholds may still be retuned before the first public release. From then on an ID is
+-- never reused and never changes meaning, and a threshold never rises.
 --
 -- IDs: milestone seals 1..99, quills 1000..1099 (1100..1199 reserved). Zone seals (101..999)
 -- are not here: each zone in Data/Inns.lua carries its own. Rules:

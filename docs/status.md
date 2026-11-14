@@ -7,7 +7,8 @@
 
 **Updated:** 2026-11-14 (the first live signature, at Auberdine Inn, 2026-11-13; the
 probe's third read adds Astranaar Inn, nine in all; the client is patched to build
-70938; the 2026-11-14 morning sessions add no inn, but show own sync messages echoing)
+70938; the 2026-11-14 morning sessions add no inn, but show own sync messages echoing;
+the maintainer approves #62's phrases and #63's catalog as drafted)
 
 ## Current state
 
@@ -61,8 +62,9 @@ and the tag. The CurseForge and Wago projects, page text and `release` tokens ar
    logs each), and note per zone whether you've seen every inn in it. Visit Calmbreeze
    Inn early: it shows whether live kept the beta's IDs. One session with a second
    character in a party: sync between two players is untested.
-2. **Answers (maintainer):** #62 and #63 before the first tag (their IDs freeze), and
-   which zones to mark complete. The other open questions can ship as DRAFTs.
+2. **Answers (maintainer):** which zones to mark complete. #62 and #63 were answered on
+   2026-11-14: both ship as drafted (decisions.md). The other open questions can ship as
+   DRAFTs.
 3. **Agent, as inns arrive:** read the probe's `npcs` table from disk, fill `Data/Inns`,
    regenerate the JSON, mark the chosen zones, check names against the inn page's limits
    ([book.md §3.11.1](specs/book.md#3111-frames-and-the-look-draft)); then a release PR
@@ -118,8 +120,8 @@ None block work; DRAFTs ship until answered.
   - **Inn page rows:** headings 30 high, others 64. Fine, or tighter?
 - **Inn names (DRAFT):** *Sentinel Hill Inn*, *Auberdine Inn* and *Astranaar Inn* are
   `<town> Inn` because the client gives only the town (decisions.md 2026-11-13). Keep, or rename?
-- **Phrase wording (#62)**, **cosmetic catalog (#63)**, **export (#64)**: as in each
-  spec's Open questions.
+- **Export (#64):** as in its spec's Open questions. (Phrase wording #62 and the
+  cosmetic catalog #63 were answered 2026-11-14: as drafted.)
 
 ## Waiting on the maintainer
 
@@ -151,4 +153,6 @@ character in a party for round-trips, `UnitFullName("partyN")` and cross-realm n
 - **Code tidy (low):** `Phrase`'s load-time asserts; `Ledger`'s quadratic load-time cap
   pass on a tampered file; `Sign.lua`'s `listField` builds a full `view()` per click;
   `scripts/data-json.lua`'s "not in the TOC" error has no test (#156 review).
+- **Cosmetics after v1 (#63's answers):** continent seals, a "home inn" reward for
+  re-signing one inn over many weeks, a distinct badge kind. None is ticketed.
 - Delete GitHub's default labels (maintainer call). Archive [kickoff.md](kickoff.md) at v1.

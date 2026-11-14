@@ -8,10 +8,11 @@
 > rewording phrases; rendering entries in the UI or an export consumer; building the
 > phrase builder or `Sign`.
 
-**Status:** approved (self-approved 2026-09-27, ticket #62), **except the wording**: the
-phrase set in [§9](#9-draft-phrase-set-draft) is a DRAFT and the maintainer decides it
-(a `CLAUDE.md` gate). It ships as written until then, and the question is tracked in
-[status.md](../status.md). Nothing else in this spec waits on that answer.
+**Status:** approved (self-approved 2026-09-27, ticket #62). **The wording in
+[§9](#9-draft-phrase-set-draft) was approved by the maintainer on 2026-11-14** as drafted,
+alcohol and game creature words included ([decisions.md](../decisions.md) → *The phrase
+set (#62) and the cosmetic catalog (#63) ship as drafted*). Its IDs freeze at the first
+tag.
 **Amended 2026-10-06 (#100):** voices (an optional `voice` on templates and conjunctions,
 `PhraseVoices`, `voices()` / `voice(id)` / `templates(v)` / `conjunctions(v)`), the
 Oddities category and the larger draft set; [decisions.md](../decisions.md) → *Phrase
@@ -620,7 +621,8 @@ rejecting). A second message with one entry at inn 1239 using an unknown ID
 
 ## 9. Draft phrase set (DRAFT)
 
-**Wording is the maintainer's decision** (open question 1). Everything below passes
+**Approved by the maintainer on 2026-11-14** (the heading keeps "DRAFT" so links hold);
+lines can still be added, but after the first tag no ID is reworded. Everything below passes
 §3.2 and was checked against §3.6. Counts: **156 templates** (109 slotted, 47 slotless) in **8 voices**,
 **30 conjunctions**, **175 words** in **9 categories** (20 each, Oddities 15).
 Generated from `Data/Phrases.lua`; the table there is the source of truth.
@@ -806,11 +808,9 @@ conjunction 542 (15 bytes); the worst-case rendering is 127 bytes.
 
 ## Open questions (maintainer)
 
-1. **The wording of the draft set** (§9: voices, templates, conjunctions, words,
-   category and voice names). The maintainer chose the voices direction on 2026-10-06;
-   individual lines are still open to rewording. Doesn't block the build or merge; the
-   IDs can change freely until the first release.
-2. **Alcohol words:** keep "a mug of ale" and "spiced cider" (inns sell both in the game),
-   or keep the set alcohol-free?
-3. **Game creature words:** keep Warcraft flavor like "the murlocs", or keep every word
-   generic fantasy?
+All answered on 2026-11-14 ([decisions.md](../decisions.md) → *The phrase set (#62) and
+the cosmetic catalog (#63) ship as drafted*):
+
+1. ~~**The wording of the draft set**~~: ships as written in §9.
+2. ~~**Alcohol words**~~: kept ("a mug of ale", "spiced cider").
+3. ~~**Game creature words**~~: kept ("the murlocs", "the kobolds").

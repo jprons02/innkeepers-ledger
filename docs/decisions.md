@@ -10,6 +10,35 @@ top that supersedes it (and links it) rather than editing history.
 
 ---
 
+### 2026-11-14 — The phrase set (#62) and the cosmetic catalog (#63) ship as drafted
+
+The maintainer approved both drafts for the first tag, so their IDs freeze with it (after
+the tag an ID's meaning never changes and nothing is renumbered or removed).
+
+**Phrases** ([phrase.md §9](specs/phrase.md#9-draft-phrase-set-draft)): the 8 voices, 156
+templates, 30 conjunctions and 175 words ship as written. **Alcohol stays** ("a mug of
+ale", "spiced cider", the toasts): inns in the game sell both, and a tavern without them
+reads false. **Game creature words stay** ("the murlocs", "the kobolds"): the AddOn runs
+inside the game, where its flavor belongs. **Rejected:** *an alcohol-free set* and
+*generic-fantasy words only* (both trade the inn's feel for a caution the setting doesn't
+need); *rewording lines now* (no line was flagged, and words can still be added after the
+tag).
+
+**Cosmetics** ([collection-cosmetics.md §9](specs/collection-cosmetics.md#9-draft-catalog-draft)):
+the catalog ships as built (Wayfarer's seal at 5 inns, Traveler's quill at 10, Owl-feather
+quill at 20, Cartographer's quill for a continent, a seal per zone, Innkeeper's seal for
+every inn). The thresholds may still be retuned before the tag once the walk (#12) counts
+the inns; after it they can only fall. **"Every inn" means every inn open to your
+faction** (neutral plus your own): another faction's inns could never be signed, so
+counting them would make the place rules unreachable. **An earned cosmetic is never taken
+away** when a patch adds an inn to a zone you'd completed: losing an earned reward feels
+like a punishment, and the book still shows the new inn as unsigned. **Rejected:**
+*all-faction totals*; *revoking a seal until the new inn is signed*. **Later, not v1:**
+continent seals, a "home inn" reward for re-signing one inn over many weeks, and a
+distinct badge kind stay follow-ups.
+
+---
+
 ### 2026-11-13 — An inn the client doesn't name is `<town> Inn` (DRAFT); read the probe's `npcs`
 
 The second read of the live probe found five more Alliance inns (`Data/Inns` now holds

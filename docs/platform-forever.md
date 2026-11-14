@@ -55,11 +55,13 @@ In-client results below come from a throwaway probe AddOn (branch `spike/12-prob
 merged) run in the Forever beta, build **1.60.1.70124** (2026-09-29), on 2026-09-30.
 
 **The live client (2026-11-04):** installed in its own folder, `_forever_` (product
-`wowf`), build **1.60.1.70755**. ❓ Nothing has been checked in it yet: the interface
-number (`16001` assumed, the same 1.60.1 as the beta), and whether the beta's NPC and map
-IDs carry over. The beta's IDs (`Data/Inns`) count as unverified in live until the probe
-logs them there. **By 2026-11-13 the client was patched to build 1.60.1.70938** (the
-probe's `api` entry, 6 025 global functions); the AddOn still loaded and signed in it.
+`wowf`), build **1.60.1.70755** at launch, **1.60.1.70938** by 2026-11-13 (the probe's
+`api` entry, 6 025 global functions). Checked in it since: the AddOn loads and signs
+(the first live signature, 2026-11-13, below); live uses classic-era NPC IDs and each
+inn's map chain reads (the Collect and map items below); addon messages in a dungeon
+(the instance item). ❓ Still unchecked: the interface number itself (`16001` assumed,
+the same 1.60.1 as the beta), and whether the beta's Calmbreeze IDs carry over (not
+visited in live yet).
 
 - ✅ **The modern (retail/Midnight) API, not the Classic one.** The install folder and
   product are `_classic_beta_` / `wow_classic_beta`, but `WOW_PROJECT_ID` is `1`
@@ -133,7 +135,12 @@ in the sections above. **Partly** means the rest of the item is still open.
 - [x] `IsResting()` true inside inns ✅ (`true` at the Calmbreeze Inn, `false` outside,
       readable)
 - [x] Embedded libraries (see [libraries.md](libraries.md)) load without errors ✅
-- [ ] Addon message PARTY / RAID / GUILD round-trip between two characters
+- [ ] Addon message PARTY / RAID / GUILD round-trip between two characters. **Partly**
+      ✅ (live, 2026-11-14, one character in a party and a guild): the AddOn's own
+      `PARTY` and `GUILD` sends on its `InnLedger` prefix echo back to the sender
+      (6 and 8 received, sender = the player), and the ledger drops them as designed
+      ([sync-ledger.md](specs/sync-ledger.md), receive step 5): `travelers` stays empty.
+      No other player in the party or guild ran the AddOn, so a round-trip is still open
 - [ ] Addon messages inside an instance / during an encounter, and which chat type
       instance groups use (`PARTY`/`RAID` or `INSTANCE_CHAT`). **Partly** ✅ (live, one
       Deadmines run in a party, 2026-11-10, 7 boss encounters): `PARTY` sends work inside
@@ -214,8 +221,8 @@ in the sections above. **Partly** means the rest of the item is still open.
       live, every inn's chain reads Zone → Continent → World 947: Eastern Kingdoms
       (1415) for Elwynn 1429, Stormwind City 1453, Westfall 1436, Redridge 1433, Loch
       Modan 1432 and Wetlands 1437; Kalimdor (1414) for Darkshore 1439 and Ashenvale
-      1440. Still
-      open: the chain for every other Forever zone, as the collection fills in
+      1440. Still open: the chain for every other Forever zone, as the collection fills
+      in
 - [x] The player's faction token ✅: `UnitFactionGroup("player")` returns `"Alliance"`
       (readable, English); `UnitFactionGroup("npc")` gives an NPC's faction (`"Horde"`,
       `"Alliance"`, or nothing for neutral ones), `UnitReaction` its standing

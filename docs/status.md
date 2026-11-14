@@ -5,8 +5,9 @@
 > [decisions.md](decisions.md).
 > **Read when:** every session, first thing after `CLAUDE.md`.
 
-**Updated:** 2026-11-13, evening (the first live signature, at Auberdine Inn; the probe's
-third read adds Astranaar Inn, nine in all; the client is patched to build 70938)
+**Updated:** 2026-11-14 (the first live signature, at Auberdine Inn, 2026-11-13; the
+probe's third read adds Astranaar Inn, nine in all; the client is patched to build
+70938; the 2026-11-14 morning sessions add no inn, but show own sync messages echoing)
 
 ## Current state
 
@@ -33,6 +34,11 @@ third read adds Astranaar Inn, nine in all; the client is patched to build 70938
   ([platform-forever.md](platform-forever.md), the signing item). The live client's
   `Data/Inns.lua` was replaced again that evening (nine inns), so it matches `dev`'s
   shipped files and Astranaar Inn can be signed from the next login.
+- **Probe read through 2026-11-14 10:42** (two morning sessions, in a party and a
+  guild): no new innkeeper, no new signature; the AddOn's own `PARTY`/`GUILD` messages
+  echo back and are dropped, and no other player there ran the AddOn
+  ([platform-forever.md](platform-forever.md), the round-trip item). The next read
+  starts after that time.
 - **`Data/*` is published as JSON (#156, on `dev`):** `docs/data/forever.json`, written
   by `scripts/data-json.lua`; CI fails when it's stale
   ([specs/data-json.md](specs/data-json.md)). **Regenerate and commit it with every

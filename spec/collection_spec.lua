@@ -1241,7 +1241,7 @@ describe("Data/Inns (the shipped places)", function()
   it("ships no marks yet: a signature at Calmbreeze completes nothing (#110)", function()
     -- Until the walk knows each zone and continent in full, they stay unmarked.
     assert.is_false(Collection.complete())
-    for _, zone in ipairs({ 2521, 1429, 1453, 1436, 1433, 1432, 1437, 1439 }) do
+    for _, zone in ipairs({ 2521, 1429, 1453, 1436, 1433, 1432, 1437, 1439, 1440 }) do
       assert.is_false(Collection.zone(zone).complete, zone)
     end
     for _, continent in ipairs({ 947, 1415, 1414 }) do
@@ -1249,7 +1249,7 @@ describe("Data/Inns (the shipped places)", function()
     end
     local p = Collection.progress({ { inn = 254089, t = T, phrase = { 1 } } }, "Alliance")
     assert.equal(1, p.signed)
-    assert.equal(8, p.total)
+    assert.equal(9, p.total)
     -- Every live inn walked so far is Alliance only: a Horde total leaves them out.
     assert.equal(1, Collection.progress({}, "Horde").total)
     assert.is_nil(p.done)

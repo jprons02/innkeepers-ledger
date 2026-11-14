@@ -58,7 +58,8 @@ merged) run in the Forever beta, build **1.60.1.70124** (2026-09-29), on 2026-09
 `wowf`), build **1.60.1.70755**. ❓ Nothing has been checked in it yet: the interface
 number (`16001` assumed, the same 1.60.1 as the beta), and whether the beta's NPC and map
 IDs carry over. The beta's IDs (`Data/Inns`) count as unverified in live until the probe
-logs them there.
+logs them there. **By 2026-11-13 the client was patched to build 1.60.1.70938** (the
+probe's `api` entry, 6 025 global functions); the AddOn still loaded and signed in it.
 
 - ✅ **The modern (retail/Midnight) API, not the Classic one.** The install folder and
   product are `_classic_beta_` / `wow_classic_beta`, but `WOW_PROJECT_ID` is `1`
@@ -194,14 +195,15 @@ in the sections above. **Partly** means the rest of the item is still open.
       seals are numbered 101, 102, … in the order zones are added
       ([specs/collection-cosmetics.md §8](specs/collection-cosmetics.md#8-contract-for-later-slices)).
       The probe logs every NPC talked to, so this fills in during normal play.
-      **Partly** ✅: 8 inns so far. Calmbreeze Inn (Zephras Isle, from the beta), and from
-      the live probe (read 2026-11-06 and 2026-11-13; 109 NPCs talked to), 7 Alliance
-      inns: Lion's Pride Inn (Elwynn), The Gilded Rose (Stormwind), Sentinel Hill Inn
-      (Westfall), Lakeshire Inn (Redridge), Stoutlager Inn (Loch Modan), Deepwater Tavern
-      (Wetlands), Auberdine Inn (Darkshore). The client names four inns (minimap or
-      subzone text): Lion's Pride Inn, Lakeshire Inn, Stoutlager Inn, Deepwater Tavern;
-      The Gilded Rose is the inn's known name, and Sentinel Hill Inn and Auberdine Inn
-      are `<town> Inn` (the client gives only the town). No alias seen yet. The probe's
+      **Partly** ✅: 9 inns so far. Calmbreeze Inn (Zephras Isle, from the beta), and from
+      the live probe (read 2026-11-06 and twice on 2026-11-13; 113 NPCs talked to), 8
+      Alliance inns: Lion's Pride Inn (Elwynn), The Gilded Rose (Stormwind), Sentinel Hill
+      Inn (Westfall), Lakeshire Inn (Redridge), Stoutlager Inn (Loch Modan), Deepwater
+      Tavern (Wetlands), Auberdine Inn (Darkshore), Astranaar Inn (Innkeeper Kimlya 6738,
+      Ashenvale). The client names four inns (minimap or subzone text): Lion's Pride Inn,
+      Lakeshire Inn, Stoutlager Inn, Deepwater Tavern; The Gilded Rose is the inn's known
+      name, and Sentinel Hill Inn, Auberdine Inn and Astranaar Inn are `<town> Inn` (the
+      client gives only the town). No alias seen yet. The probe's
       `npcs` table keeps every NPC; its `log` rolls over at 3 000 entries (about three
       days of play), so read `npcs` for inns
 - [ ] Map IDs readable at each inn (`C_Map.GetBestMapForUnit("player")`, then the
@@ -211,7 +213,8 @@ in the sections above. **Partly** means the rest of the item is still open.
       ancestor** (Zone 2521 → World 947), so it's grouped under Azeroth (947) (#76). In
       live, every inn's chain reads Zone → Continent → World 947: Eastern Kingdoms
       (1415) for Elwynn 1429, Stormwind City 1453, Westfall 1436, Redridge 1433, Loch
-      Modan 1432 and Wetlands 1437; Kalimdor (1414) for Darkshore 1439. Still
+      Modan 1432 and Wetlands 1437; Kalimdor (1414) for Darkshore 1439 and Ashenvale
+      1440. Still
       open: the chain for every other Forever zone, as the collection fills in
 - [x] The player's faction token ✅: `UnitFactionGroup("player")` returns `"Alliance"`
       (readable, English); `UnitFactionGroup("npc")` gives an NPC's faction (`"Horde"`,
@@ -235,6 +238,12 @@ in the sections above. **Partly** means the rest of the item is still open.
         partial-data effect in [status.md](status.md) → Follow-ups (release gate)
   - [x] a second click the same week → "You've signed this guestbook this week. Sign
         again after the weekly reset (in 19 hours)." ✅, i.e. Tuesday 16:00 UTC
+  - [x] **the first live signature** ✅ (2026-11-13, build 70938): at Innkeeper Shaussiy
+        (Auberdine Inn, `6737`), the saved file holds one own entry
+        `{ inn = 6737, phrase = { 382, 1404 } }` ("We are most pleased with a quiet
+        village.", a voice-8 template). The owner's name is stored in the two-part
+        `<name> <surname>` form; `earned` stays empty, as it should while no zone is
+        marked complete and the ledger is under 5 inns (#110)
   - [ ] the list composer (#102, replacing the voice rows of #100): the voice strip, the
         template list and the category and word lists render, with the faint gold
         selection mark (`SetColorTexture`) on the chosen row; clicking a row picks it and

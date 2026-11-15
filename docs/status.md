@@ -8,7 +8,8 @@
 **Updated:** 2026-11-14 (the first live signature, at Auberdine Inn, 2026-11-13; the
 probe's third read adds Astranaar Inn, nine in all; the client is patched to build
 70938; the 2026-11-14 morning sessions add no inn, but show own sync messages echoing;
-the maintainer approves #62's phrases and #63's catalog as drafted)
+the maintainer approves #62's phrases and #63's catalog as drafted; #167 opened to
+explore signing at any innkeeper, since the walk is the launch blocker)
 
 ## Current state
 
@@ -58,6 +59,10 @@ the maintainer approves #62's phrases and #63's catalog as drafted)
 
 The code is ready; what's left is in-client data and checks, the maintainer's answers,
 and the tag. The CurseForge and Wago projects, page text and `release` tokens are done.
+**The blocker is coverage:** a player can sign only at inns in `Data/Inns` (nine, no
+Horde inn), so as built, launch waits on the walk. **#167** explores signing at any
+innkeeper the client recognizes (the binder icon), which would make the walk polish
+instead of a blocker; the maintainer decides after its spec. Until then, steps 1–4 stand.
 1. **The walk (maintainer, live client):** talk to every innkeeper you pass (the probe
    logs each), and note per zone whether you've seen every inn in it. Visit Calmbreeze
    Inn early: it shows whether live kept the beta's IDs. One session with a second
@@ -76,9 +81,10 @@ and the tag. The CurseForge and Wago projects, page text and `release` tokens ar
 
 ## Next step
 
-- **No agent ticket is ready.** #12 waits on the walk; **#157** (noting unknown
-  innkeepers in the export) is blocked until the first tag (decisions.md 2026-11-04).
-  Otherwise pick from Follow-ups, checking decisions.md first.
+- **#167 is ready** (a spike: a spec, no code): signing at any innkeeper, not only those
+  in `Data/Inns`. Its outcome may change #157's timing (noting unknown innkeepers, PR
+  #163 held until the first tag, decisions.md 2026-11-04). #12 waits on the walk.
+  Otherwise pick from Follow-ups (the encounter hold first), checking decisions.md first.
 - **When the maintainer reports a walk:** read the `npcs` table (not the `log`, which
   rolls over at 3 000 entries) of `WTF/Account/<account>/SavedVariables/!ILProbe.lua`
   under the live client folder; an innkeeper is the NPC whose gossip options include
@@ -105,6 +111,11 @@ shipped files
 ## Open questions (maintainer to decide)
 
 None block work; DRAFTs ship until answered.
+- **Signing at any innkeeper (#167), once its spec lands:** go, no-go or a smaller
+  variant; the fallback name for an inn not in `Data/Inns`; how such inns show in the
+  book and whether they count toward totals and seals. The spec lists the questions;
+  nothing to answer before it exists. **Launch timing** waits on this answer or on the
+  walk.
 - **Which zones to mark complete:** your call from the walk. The `"+"` wording is DRAFT.
 - **The book** ([book.md → Open questions](specs/book.md#open-questions-maintainer)) and
   **the composer** ([sign.md → Open questions](specs/sign.md#open-questions-maintainer)):

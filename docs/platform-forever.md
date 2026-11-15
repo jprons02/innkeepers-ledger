@@ -103,6 +103,15 @@ visited in live yet).
   (`gossipOptionID` 137079, icon 132052, the binder icon) and *I would like to buy from
   you.* (icon 132060). The binder option is what marks an innkeeper in the probe's log;
   no other NPC logged so far has it.
+- ✅ **Recognizing an innkeeper in live (probe through 2026-11-14, 114 NPCs):** every
+  innkeeper's gossip has *Make this inn your home.* with **icon 132052**, and none of the
+  other 106 NPCs has that icon. **The `gossipOptionID` is not stable:** it differs per
+  innkeeper (95566 Farley; 96506 Brianna, Allison, Heather; 96527 Helbrek, Hearthstove;
+  98485 Shaussiy, Kimlya; 137079 Calmbreeze in the beta), so only the icon (locale-free)
+  or the option text (English only) can mark one. `IsResting()` is `true` at all eight.
+  Where the name text comes from varies: at Farley the subzone text is empty and the
+  zone and minimap texts both read *Lion's Pride Inn*; elsewhere the subzone or minimap
+  text gives the inn's name or only the town (the Collect item below)
 - ✅ **Sitting detection: no query API.** Only actions exist (`ToggleSit`,
   `SitStandOrDescendStart`); nothing reports the stand state.
 - ✅ **Addon messages on custom channels are allowed** (retail behavior): `"CHANNEL"` to a
